@@ -1,8 +1,6 @@
 //
 // ChannelTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/ChannelTest.h#1 $
-//
 // Definition of the ChannelTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -20,13 +18,14 @@
 #include "CppUnit/TestCase.h"
 
 
-class ChannelTest: public CppUnit::TestCase
+class ChannelTest : public CppUnit::TestCase
 {
 public:
 	ChannelTest(const std::string& name);
 	~ChannelTest();
 
 	void testSplitter();
+	void testSplitterAddSameChannelTwice();
 	void testAsync();
 	void testFormatting();
 	void testConsole();

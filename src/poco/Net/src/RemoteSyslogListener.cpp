@@ -1,8 +1,6 @@
 //
 // RemoteSyslogListener.cpp
 //
-// $Id: //poco/1.4/Net/src/RemoteSyslogListener.cpp#4 $
-//
 // Library: Net
 // Package: Logging
 // Module:  RemoteSyslogListener
@@ -54,21 +52,21 @@ public:
 		_sourceAddress(sourceAddress)
 	{
 	}
-		
+
 	~MessageNotification()
 	{
 	}
-	
+
 	const std::string& message() const
 	{
 		return _message;
 	}
-	
+
 	const Poco::Net::SocketAddress& sourceAddress() const
 	{
 		return _sourceAddress;
 	}
-	
+
 private:
 	std::string _message;
 	Poco::Net::SocketAddress _sourceAddress;
@@ -88,8 +86,8 @@ public:
 		WAITTIME_MILLISEC = 1000,
 		BUFFER_SIZE = 65536
 	};
-	
-	RemoteUDPListener(Poco::NotificationQueue& queue, Poco::UInt16 port);
+
+	RemoteUDPListener(Poco::NotificationQueue& queue, Poco::UInt16 port, bool reusePort, int buffer);
 	~RemoteUDPListener();
 
 	void run();
@@ -98,15 +96,19 @@ public:
 private:
 	Poco::NotificationQueue& _queue;
 	DatagramSocket           _socket;
-	bool                     _stopped;
+	std::atomic<bool>        _stopped;
 };
 
 
-RemoteUDPListener::RemoteUDPListener(Poco::NotificationQueue& queue, Poco::UInt16 port):
+RemoteUDPListener::RemoteUDPListener(Poco::NotificationQueue& queue, Poco::UInt16 port, bool reusePort, int buffer):
 	_queue(queue),
-	_socket(Poco::Net::SocketAddress(Poco::Net::IPAddress(), port)),
+	_socket(Poco::Net::SocketAddress(Poco::Net::IPAddress(), port), false, reusePort),
 	_stopped(false)
 {
+	if (buffer > 0)
+	{
+		_socket.setReceiveBufferSize(buffer);
+	}
 }
 
 
@@ -180,9 +182,15 @@ private:
 		/// Parses until it encounters the next space char, returns the string from pos, excluding space
 		/// pos will point past the space char
 
+	static std::string parseStructuredData(const std::string& line, std::size_t& pos);
+		/// Parses the structured data field.
+
+	static std::string parseStructuredDataToken(const std::string& line, std::size_t& pos);
+	/// Parses a token from the structured data field.
+
 private:
 	Poco::NotificationQueue& _queue;
-	bool                     _stopped;
+	std::atomic<bool>        _stopped;
 	RemoteSyslogListener*    _pListener;
 };
 
@@ -248,7 +256,7 @@ void SyslogParser::parse(const std::string& line, Poco::Message& message)
 	// the next field decide if we parse an old BSD message or a new syslog message
 	// BSD: expects a month value in string form: Jan, Feb...
 	// SYSLOG expects a version number: 1
-	
+
 	if (Poco::Ascii::isDigit(line[pos]))
 	{
 		parseNew(line, severity, fac, pos, message);
@@ -267,10 +275,10 @@ void SyslogParser::parsePrio(const std::string& line, std::size_t& pos, RemoteSy
 	poco_assert (line[pos] == '<');
 	++pos;
 	std::size_t start = pos;
-	
+
 	while (pos < line.size() && Poco::Ascii::isDigit(line[pos]))
 		++pos;
-	
+
 	poco_assert (line[pos] == '>');
 	poco_assert (pos - start > 0);
 	std::string valStr = line.substr(start, pos - start);
@@ -278,7 +286,7 @@ void SyslogParser::parsePrio(const std::string& line, std::size_t& pos, RemoteSy
 
 	int val = Poco::NumberParser::parse(valStr);
 	poco_assert (val >= 0 && val <= (RemoteSyslogChannel::SYSLOG_LOCAL7 + RemoteSyslogChannel::SYSLOG_DEBUG));
-	
+
 	Poco::UInt16 pri = static_cast<Poco::UInt16>(val);
 	// now get the lowest 3 bits
 	severity = static_cast<RemoteSyslogChannel::Severity>(pri & 0x0007u);
@@ -297,15 +305,18 @@ void SyslogParser::parseNew(const std::string& line, RemoteSyslogChannel::Severi
 	std::string appName(parseUntilSpace(line, pos));
 	std::string procId(parseUntilSpace(line, pos));
 	std::string msgId(parseUntilSpace(line, pos));
+	std::string sd(parseStructuredData(line, pos));
 	std::string messageText(line.substr(pos));
 	pos = line.size();
 	Poco::DateTime date;
 	int tzd = 0;
 	bool hasDate = Poco::DateTimeParser::tryParse(RemoteSyslogChannel::SYSLOG_TIMEFORMAT, timeStr, date, tzd);
 	Poco::Message logEntry(msgId, messageText, prio);
+	logEntry[RemoteSyslogListener::LOG_PROP_FACILITY] = RemoteSyslogChannel::facilityToString(fac);
 	logEntry[RemoteSyslogListener::LOG_PROP_HOST] = hostName;
 	logEntry[RemoteSyslogListener::LOG_PROP_APP] = appName;
-	
+	logEntry[RemoteSyslogListener::LOG_PROP_STRUCTURED_DATA] = sd;
+
 	if (hasDate)
 		logEntry.setTime(date.timestamp());
 	int lval(0);
@@ -380,6 +391,7 @@ void SyslogParser::parseBSD(const std::string& line, RemoteSyslogChannel::Severi
 	pos = line.size();
 	Poco::Message logEntry(hostName, messageText, prio);
 	logEntry.setTime(date.timestamp());
+	logEntry[RemoteSyslogListener::LOG_PROP_FACILITY] = RemoteSyslogChannel::facilityToString(fac);
 	message.swap(logEntry);
 }
 
@@ -394,6 +406,67 @@ std::string SyslogParser::parseUntilSpace(const std::string& line, std::size_t& 
 	return line.substr(start, pos-start-1);
 }
 
+
+std::string SyslogParser::parseStructuredData(const std::string& line, std::size_t& pos)
+{
+	std::string sd;
+	if (pos < line.size())
+	{
+		if (line[pos] == '-')
+		{
+			++pos;
+		}
+		else if (line[pos] == '[')
+		{
+			std::string tok = parseStructuredDataToken(line, pos);
+			while (tok == "[")
+			{
+				sd += tok;
+				tok = parseStructuredDataToken(line, pos);
+				while (tok != "]" && !tok.empty())
+				{
+					sd += tok;
+					tok = parseStructuredDataToken(line, pos);
+				}
+				sd += tok;
+				if (pos < line.size() && line[pos] == '[') tok = parseStructuredDataToken(line, pos);
+			}
+		}
+		if (pos < line.size() && Poco::Ascii::isSpace(line[pos])) ++pos;
+	}
+	return sd;
+}
+
+
+std::string SyslogParser::parseStructuredDataToken(const std::string& line, std::size_t& pos)
+{
+	std::string tok;
+	if (pos < line.size())
+	{
+		if (Poco::Ascii::isSpace(line[pos]) || line[pos] == '=' || line[pos] == '[' || line[pos] == ']')
+		{
+			tok += line[pos++];
+		}
+		else if (line[pos] == '"')
+		{
+			tok += line[pos++];
+			while (pos < line.size() && line[pos] != '"')
+			{
+				tok += line[pos++];
+			}
+			tok += '"';
+			if (pos < line.size()) pos++;
+		}
+		else
+		{
+			while (pos < line.size() && !Poco::Ascii::isSpace(line[pos]) && line[pos] != '=')
+			{
+				tok += line[pos++];
+			}
+		}
+	}
+	return tok;
+}
 
 Poco::Message::Priority SyslogParser::convert(RemoteSyslogChannel::Severity severity)
 {
@@ -426,17 +499,23 @@ Poco::Message::Priority SyslogParser::convert(RemoteSyslogChannel::Severity seve
 
 
 const std::string RemoteSyslogListener::PROP_PORT("port");
+const std::string RemoteSyslogListener::PROP_REUSE_PORT("reusePort");
 const std::string RemoteSyslogListener::PROP_THREADS("threads");
+const std::string RemoteSyslogListener::PROP_BUFFER("buffer");
 
+const std::string RemoteSyslogListener::LOG_PROP_FACILITY("facility");
 const std::string RemoteSyslogListener::LOG_PROP_APP("app");
 const std::string RemoteSyslogListener::LOG_PROP_HOST("host");
+const std::string RemoteSyslogListener::LOG_PROP_STRUCTURED_DATA("structured-data");
 
 
 RemoteSyslogListener::RemoteSyslogListener():
 	_pListener(0),
 	_pParser(0),
 	_port(RemoteSyslogChannel::SYSLOG_PORT),
-	_threads(1)
+	_reusePort(false),
+	_threads(1),
+	_buffer(0)
 {
 }
 
@@ -445,7 +524,9 @@ RemoteSyslogListener::RemoteSyslogListener(Poco::UInt16 port):
 	_pListener(0),
 	_pParser(0),
 	_port(port),
-	_threads(1)
+	_reusePort(false),
+	_threads(1),
+	_buffer(0)
 {
 }
 
@@ -454,7 +535,20 @@ RemoteSyslogListener::RemoteSyslogListener(Poco::UInt16 port, int threads):
 	_pListener(0),
 	_pParser(0),
 	_port(port),
-	_threads(threads)
+	_reusePort(false),
+	_threads(threads),
+	_buffer(0)
+{
+}
+
+
+RemoteSyslogListener::RemoteSyslogListener(Poco::UInt16 port, bool reusePort, int threads):
+	_pListener(0),
+	_pParser(0),
+	_port(port),
+	_reusePort(reusePort),
+	_threads(threads),
+	_buffer(0)
 {
 }
 
@@ -488,6 +582,10 @@ void RemoteSyslogListener::setProperty(const std::string& name, const std::strin
 		else
 			throw Poco::InvalidArgumentException("Not a valid port number", value);
 	}
+	else if (name == PROP_REUSE_PORT)
+	{
+		_reusePort = Poco::NumberParser::parseBool(value);
+	}
 	else if (name == PROP_THREADS)
 	{
 		int val = Poco::NumberParser::parse(value);
@@ -496,7 +594,11 @@ void RemoteSyslogListener::setProperty(const std::string& name, const std::strin
 		else
 			throw Poco::InvalidArgumentException("Invalid number of threads", value);
 	}
-	else 
+	else if (name == PROP_BUFFER)
+	{
+		_buffer = Poco::NumberParser::parse(value);
+	}
+	else
 	{
 		SplitterChannel::setProperty(name, value);
 	}
@@ -507,9 +609,13 @@ std::string RemoteSyslogListener::getProperty(const std::string& name) const
 {
 	if (name == PROP_PORT)
 		return Poco::NumberFormatter::format(_port);
+	else if (name == PROP_REUSE_PORT)
+		return Poco::NumberFormatter::format(_reusePort);
 	else if (name == PROP_THREADS)
 		return Poco::NumberFormatter::format(_threads);
-	else	
+	else if (name == PROP_BUFFER)
+		return Poco::NumberFormatter::format(_buffer);
+	else
 		return SplitterChannel::getProperty(name);
 }
 
@@ -520,7 +626,7 @@ void RemoteSyslogListener::open()
 	_pParser = new SyslogParser(_queue, this);
 	if (_port > 0)
 	{
-		_pListener = new RemoteUDPListener(_queue, _port);
+		_pListener = new RemoteUDPListener(_queue, _port, _reusePort, _buffer);
 	}
 	for (int i = 0; i < _threads; i++)
 	{

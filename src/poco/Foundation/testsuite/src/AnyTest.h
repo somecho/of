@@ -1,8 +1,6 @@
 //
 // AnyTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/AnyTest.h#1 $
-//
 // Tests for Any types
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -22,26 +20,35 @@
 class AnyTest: public CppUnit::TestCase
 {
 public:
+	class Dummy{};
+
 	AnyTest(const std::string& name);
 	~AnyTest();
 
-	void testConvertingCtor();
-	void testDefaultCtor();
-	void testCopyCtor();
-	void testCopyAssign();
-	void testConvertingAssign();
-	void testBadCast();
-	void testSwap();
-	void testEmptyCopy();
-	void testCastToReference();
+	void testAnyConvertingCtor();
+	void testAnyDefaultCtor();
+	void testAnyCopyCtor();
+	void testAnyCopyAssign();
+	void testAnyConvertingAssign();
+	void testAnyBadCast();
+	void testAnySwap();
+	void testAnyEmptyCopy();
+	void testAnyCastToReference();
 
-	void testInt();
-	void testComplexType();
-	void testVector();
-	
+	void testAnyPointer();
+	void testAnyInt();
+	void testAnyComplexType();
+	void testAnyVector();
+
+	void testPlaceholder();
+
 	void setUp();
 	void tearDown();
 	static CppUnit::Test* suite();
+
+private:
+	int _dummy = 0;
+	Dummy _dummyObject;
 };
 
 

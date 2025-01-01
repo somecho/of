@@ -1,8 +1,6 @@
 //
 // Event.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/Event.h#2 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  Event
@@ -48,8 +46,8 @@ class Foundation_API Event: private EventImpl
 public:
 	enum EventType
 	{
-		EVENT_MANUALRESET = EVENT_MANUALRESET_IMPL, /// Manual reset event
-		EVENT_AUTORESET = EVENT_AUTORESET_IMPL      /// Auto-reset event
+		EVENT_MANUALRESET, /// Manual reset event
+		EVENT_AUTORESET    /// Auto-reset event
 	};
 
 	explicit Event(EventType type = EVENT_AUTORESET);
@@ -57,7 +55,7 @@ public:
 		/// the event is automatically reset after
 		/// a wait() successfully returns.
 
-	//@ deprecated
+	POCO_DEPRECATED("")
 	explicit Event(bool autoReset);
 		/// Please use Event::Event(EventType) instead.
 
@@ -66,7 +64,7 @@ public:
 
 	void set();
 		/// Signals the event. If autoReset is true,
-		/// only one thread waiting for the event 
+		/// only one thread waiting for the event
 		/// can resume execution.
 		/// If autoReset is false, all waiting threads
 		/// can resume execution.
@@ -88,7 +86,7 @@ public:
 
 	void reset();
 		/// Resets the event to unsignalled state.
-	
+
 private:
 	Event(const Event&);
 	Event& operator = (const Event&);

@@ -1,8 +1,6 @@
 //
 // DOMSerializer.h
 //
-// $Id: //poco/1.4/XML/include/Poco/DOM/DOMSerializer.h#1 $
-//
 // Library: XML
 // Package: DOM
 // Module:  DOMSerializer
@@ -54,10 +52,10 @@ class XML_API DOMSerializer: public XMLReader
 public:
 	DOMSerializer();
 		/// Creates the DOMSerializer.
-		
+
 	~DOMSerializer();
 		/// Destroys the DOMSerializer.
-		
+
 	void serialize(const Node* pNode);
 		/// Serializes a DOM node and its children
 		/// into a sequence of SAX events, which are
@@ -84,7 +82,7 @@ protected:
 	void parse(InputSource* pSource);
 		/// The DOMSerializer cannot parse an InputSource,
 		/// so this method simply throws an XMLException when invoked.
-		
+
 	void parse(const XMLString& systemId);
 		/// The DOMSerializer cannot parse from a system identifier,
 		/// so this method simply throws an XMLException when invoked.
@@ -113,7 +111,7 @@ private:
 	ErrorHandler*   _pErrorHandler;
 	DeclHandler*    _pDeclHandler;
 	LexicalHandler* _pLexicalHandler;
-	
+
 	static const XMLString CDATA;
 };
 

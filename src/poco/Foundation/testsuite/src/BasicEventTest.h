@@ -1,8 +1,6 @@
 //
 // BasicEventTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/BasicEventTest.h#1 $
-//
 // Tests for BasicEvent
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -46,7 +44,7 @@ public:
 	void testOverwriteDelegate();
 	void testAsyncNotify();
 	void testNullMutex();
-	
+
 	void setUp();
 	void tearDown();
 	static CppUnit::Test* suite();
@@ -73,7 +71,7 @@ protected:
 
 	int getCount() const;
 private:
-	int		_count;
+	std::atomic<int> _count;
 };
 
 

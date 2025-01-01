@@ -1,8 +1,6 @@
 //
 // DigestEngine.h
 //
-// $Id: //poco/1.4/Crypto/include/Poco/Crypto/DigestEngine.h#1 $
-//
 // Library: Crypto
 // Package: Digest
 // Module:  DigestEngine
@@ -41,13 +39,13 @@ public:
 		/// See the OpenSSL documentation for a list of supported digest algorithms.
 		///
 		/// Throws a Poco::NotFoundException if no algorithm with the given name exists.
-		
+
 	~DigestEngine();
 		/// Destroys the DigestEngine.
-	
+
 	const std::string& algorithm() const;
 		/// Returns the name of the digest algorithm.
-	
+
 	int nid() const;
 		/// Returns the NID (OpenSSL object identifier) of the digest algorithm.
 
@@ -58,10 +56,10 @@ public:
 
 protected:
 	void updateImpl(const void* data, std::size_t length);
-	
+
 private:
 	std::string _name;
-	EVP_MD_CTX* _ctx;
+	EVP_MD_CTX* _pContext;
 	Poco::DigestEngine::Digest _digest;
 	OpenSSLInitializer _openSSLInitializer;
 };

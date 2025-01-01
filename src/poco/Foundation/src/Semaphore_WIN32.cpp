@@ -1,8 +1,6 @@
 //
 // Semaphore_WIN32.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Semaphore_WIN32.cpp#1 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  Semaphore
@@ -59,7 +57,7 @@ bool SemaphoreImpl::waitImpl(long milliseconds)
 	case WAIT_OBJECT_0:
 		return true;
 	default:
-		throw SystemException("wait for semaphore failed");		
+		throw SystemException("wait for semaphore failed");
 	}
 }
 

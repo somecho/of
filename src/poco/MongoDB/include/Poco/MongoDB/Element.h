@@ -1,8 +1,6 @@
 //
 // Element.h
 //
-// $Id$
-//
 // Library: MongoDB
 // Package: MongoDB
 // Module:  Element
@@ -41,19 +39,19 @@ namespace MongoDB {
 
 
 class MongoDB_API Element
-	/// Represents an element of a Document or an Array
+	/// Represents an Element of a Document or an Array.
 {
 public:
-	typedef Poco::SharedPtr<Element> Ptr;
+	using Ptr = Poco::SharedPtr<Element>;
 
-	Element(const std::string& name);
-		/// Constructor
+	explicit Element(const std::string& name);
+		/// Creates the Element with the given name.
 
 	virtual ~Element();
 		/// Destructor
 
-	std::string name() const;
-		/// Returns the name of the element
+	const std::string& name() const;
+		/// Returns the name of the element.
 
 	virtual std::string toString(int indent = 0) const = 0;
 		/// Returns a string representation of the element.
@@ -70,16 +68,19 @@ private:
 };
 
 
-inline std::string Element::name() const
+//
+// inlines
+//
+inline const std::string& Element::name() const
 {
 	return _name;
 }
 
 
-typedef std::list<Element::Ptr> ElementSet;
+using ElementSet = std::list<Element::Ptr>;
 
 
-template<typename T> 
+template<typename T>
 struct ElementTraits
 {
 };
@@ -113,9 +114,9 @@ struct ElementTraits<std::string>
 
 		oss << '"';
 
-		for(std::string::const_iterator it = value.begin(); it != value.end(); ++it)
+		for (char it : value)
 		{
-			switch (*it)
+			switch (it)
 			{
 			case '"':
 				oss << "\\\"";
@@ -140,13 +141,13 @@ struct ElementTraits<std::string>
 				break;
 			default:
 				{
-					if ( *it > 0 && *it <= 0x1F )
+					if ( it > 0 && it <= 0x1F )
 					{
-						oss << "\\u" << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << static_cast<int>(*it);
+						oss << "\\u" << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << static_cast<int>(it);
 					}
 					else
 					{
-						oss << *it;
+						oss << it;
 					}
 					break;
 				}
@@ -231,7 +232,11 @@ struct ElementTraits<Timestamp>
 
 	static std::string toString(const Timestamp& value, int indent = 0)
 	{
-		return DateTimeFormatter::format(value, "%Y-%m-%dT%H:%M:%s%z");
+		std::string result;
+		result.append(1, '"');
+		result.append(DateTimeFormatter::format(value, "%Y-%m-%dT%H:%M:%s%z"));
+		result.append(1, '"');
+		return result;
 	}
 };
 
@@ -253,7 +258,7 @@ inline void BSONWriter::write<Timestamp>(Timestamp& from)
 }
 
 
-typedef Nullable<unsigned char> NullValue;
+using NullValue = Nullable<unsigned char>;
 
 
 // BSON Null Value
@@ -282,6 +287,54 @@ inline void BSONWriter::write<NullValue>(NullValue& from)
 }
 
 
+struct BSONTimestamp
+{
+	Poco::Timestamp ts;
+	Poco::Int32 inc;
+};
+
+
+// BSON Timestamp
+// spec: int64
+template<>
+struct ElementTraits<BSONTimestamp>
+{
+	enum { TypeId = 0x11 };
+
+	static std::string toString(const BSONTimestamp& value, int indent = 0)
+	{
+		std::string result;
+		result.append(1, '"');
+		result.append(DateTimeFormatter::format(value.ts, "%Y-%m-%dT%H:%M:%s%z"));
+		result.append(1, ' ');
+		result.append(NumberFormatter::format(value.inc));
+		result.append(1, '"');
+		return result;
+	}
+};
+
+
+template<>
+inline void BSONReader::read<BSONTimestamp>(BSONTimestamp& to)
+{
+	Poco::Int64 value;
+	_reader >> value;
+	to.inc = value & 0xffffffff;
+	value >>= 32;
+	to.ts = Timestamp::fromEpochTime(static_cast<std::time_t>(value));
+}
+
+
+template<>
+inline void BSONWriter::write<BSONTimestamp>(BSONTimestamp& from)
+{
+	Poco::Int64 value = from.ts.epochMicroseconds() / 1000;
+	value <<= 32;
+	value += from.inc;
+	_writer << value;
+}
+
+
 // BSON 64-bit integer
 // spec: int64
 template<>
@@ -297,41 +350,41 @@ struct ElementTraits<Int64>
 
 
 template<typename T>
-class ConcreteElement : public Element
+class ConcreteElement: public Element
 {
 public:
-	ConcreteElement(const std::string& name, const T& init) : Element(name), _value(init)
+	ConcreteElement(const std::string& name, const T& init):
+		Element(name),
+		_value(init)
 	{
 	}
 
-	virtual ~ConcreteElement()
-	{
-	}
+	~ConcreteElement() override = default;
 
-	
-	T value() const
+
+	const T& value() const
 	{
 		return _value;
 	}
 
 
-	std::string toString(int indent = 0) const
+	std::string toString(int indent = 0) const override
 	{
 		return ElementTraits<T>::toString(_value, indent);
 	}
 
-	
-	int type() const
+
+	int type() const override
 	{
 		return ElementTraits<T>::TypeId;
 	}
 
-	void read(BinaryReader& reader)
+	void read(BinaryReader& reader) override
 	{
 		BSONReader(reader).read(_value);
 	}
 
-	void write(BinaryWriter& writer)
+	void write(BinaryWriter& writer) override
 	{
 		BSONWriter(writer).write(_value);
 	}
@@ -344,4 +397,4 @@ private:
 } } // namespace Poco::MongoDB
 
 
-#endif //  MongoDB_Element_INCLUDED
+#endif // MongoDB_Element_INCLUDED

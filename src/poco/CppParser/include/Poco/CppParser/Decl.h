@@ -1,8 +1,6 @@
 //
 // Decl.h
 //
-// $Id: //poco/1.4/CppParser/include/Poco/CppParser/Decl.h#1 $
-//
 // Library: CppParser
 // Package: SymbolTable
 // Module:  Decl
@@ -30,7 +28,7 @@ namespace CppParser {
 
 class CppParser_API Decl: public Symbol
 	/// This class represents a simple declaration in a C++ source file.
-	/// It is a base class for Function, TypeDef or Variable.
+	/// It is a base class for Function, TypeDef, Using or Variable.
 {
 public:
 	Decl(const std::string& decl, NameSpace* pNameSpace);

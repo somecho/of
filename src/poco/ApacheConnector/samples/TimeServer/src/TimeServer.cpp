@@ -1,8 +1,6 @@
 //
 // TimeServer.cpp
 //
-// $Id: //poco/1.4/ApacheConnector/samples/TimeServer/src/TimeServer.cpp#2 $
-//
 // Copyright (c) 2006-2011, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -34,10 +32,10 @@ class TimeRequestHandler: public HTTPRequestHandler
 	/// Return a HTML document with the current date and time.
 {
 public:
-	TimeRequestHandler() 
+	TimeRequestHandler()
 	{
 	}
-	
+
 	void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
 		Timestamp now;

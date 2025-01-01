@@ -1,8 +1,6 @@
 //
 // Mutex_POSIX.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/Mutex_POSIX.h#2 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  Mutex
@@ -22,8 +20,8 @@
 
 #include "Poco/Foundation.h"
 #include "Poco/Exception.h"
+#include "Poco/Error.h"
 #include <pthread.h>
-#include <errno.h>
 
 
 namespace Poco {
@@ -31,21 +29,15 @@ namespace Poco {
 
 class Foundation_API MutexImpl
 {
-public:
-	enum MutexTypeImpl
-	{
-		MUTEX_RECURSIVE_IMPL,
-		MUTEX_NONRECURSIVE_IMPL
-	};
-
 protected:
-	explicit MutexImpl(MutexTypeImpl type);
+	MutexImpl();
+	MutexImpl(bool fast);
 	~MutexImpl();
 	void lockImpl();
 	bool tryLockImpl();
 	bool tryLockImpl(long milliseconds);
 	void unlockImpl();
-	
+
 private:
 	pthread_mutex_t _mutex;
 };
@@ -64,8 +56,9 @@ protected:
 //
 inline void MutexImpl::lockImpl()
 {
-	if (pthread_mutex_lock(&_mutex)) 
-		throw SystemException("cannot lock mutex");
+	int rc;
+	if ((rc = pthread_mutex_lock(&_mutex)))
+		throw SystemException("cannot lock mutex", Error::getMessage(rc));
 }
 
 
@@ -77,14 +70,15 @@ inline bool MutexImpl::tryLockImpl()
 	else if (rc == EBUSY)
 		return false;
 	else
-		throw SystemException("cannot lock mutex");
+		throw SystemException("cannot lock mutex", Error::getMessage(rc));
 }
 
 
 inline void MutexImpl::unlockImpl()
 {
-	if (pthread_mutex_unlock(&_mutex))
-		throw SystemException("cannot unlock mutex");
+	int rc;
+	if ((rc = pthread_mutex_unlock(&_mutex)))
+		throw SystemException("cannot unlock mutex", Error::getMessage(rc));
 }
 
 

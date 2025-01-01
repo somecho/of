@@ -9,9 +9,10 @@
  */
 
 #pragma once
-#include "ofConstants.h"
+
 #include "ofVec3f.h"
 #include "ofVec4f.h"
+#include "ofConstants.h"
 #include <cmath>
 
 #if (_MSC_VER)       
@@ -44,6 +45,8 @@ public:
     // rotation order is axis3,axis2,axis1
     inline ofQuaternion(float angle1, const ofVec3f& axis1, float angle2, const ofVec3f& axis2, float angle3, const ofVec3f& axis3);
     
+	ofQuaternion(const glm::quat & q);
+	operator glm::quat() const;
 
     /// \}
     
@@ -178,8 +181,8 @@ public:
     inline const ofQuaternion operator -(const ofQuaternion& rhs) const;    ///< Binary subtraction
     inline const ofQuaternion operator -() const;                           ///< returns the negative of the quaternion. calls operator -() on the Vec4
     
-    friend ostream& operator<<(ostream& os, const ofQuaternion &q);
-    friend istream& operator>>(istream& is, ofQuaternion &q);
+    friend std::ostream& operator<<(std::ostream& os, const ofQuaternion &q);
+    friend std::istream& operator>>(std::istream& is, ofQuaternion &q);
     
     /// \}
 };
@@ -218,7 +221,6 @@ ofQuaternion::ofQuaternion(float angle, const ofVec3f& axis) {
 ofQuaternion::ofQuaternion(float angle1, const ofVec3f& axis1, float angle2, const ofVec3f& axis2, float angle3, const ofVec3f& axis3) {
     makeRotate(angle1, axis1, angle2, axis2, angle3, axis3);
 }
-
 
 //----------------------------------------
 ofQuaternion& ofQuaternion::operator =(const ofQuaternion& q) {

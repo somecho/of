@@ -1,8 +1,6 @@
 #
 # Makefile
 #
-# $Id: //poco/1.4/Util/Makefile#2 $
-#
 # Makefile for Poco Util
 #
 
@@ -10,7 +8,7 @@ include $(POCO_BASE)/build/rules/global
 
 objects = AbstractConfiguration Application ConfigurationMapper \
 	ConfigurationView HelpFormatter IniFileConfiguration LayeredConfiguration \
-	LoggingConfigurator LoggingSubsystem MapConfiguration \
+	LocalConfigurationView LoggingConfigurator LoggingSubsystem MapConfiguration \
 	Option OptionException OptionProcessor OptionSet \
 	PropertyFileConfiguration Subsystem SystemConfiguration \
 	FilesystemConfiguration ServerApplication \

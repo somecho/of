@@ -1,8 +1,6 @@
 //
 // Page.h
 //
-// $Id: //poco/1.4/PageCompiler/src/Page.h#2 $
-//
 // Copyright (c) 2008, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -25,7 +23,7 @@ class Page: public Poco::Net::NameValueCollection
 public:
 	Page();
 		/// Creates a Page.
-	
+
 	~Page();
 		/// Destroys the Page.
 
@@ -52,7 +50,7 @@ public:
 
 	const std::stringstream& preHandler() const;
 		/// Returns the request prehandler code.
-		
+
 	bool getBool(const std::string& property, bool deflt = false) const;
 		/// Returns the boolean value of the given property.
 		///
@@ -63,10 +61,10 @@ public:
 		///    - on
 		///
 		/// Otherwise, the return value will be false.
-		
+
 	int getInt(const std::string& property, int deflt = 0) const;
 		/// Returns the integer value of the given property.
-		
+
 private:
 	Page(const Page&);
 	Page& operator = (const Page&);

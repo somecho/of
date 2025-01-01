@@ -1,8 +1,6 @@
 //
 // XMLFilterImpl.cpp
 //
-// $Id: //poco/1.4/XML/src/XMLFilterImpl.cpp#1 $
-//
 // Library: XML
 // Package: SAX
 // Module:  SAXFilters
@@ -31,7 +29,7 @@ XMLFilterImpl::XMLFilterImpl():
 {
 }
 
-	
+
 XMLFilterImpl::XMLFilterImpl(XMLReader* pParent):
 	_pParent(pParent),
 	_pEntityResolver(0),
@@ -41,7 +39,7 @@ XMLFilterImpl::XMLFilterImpl(XMLReader* pParent):
 {
 }
 
-	
+
 XMLFilterImpl::~XMLFilterImpl()
 {
 }

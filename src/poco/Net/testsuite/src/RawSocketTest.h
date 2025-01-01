@@ -1,8 +1,6 @@
 //
 // RawSocketTest.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/RawSocketTest.h#1 $
-//
 // Definition of the RawSocketTest class.
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
@@ -28,6 +26,7 @@ public:
 
 	void testEchoIPv4();
 	void testSendToReceiveFromIPv4();
+	void testEchoIPv4Move();
 
 	void setUp();
 	void tearDown();

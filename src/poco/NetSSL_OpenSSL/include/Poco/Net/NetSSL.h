@@ -1,8 +1,6 @@
 //
 // NetSSL.h
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/include/Poco/Net/NetSSL.h#2 $
-//
 // Library: NetSSL_OpenSSL
 // Package: SSLCore
 // Module:  OpenSSL
@@ -23,6 +21,7 @@
 
 
 #include "Poco/Net/Net.h"
+#include "Poco/Crypto/Crypto.h"
 
 
 //
@@ -52,12 +51,14 @@
 
 
 //
-// Automatically link NetSSL library.
+// Automatically link NetSSL and OpenSSL libraries.
 //
 #if defined(_MSC_VER)
-	#if !defined(POCO_NO_AUTOMATIC_LIBS) && !defined(NetSSL_EXPORTS)
-		#pragma comment(lib, "PocoNetSSL" POCO_LIB_SUFFIX)
-	#endif
+	#if !defined(POCO_NO_AUTOMATIC_LIBS)
+		#if !defined(NetSSL_EXPORTS)
+			#pragma comment(lib, "PocoNetSSL" POCO_LIB_SUFFIX)
+		#endif
+	#endif // POCO_NO_AUTOMATIC_LIBS
 #endif
 
 
@@ -70,7 +71,7 @@ void NetSSL_API initializeSSL();
 	/// libraries, by calling Poco::Crypto::OpenSSLInitializer::initialize().
 	///
 	/// Should be called before using any class from the NetSSL library.
-	/// The NetSSL will be initialized automatically, through 
+	/// The NetSSL will be initialized automatically, through
 	/// Poco::Crypto::OpenSSLInitializer instances or similar mechanisms
 	/// when creating Context or SSLManager instances.
 	/// However, it is recommended to call initializeSSL()
@@ -79,10 +80,10 @@ void NetSSL_API initializeSSL();
 	/// Can be called multiple times; however, for every call to
 	/// initializeSSL(), a matching call to uninitializeSSL()
 	/// must be performed.
-	
+
 
 void NetSSL_API uninitializeSSL();
-	/// Uninitializes the NetSSL library by calling 
+	/// Uninitializes the NetSSL library by calling
 	/// Poco::Crypto::OpenSSLInitializer::uninitialize() and
 	/// shutting down the SSLManager.
 

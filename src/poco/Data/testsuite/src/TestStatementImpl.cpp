@@ -1,8 +1,6 @@
 //
 // TestStatementImpl.cpp
 //
-// $Id: //poco/Main/Data/testsuite/src/TestStatementImpl.cpp#2 $
-//
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -19,9 +17,10 @@ namespace Data {
 namespace Test {
 
 
-TestStatementImpl::TestStatementImpl(SessionImpl& rSession):
+TestStatementImpl::TestStatementImpl(SessionImpl& rSession, bool throwOnHasNext):
 	Poco::Data::StatementImpl(rSession),
-	_compiled(false)
+	_compiled(false),
+	_throwOnHasNext(throwOnHasNext)
 {
 }
 
@@ -50,7 +49,7 @@ bool TestStatementImpl::canBind() const
 void TestStatementImpl::bindImpl()
 {
 	// bind
-	typedef Poco::Data::AbstractBindingVec Bindings;
+	using Bindings = Poco::Data::AbstractBindingVec;
 	Bindings& binds = bindings();
 	if (binds.empty())
 		return;
@@ -81,6 +80,8 @@ const MetaColumn& TestStatementImpl::metaColumn(std::size_t pos) const
 
 bool TestStatementImpl::hasNext()
 {
+	if (_throwOnHasNext)
+		throw Poco::Data::UnknownDataBaseException();
 	return false;
 }
 
@@ -89,7 +90,7 @@ std::size_t TestStatementImpl::next()
 {
 	Poco::Data::AbstractExtractionVec::iterator it    = extractions().begin();
 	Poco::Data::AbstractExtractionVec::iterator itEnd = extractions().end();
-	std::size_t pos = 0; 
+	std::size_t pos = 0;
 	for (; it != itEnd; ++it)
 	{
 		(*it)->extract(pos);

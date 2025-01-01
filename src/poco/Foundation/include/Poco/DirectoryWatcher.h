@@ -1,8 +1,6 @@
 //
 // DirectoryWatcher.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/DirectoryWatcher.h#2 $
-//
 // Library: Foundation
 // Package: Filesystem
 // Module:  DirectoryWatcher
@@ -47,7 +45,7 @@ class Foundation_API DirectoryWatcher: protected Runnable
 	///
 	/// A thread will be created that watches the specified
 	/// directory for changes. Events are reported in the context
-	/// of this thread. 
+	/// of this thread.
 	///
 	/// Note that changes to files in subdirectories of the watched
 	/// directory are not reported. Separate DirectoryWatcher objects
@@ -63,8 +61,6 @@ class Foundation_API DirectoryWatcher: protected Runnable
 	/// Therefore, the interval in which scans are done can be specified in
 	/// the constructor. Note that periodic scanning will also be done on FreeBSD
 	/// and Darwin if events for changes to files (DW_ITEM_MODIFIED) are enabled.
-	/// To avoid problems (e.g. with network shares notifications), scanning
-	/// can be forced as the only mechanism, regardless of platform default.
 	///
 	/// DW_ITEM_MOVED_FROM and DW_ITEM_MOVED_TO events will only be reported
 	/// on Linux. On other platforms, a file rename or move operation
@@ -78,7 +74,7 @@ public:
 	{
 		DW_ITEM_ADDED = 1,
 			/// A new item has been created and added to the directory.
-			
+
 		DW_ITEM_REMOVED = 2,
 			/// An item has been removed from the directory.
 
@@ -100,12 +96,12 @@ public:
 		DW_FILTER_DISABLE_ALL = 0
 			/// Disables all event types.
 	};
-	
+
 	enum
 	{
 		DW_DEFAULT_SCAN_INTERVAL = 5 /// Default scan interval for platforms that don't provide a native notification mechanism.
 	};
-	
+
 	struct DirectoryEvent
 	{
 		DirectoryEvent(const File& f, DirectoryEventType ev):
@@ -117,13 +113,13 @@ public:
 		const File& item;          /// The directory or file that has been changed.
 		DirectoryEventType event;  /// The kind of event.
 	};
-	
+
 	BasicEvent<const DirectoryEvent> itemAdded;
 		/// Fired when a file or directory has been created or added to the directory.
-		
+
 	BasicEvent<const DirectoryEvent> itemRemoved;
 		/// Fired when a file or directory has been removed from the directory.
-		
+
 	BasicEvent<const DirectoryEvent> itemModified;
 		/// Fired when a file or directory has been modified.
 
@@ -132,60 +128,52 @@ public:
 
 	BasicEvent<const DirectoryEvent> itemMovedTo;
 		/// Fired when a file or directory has been moved. This event delivers the new name.
-		
+
 	BasicEvent<const Exception> scanError;
 		/// Fired when an error occurs while scanning for changes.
-	
-	DirectoryWatcher(const std::string& path,
-		int eventMask = DW_FILTER_ENABLE_ALL,
-		int scanInterval = DW_DEFAULT_SCAN_INTERVAL,
-		bool forceScan = false);
+
+	DirectoryWatcher(const std::string& path, int eventMask = DW_FILTER_ENABLE_ALL, int scanInterval = DW_DEFAULT_SCAN_INTERVAL);
 		/// Creates a DirectoryWatcher for the directory given in path.
 		/// To enable only specific events, an eventMask can be specified by
 		/// OR-ing the desired event IDs (e.g., DW_ITEM_ADDED | DW_ITEM_MODIFIED).
 		/// On platforms where no native filesystem notifications are available,
 		/// scanInterval specifies the interval in seconds between scans
-		/// of the directory. Native notification mechanism can also be disabled
-		/// (i.e. replaced with scanning) by setting forceScan to true.
-		
-	DirectoryWatcher(const File& directory,
-		int eventMask = DW_FILTER_ENABLE_ALL,
-		int scanInterval = DW_DEFAULT_SCAN_INTERVAL,
-		bool forceScan = false);
+		/// of the directory.
+
+	DirectoryWatcher(const File& directory, int eventMask = DW_FILTER_ENABLE_ALL, int scanInterval = DW_DEFAULT_SCAN_INTERVAL);
 		/// Creates a DirectoryWatcher for the specified directory
 		/// To enable only specific events, an eventMask can be specified by
 		/// OR-ing the desired event IDs (e.g., DW_ITEM_ADDED | DW_ITEM_MODIFIED).
 		/// On platforms where no native filesystem notifications are available,
 		/// scanInterval specifies the interval in seconds between scans
-		/// of the directory. Native notification mechanism can also be disabled
-		/// (i.e. replaced with scanning) by setting forceScan to true.
+		/// of the directory.
 
 	~DirectoryWatcher();
 		/// Destroys the DirectoryWatcher.
-		
+
 	void suspendEvents();
 		/// Suspends sending of events. Can be called multiple times, but every
 		/// call to suspendEvent() must be matched by a call to resumeEvents().
-		
+
 	void resumeEvents();
 		/// Resumes events, after they have been suspended with a call to suspendEvents().
-		
+
 	bool eventsSuspended() const;
 		/// Returns true iff events are suspended.
-		
+
 	int eventMask() const;
 		/// Returns the value of the eventMask passed to the constructor.
-		
+
 	int scanInterval() const;
 		/// Returns the scan interval in seconds.
-		
+
 	const File& directory() const;
 		/// Returns the directory being watched.
-		
+
 	bool supportsMoveEvents() const;
 		/// Returns true iff the platform supports DW_ITEM_MOVED_FROM/itemMovedFrom and
 		/// DW_ITEM_MOVED_TO/itemMovedTo events.
-	
+
 protected:
 	void init();
 	void stop();
@@ -196,12 +184,11 @@ private:
 	DirectoryWatcher(const DirectoryWatcher&);
 	DirectoryWatcher& operator = (const DirectoryWatcher&);
 
-	Thread                    _thread;
-	File                      _directory;
-	int                       _eventMask;
-	AtomicCounter             _eventsSuspended;
-	int                       _scanInterval;
-	bool                      _forceScan;
+	Thread _thread;
+	File _directory;
+	int _eventMask;
+	AtomicCounter _eventsSuspended;
+	int _scanInterval;
 	DirectoryWatcherStrategy* _pStrategy;
 };
 

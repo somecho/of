@@ -1,8 +1,6 @@
 //
 // HashingTestSuite.cpp
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/HashingTestSuite.cpp#1 $
-//
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -11,8 +9,10 @@
 
 
 #include "HashingTestSuite.h"
+#if defined(POCO_TEST_DEPRECATED)
 #include "HashTableTest.h"
 #include "SimpleHashTableTest.h"
+#endif
 #include "LinearHashTableTest.h"
 #include "HashSetTest.h"
 #include "HashMapTest.h"
@@ -22,8 +22,10 @@ CppUnit::Test* HashingTestSuite::suite()
 {
 	CppUnit::TestSuite* pSuite = new CppUnit::TestSuite("HashingTestSuite");
 
+#if defined(POCO_TEST_DEPRECATED)
 	pSuite->addTest(HashTableTest::suite());
 	pSuite->addTest(SimpleHashTableTest::suite());
+#endif
 	pSuite->addTest(LinearHashTableTest::suite());
 	pSuite->addTest(HashSetTest::suite());
 	pSuite->addTest(HashMapTest::suite());

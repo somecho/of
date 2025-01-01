@@ -1,8 +1,6 @@
 //
 // EntityResolverImpl.cpp
 //
-// $Id: //poco/1.4/XML/src/EntityResolverImpl.cpp#1 $
-//
 // Library: XML
 // Package: SAX
 // Module:  SAX
@@ -60,7 +58,7 @@ InputSource* EntityResolverImpl::resolveEntity(const XMLString* publicId, const 
 	return pInputSource;
 }
 
-		
+
 void EntityResolverImpl::releaseInputSource(InputSource* pSource)
 {
 	poco_check_ptr (pSource);

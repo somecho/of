@@ -1,8 +1,6 @@
 //
 // Timer.cpp
 //
-// $Id: //poco/1.4/Util/src/Timer.cpp#2 $
-//
 // Library: Util
 // Package: Timer
 // Module:  Timer
@@ -34,18 +32,18 @@ public:
 		_queue(queue)
 	{
 	}
-	
+
 	~TimerNotification()
 	{
 	}
-	
+
 	virtual bool execute() = 0;
-	
+
 	Poco::TimedNotificationQueue& queue()
 	{
 		return _queue;
 	}
-	
+
 private:
 	Poco::TimedNotificationQueue& _queue;
 };
@@ -58,11 +56,11 @@ public:
 		TimerNotification(queue)
 	{
 	}
-	
+
 	~StopNotification()
 	{
 	}
-	
+
 	bool execute()
 	{
 		queue().clear();
@@ -78,23 +76,45 @@ public:
 		TimerNotification(queue)
 	{
 	}
-	
+
 	~CancelNotification()
 	{
 	}
-	
+
 	bool execute()
 	{
-		queue().clear();
+		// Check if there's a StopNotification pending.
+		int numberOfPendingTasks = queue().size();
+		while (numberOfPendingTasks > 0)
+		{
+			Poco::AutoPtr<TimerNotification> pNf = static_cast<TimerNotification*>(queue().dequeueNextNotification());
+			numberOfPendingTasks--;
+			if (!pNf)
+			{
+				continue;
+			}
+			if (pNf.cast<StopNotification>())
+			{
+				queue().clear();
+				_finished.set();
+				return false;
+			}
+			Poco::AutoPtr<CancelNotification> pCnf = pNf.cast<CancelNotification>();
+			if (pCnf)
+			{
+				pCnf->_finished.set();
+			}
+		}
+
 		_finished.set();
 		return true;
 	}
-	
+
 	void wait()
 	{
 		_finished.wait();
 	}
-	
+
 private:
 	Poco::Event _finished;
 };
@@ -108,23 +128,23 @@ public:
 		_pTask(pTask)
 	{
 	}
-	
+
 	~TaskNotification()
 	{
 	}
-	
+
 	TimerTask::Ptr task()
 	{
-		return _pTask;	
+		return _pTask;
 	}
-	
+
 	bool execute()
 	{
 		if (!_pTask->isCancelled())
 		{
 			try
 			{
-				_pTask->_lastExecution.update();
+				_pTask->updateLastExecution();
 				_pTask->run();
 			}
 			catch (Exception& exc)
@@ -142,7 +162,7 @@ public:
 		}
 		return true;
 	}
-			
+
 private:
 	TimerTask::Ptr _pTask;
 };
@@ -156,13 +176,13 @@ public:
 		_interval(interval)
 	{
 	}
-	
+
 	~PeriodicTaskNotification()
 	{
 	}
-	
+
 	bool execute()
-	{	
+	{
 		TaskNotification::execute();
 
 		if (!task()->isCancelled())
@@ -174,9 +194,9 @@ public:
 			queue().enqueueNotification(this, nextExecution);
 			duplicate();
 		}
-		return true;		
+		return true;
 	}
-	
+
 private:
 	long _interval;
 };
@@ -191,13 +211,13 @@ public:
 		_nextExecution(clock)
 	{
 	}
-	
+
 	~FixedRateTaskNotification()
 	{
 	}
-	
+
 	bool execute()
-	{	
+	{
 		TaskNotification::execute();
 
 		if (!task()->isCancelled())
@@ -208,9 +228,9 @@ public:
 			queue().enqueueNotification(this, _nextExecution);
 			duplicate();
 		}
-		return true;			
+		return true;
 	}
-	
+
 private:
 	long _interval;
 	Poco::Clock _nextExecution;
@@ -243,7 +263,7 @@ Timer::~Timer()
 	}
 }
 
-	
+
 void Timer::cancel(bool wait)
 {
 	Poco::AutoPtr<CancelNotification> pNf = new CancelNotification(_queue);
@@ -268,7 +288,7 @@ void Timer::schedule(TimerTask::Ptr pTask, Poco::Clock clock)
 	_queue.enqueueNotification(new TaskNotification(_queue, pTask), clock);
 }
 
-	
+
 void Timer::schedule(TimerTask::Ptr pTask, long delay, long interval)
 {
 	Poco::Clock clock;
@@ -290,7 +310,7 @@ void Timer::schedule(TimerTask::Ptr pTask, Poco::Clock clock, long interval)
 	_queue.enqueueNotification(new PeriodicTaskNotification(_queue, pTask, interval), clock);
 }
 
-	
+
 void Timer::scheduleAtFixedRate(TimerTask::Ptr pTask, long delay, long interval)
 {
 	Poco::Clock clock;

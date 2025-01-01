@@ -1,8 +1,6 @@
 //
 // TaskNotification.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/TaskNotification.h#1 $
-//
 // Library: Foundation
 // Package: Tasks
 // Module:  Tasks
@@ -53,7 +51,7 @@ class Foundation_API TaskStartedNotification: public TaskNotification
 {
 public:
 	TaskStartedNotification(Task* pTask);
-	
+
 protected:
 	~TaskStartedNotification();
 };
@@ -94,7 +92,7 @@ public:
 
 protected:
 	~TaskFailedNotification();
-	
+
 private:
 	Exception* _pException;
 };
@@ -102,7 +100,7 @@ private:
 
 class Foundation_API TaskProgressNotification: public TaskNotification
 	/// This notification is posted by the TaskManager for
-	/// every task that has failed with an exception.
+	/// a task when its progress changes.
 {
 public:
 	TaskProgressNotification(Task* pTask, float progress);
@@ -111,7 +109,7 @@ public:
 
 protected:
 	~TaskProgressNotification();
-	
+
 private:
 	float _progress;
 };
@@ -139,7 +137,7 @@ public:
 
 protected:
 	~TaskCustomNotification(){};
-	
+
 private:
 	C _custom;
 };

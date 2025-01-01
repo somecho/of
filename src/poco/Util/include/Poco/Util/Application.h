@@ -1,8 +1,6 @@
 //
 // Application.h
 //
-// $Id: //poco/1.4/Util/include/Poco/Util/Application.h#4 $
-//
 // Library: Util
 // Package: Application
 // Module:  Application
@@ -84,13 +82,12 @@ class Util_API Application: public Subsystem
 	/// If loadConfiguration() has never been called, application.configDir will be equal to application.dir.
 	///
 	/// The POCO_APP_MAIN macro can be used to implement main(argc, argv).
-	/// If POCO has been built with POCO_WIN32_UTF8, POCO_APP_MAIN supports
-	/// Unicode command line arguments.
+	/// POCO_APP_MAIN supports Unicode command line arguments.
 {
 public:
-	typedef std::vector<std::string> ArgVec;
-	typedef Poco::AutoPtr<Subsystem> SubsystemPtr;
-	typedef std::vector<SubsystemPtr> SubsystemVec;
+	using ArgVec = std::vector<std::string>;
+	using SubsystemPtr = Poco::AutoPtr<Subsystem>;
+	using SubsystemVec = std::vector<SubsystemPtr>;
 
 	enum ExitCode
 		/// Commonly used exit status codes.
@@ -121,6 +118,12 @@ public:
 		PRIO_SYSTEM      = 100
 	};
 
+	struct WindowSize
+	{
+		int width;
+		int height;
+	};
+
 	Application();
 		/// Creates the Application.
 
@@ -142,7 +145,7 @@ public:
 		/// Note that as of release 1.3.7, init() no longer
 		/// calls initialize(). This is now called from run().
 
-#if defined(POCO_WIN32_UTF8) && !defined(POCO_NO_WSTRING)
+#if defined(_WIN32)
 	void init(int argc, wchar_t* argv[]);
 		/// Processes the application's command line arguments
 		/// and sets the application's properties (e.g.,
@@ -237,6 +240,12 @@ public:
 		/// will be propagated to the caller. If uninitialize() throws
 		/// an exception, the exception will be propagated to the caller.
 
+	void getApplicationPath(Poco::Path& path) const;
+		/// Returns the file path of the application executable.
+
+	void getApplicationDirectory(Poco::Path& dir) const;
+		/// Returns the directory that contains the application executable.
+
 	std::string commandName() const;
 		/// Returns the command name used to invoke the application.
 
@@ -244,7 +253,10 @@ public:
 		/// Returns the full command path used to invoke the application.
 
 	LayeredConfiguration& config() const;
-		/// Returns the application's configuration.
+		/// Returns the application's configuration reference.
+
+	LayeredConfiguration::Ptr configPtr() const;
+		/// Returns the application's configuration smart pointer.
 
 	Poco::Logger& logger() const;
 		/// Returns the application's logger.
@@ -293,6 +305,23 @@ public:
 		/// This is useful, for example, if an option for displaying
 		/// help information has been encountered and no other things
 		/// besides displaying help shall be done.
+
+	void ignoreUnknownOptions();
+		/// Ignore unknown options. So that we can skip those options
+		/// we don't care about.
+		///
+		/// When your application command line has many options,
+		/// calling this function can help you handle only the options
+		/// you want to handle
+
+	static WindowSize windowSize();
+		/// Returns the current window size of the console window,
+		/// if available.
+		///
+		/// Currently implemented for POSIX platforms (via TIOCGWINSZ ioctl())
+		/// and Windows (GetConsoleScreenBufferInfo()).
+		///
+		/// Returns zero width and height if the window size cannot be determined.
 
 	const char* name() const;
 
@@ -349,6 +378,12 @@ protected:
 		/// Returns an exit code which should be one of the values
 		/// from the ExitCode enumeration.
 
+	virtual bool findAppConfigFile(const std::string& appName, const std::string& extension, Poco::Path& path) const;
+		/// Find the application config file.
+		///
+		/// loadConfiguration will call this function to find config file,
+		/// you can override this function to find your own config file.
+
 	bool findFile(Poco::Path& path) const;
 		/// Searches for the file in path in the application directory.
 		///
@@ -371,12 +406,10 @@ private:
 	void setup();
 	void setArgs(int argc, char* argv[]);
 	void setArgs(const ArgVec& args);
-	void getApplicationPath(Poco::Path& path) const;
 	void processOptions();
-	bool findAppConfigFile(const std::string& appName, const std::string& extension, Poco::Path& path) const;
-	bool findAppConfigFile(const Path& basePath, const std::string& appName, const std::string& extension, Poco::Path& path) const;
 
-	typedef Poco::AutoPtr<LayeredConfiguration> ConfigPtr;
+	typedef LayeredConfiguration::Ptr ConfigPtr;
+	typedef Poco::Logger::Ptr LoggerPtr;
 
 	ConfigPtr       _pConfig;
 	SubsystemVec    _subsystems;
@@ -386,10 +419,10 @@ private:
 	ArgVec          _unprocessedArgs;
 	OptionSet       _options;
 	bool            _unixOptions;
-	Poco::Logger*   _pLogger;
+	Logger*         _pLogger;
 	Poco::Timestamp _startTime;
 	bool            _stopOptionsProcessing;
-	int             _loadedConfigs;
+	bool            _ignoreUnknownOptions;
 
 #if defined(POCO_OS_FAMILY_UNIX) && !defined(POCO_VXWORKS)
 	std::string _workingDirAtLaunch;
@@ -409,9 +442,9 @@ private:
 //
 template <class C> C& Application::getSubsystem() const
 {
-	for (SubsystemVec::const_iterator it = _subsystems.begin(); it != _subsystems.end(); ++it)
+	for (const auto& pSub: _subsystems)
 	{
-		const Subsystem* pSS(it->get());
+		const Subsystem* pSS(pSub.get());
 		const C* pC = dynamic_cast<const C*>(pSS);
 		if (pC) return *const_cast<C*>(pC);
 	}
@@ -433,6 +466,12 @@ inline bool Application::initialized() const
 inline LayeredConfiguration& Application::config() const
 {
 	return *const_cast<LayeredConfiguration*>(_pConfig.get());
+}
+
+
+inline LayeredConfiguration::Ptr Application::configPtr() const
+{
+	return _pConfig;
 }
 
 
@@ -483,7 +522,8 @@ inline Poco::Timespan Application::uptime() const
 //
 // Macro to implement main()
 //
-#if defined(_WIN32) && defined(POCO_WIN32_UTF8) && !defined(POCO_NO_WSTRING)
+
+#if defined(_WIN32) && !defined(POCO_COMPILER_MINGW)
 	#define POCO_APP_MAIN(App) \
 	int wmain(int argc, wchar_t** argv)		\
 	{										\
@@ -499,7 +539,7 @@ inline Poco::Timespan Application::uptime() const
 		}									\
 		return pApp->run();					\
 	}
-#elif defined(POCO_VXWORKS)
+#elif defined(POCO_VXWORKS) && !defined(POCO_VXWORKS_RTP)
 	#define POCO_APP_MAIN(App) \
 	int pocoAppMain(const char* appName, ...) \
 	{ \

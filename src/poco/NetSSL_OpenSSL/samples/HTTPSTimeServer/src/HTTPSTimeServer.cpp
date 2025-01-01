@@ -1,8 +1,6 @@
 //
 // TimeServer.cpp
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/samples/HTTPSTimeServer/src/HTTPSTimeServer.cpp#2 $
-//
 // This sample demonstrates the HTTPServer and related classes.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -68,11 +66,11 @@ class TimeRequestHandler: public HTTPRequestHandler
 	/// Return a HTML document with the current date and time.
 {
 public:
-	TimeRequestHandler(const std::string& format): 
+	TimeRequestHandler(const std::string& format):
 		_format(format)
 	{
 	}
-	
+
 	void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
 		Application& app = Application::instance();
@@ -88,7 +86,7 @@ public:
 		{
 			app.logger().information("No client certificate available.");
 		}
-		
+
 		Timestamp now;
 		std::string dt(DateTimeFormatter::format(now, _format));
 
@@ -102,7 +100,7 @@ public:
 		ostr << dt;
 		ostr << "</p></body></html>";
 	}
-	
+
 private:
 	std::string _format;
 };
@@ -123,7 +121,7 @@ public:
 		else
 			return 0;
 	}
-	
+
 private:
 	std::string _format;
 };
@@ -153,7 +151,7 @@ public:
 	{
 		Poco::Net::initializeSSL();
 	}
-	
+
 	~HTTPSTimeServer()
 	{
 		Poco::Net::uninitializeSSL();
@@ -165,7 +163,7 @@ protected:
 		loadConfiguration(); // load default configuration files, if present
 		ServerApplication::initialize(self);
 	}
-		
+
 	void uninitialize()
 	{
 		ServerApplication::uninitialize();
@@ -174,7 +172,7 @@ protected:
 	void defineOptions(OptionSet& options)
 	{
 		ServerApplication::defineOptions(options);
-		
+
 		options.addOption(
 			Option("help", "h", "display help information on command line arguments")
 				.required(false)
@@ -209,7 +207,7 @@ protected:
 			// get parameters from configuration file
 			unsigned short port = (unsigned short) config().getInt("HTTPSTimeServer.port", 9443);
 			std::string format(config().getString("HTTPSTimeServer.format", DateTimeFormat::SORTABLE_FORMAT));
-			
+
 			// set-up a server socket
 			SecureServerSocket svs(port);
 			// set-up a HTTPServer instance
@@ -223,7 +221,7 @@ protected:
 		}
 		return Application::EXIT_OK;
 	}
-	
+
 private:
 	bool _helpRequested;
 };

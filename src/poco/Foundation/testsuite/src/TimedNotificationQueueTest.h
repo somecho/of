@@ -1,8 +1,6 @@
 //
 // TimedNotificationQueueTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/TimedNotificationQueueTest.h#1 $
-//
 // Definition of the TimedNotificationQueueTest class.
 //
 // Copyright (c) 2009, Applied Informatics Software Engineering GmbH.
@@ -30,6 +28,7 @@ public:
 	~TimedNotificationQueueTest();
 
 	void testDequeue();
+	void testDequeueNext();
 	void testWaitDequeue();
 	void testWaitDequeueTimeout();
 

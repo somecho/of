@@ -1,8 +1,6 @@
 //
 // MapConfiguration.cpp
 //
-// $Id: //poco/1.4/Util/src/MapConfiguration.cpp#1 $
-//
 // Library: Util
 // Package: Configuration
 // Module:  MapConfiguration
@@ -32,8 +30,21 @@ MapConfiguration::~MapConfiguration()
 }
 
 
+void MapConfiguration::copyTo(AbstractConfiguration& config)
+{
+	AbstractConfiguration::ScopedLock lock(*this);
+
+	for (const auto& p: _map)
+	{
+		config.setString(p.first, p.second);
+	}
+}
+
+
 void MapConfiguration::clear()
 {
+	AbstractConfiguration::ScopedLock lock(*this);
+	
 	_map.clear();
 }
 
@@ -62,16 +73,16 @@ void MapConfiguration::enumerate(const std::string& key, Keys& range) const
 	std::string prefix = key;
 	if (!prefix.empty()) prefix += '.';
 	std::string::size_type psize = prefix.size();
-	for (StringMap::const_iterator it = _map.begin(); it != _map.end(); ++it)
+	for (const auto& p: _map)
 	{
-		if (it->first.compare(0, psize, prefix) == 0)
+		if (p.first.compare(0, psize, prefix) == 0)
 		{
 			std::string subKey;
-			std::string::size_type end = it->first.find('.', psize);
+			std::string::size_type end = p.first.find('.', psize);
 			if (end == std::string::npos)
-				subKey = it->first.substr(psize);
+				subKey = p.first.substr(psize);
 			else
-				subKey = it->first.substr(psize, end - psize);
+				subKey = p.first.substr(psize, end - psize);
 			if (keys.find(subKey) == keys.end())
 			{
 				range.push_back(subKey);

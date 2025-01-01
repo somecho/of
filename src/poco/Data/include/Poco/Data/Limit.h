@@ -1,8 +1,6 @@
 //
 // Limit.h
 //
-// $Id: //poco/Main/Data/include/Poco/Data/Limit.h#7 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  Limit
@@ -31,15 +29,15 @@ class Data_API Limit
 	/// Limit stores information how many rows a query should return.
 {
 public:
-	typedef Poco::UInt32 SizeT;
+	using SizeT = Poco::UInt32;
 
 	enum Type
 	{
 		LIMIT_UNLIMITED = ~((SizeT) 0)
 	};
-	
+
 	Limit(SizeT value, bool hardLimit = false, bool isLowerLimit = false);
-		/// Creates the Limit. 
+		/// Creates the Limit.
 		///
 		/// Value contains the upper row hint, if hardLimit is set to true, the limit acts as a hard
 		/// border, ie. every query must return exactly value rows, returning more than value objects will throw an exception!

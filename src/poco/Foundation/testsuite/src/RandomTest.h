@@ -1,8 +1,6 @@
 //
 // RandomTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/RandomTest.h#1 $
-//
 // Definition of the RandomTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -31,7 +29,7 @@ public:
 	void testDistribution1();
 	void testDistribution2();
 	void testDistribution3();
-	
+
 	void setUp();
 	void tearDown();
 

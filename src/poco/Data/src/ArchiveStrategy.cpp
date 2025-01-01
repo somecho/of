@@ -1,8 +1,6 @@
 //
 // ArchiveStrategy.cpp
 //
-// $Id: //poco/Main/Data/src/ArchiveStrategy.cpp#8 $
-//
 // Library: Data
 // Package: Logging
 // Module:  ArchiveStrategy
@@ -32,8 +30,8 @@ const std::string ArchiveStrategy::DEFAULT_ARCHIVE_DESTINATION = "T_POCO_LOG_ARC
 
 
 ArchiveStrategy::ArchiveStrategy(const std::string& connector,
-	const std::string& connect, 
-	const std::string& source, 
+	const std::string& connect,
+	const std::string& source,
 	const std::string& destination):
 	_connector(connector),
 	_connect(connect),
@@ -63,13 +61,15 @@ void ArchiveStrategy::open()
 //
 
 
-ArchiveByAgeStrategy::ArchiveByAgeStrategy(const std::string& connector, 
-	const std::string& connect, 
-	const std::string& sourceTable, 
-	const std::string& destinationTable):
+ArchiveByAgeStrategy::ArchiveByAgeStrategy(const std::string& connector,
+	const std::string& connect,
+	const std::string& sourceTable,
+	const std::string& destinationTable,
+	const std::string& age):
 	ArchiveStrategy(connector, connect, sourceTable, destinationTable)
 {
 	initStatements();
+	if (!age.empty()) setThreshold(age);
 }
 
 
@@ -126,7 +126,7 @@ void ArchiveByAgeStrategy::setThreshold(const std::string& age)
 	while (it != end && Ascii::isSpace(*it)) ++it;
 	std::string unit;
 	while (it != end && Ascii::isAlpha(*it)) unit += *it++;
-	
+
 	Timespan::TimeDiff factor = Timespan::SECONDS;
 	if (unit == "minutes")
 		factor = Timespan::MINUTES;
@@ -140,7 +140,7 @@ void ArchiveByAgeStrategy::setThreshold(const std::string& age)
 		factor = 30*Timespan::DAYS;
 	else if (unit != "seconds")
 		throw InvalidArgumentException("setMaxAge", age);
-		
+
 	_maxAge = factor * n;
 }
 

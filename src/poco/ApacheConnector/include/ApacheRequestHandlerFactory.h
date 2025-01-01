@@ -1,8 +1,6 @@
 //
 // ApacheRequestHandlerFactory.h
 //
-// $Id: //poco/1.4/ApacheConnector/include/ApacheRequestHandlerFactory.h#2 $
-//
 // Copyright (c) 2006-2011, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -47,7 +45,7 @@ public:
 
 private:
 	typedef std::map<std::string, Poco::Net::HTTPRequestHandlerFactory*> RequestHandlerFactories;
-	
+
 	RequestHandlerFactories _requestHandlers;
 	Poco::ClassLoader<Poco::Net::HTTPRequestHandlerFactory> _loader;
 	Poco::FastMutex _mutex;

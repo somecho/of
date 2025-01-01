@@ -1,8 +1,6 @@
 //
 // HTTPSClientSessionTest.h
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/testsuite/src/HTTPSClientSessionTest.h#1 $
-//
 // Definition of the HTTPSClientSessionTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -26,6 +24,7 @@ public:
 	HTTPSClientSessionTest(const std::string& name);
 	~HTTPSClientSessionTest();
 
+	void testFromSocket();
 	void testGetSmall();
 	void testGetLarge();
 	void testHead();
@@ -36,6 +35,7 @@ public:
 	void testPostLargeChunkedKeepAlive();
 	void testKeepAlive();
 	void testInterop();
+	void testMultipleSSLInit();
 	void testProxy();
 	void testCachedSession();
 	void testUnknownContentLength();

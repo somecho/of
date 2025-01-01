@@ -1,8 +1,6 @@
 //
 // ParserWriterTest.cpp
 //
-// $Id: //poco/1.4/XML/testsuite/src/ParserWriterTest.cpp#1 $
-//
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -45,30 +43,30 @@ ParserWriterTest::~ParserWriterTest()
 void ParserWriterTest::testParseWriteXHTML()
 {
 	std::ostringstream ostr;
-	
+
 	DOMParser parser;
 	parser.setFeature(XMLReader::FEATURE_NAMESPACE_PREFIXES, false);
 	DOMWriter writer;
 	AutoPtr<Document> pDoc = parser.parseString(XHTML);
 	writer.writeNode(ostr, pDoc);
-	
+
 	std::string xml = ostr.str();
-	assert (xml == XHTML);
+	assertTrue (xml == XHTML);
 }
 
 
 void ParserWriterTest::testParseWriteXHTML2()
 {
 	std::ostringstream ostr;
-	
+
 	DOMParser parser;
 	parser.setFeature(XMLReader::FEATURE_NAMESPACE_PREFIXES, true);
 	DOMWriter writer;
 	AutoPtr<Document> pDoc = parser.parseString(XHTML2);
 	writer.writeNode(ostr, pDoc);
-	
+
 	std::string xml = ostr.str();
-	assert (xml == XHTML2);
+	assertTrue (xml == XHTML2);
 }
 
 
@@ -99,10 +97,27 @@ void ParserWriterTest::testParseWriteSimple()
 		numChildren++;
 		child = child->nextSibling();
 	}
-	assert (numChildren == 2);
+	assertTrue (numChildren == 2);
 
 	std::string xml = ostr.str();
-	assert (xml == simple);
+	assertTrue (xml == simple);
+}
+
+
+void ParserWriterTest::testMaxElementDepth()
+{
+	DOMParser parser;
+	parser.setFeature(XMLReader::FEATURE_NAMESPACE_PREFIXES, false);
+	parser.setMaxElementDepth(2);
+	try
+	{
+		AutoPtr<Document> pDoc = parser.parseString(XHTML);
+		fail("max element depth exceeded - must throw");
+	}
+	catch (const Poco::Exception&)
+	{
+		
+	}
 }
 
 
@@ -123,6 +138,7 @@ CppUnit::Test* ParserWriterTest::suite()
 	CppUnit_addTest(pSuite, ParserWriterTest, testParseWriteXHTML);
 	CppUnit_addTest(pSuite, ParserWriterTest, testParseWriteXHTML2);
 	CppUnit_addTest(pSuite, ParserWriterTest, testParseWriteSimple);
+	CppUnit_addTest(pSuite, ParserWriterTest, testMaxElementDepth);
 
 	return pSuite;
 }

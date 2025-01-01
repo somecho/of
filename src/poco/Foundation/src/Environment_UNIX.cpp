@@ -1,8 +1,6 @@
 
 // Environment_UNIX.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Environment_UNIX.cpp#2 $
-//
 // Library: Foundation
 // Package: Core
 // Module:  Environment
@@ -39,7 +37,7 @@ FastMutex EnvironmentImpl::_mutex;
 std::string EnvironmentImpl::getImpl(const std::string& name)
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	const char* val = getenv(name.c_str());
 	if (val)
 		return std::string(val);
@@ -59,11 +57,11 @@ bool EnvironmentImpl::hasImpl(const std::string& name)
 void EnvironmentImpl::setImpl(const std::string& name, const std::string& value)
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	std::string var = name;
 	var.append("=");
 	var.append(value);
-	_map[name] = var;
+	std::swap(_map[name], var);
 	if (putenv((char*) _map[name].c_str()))
 	{
 		std::string msg = "cannot set environment variable: ";
@@ -158,14 +156,14 @@ void EnvironmentImpl::nodeIdImpl(NodeId& id)
 	int rc = getifaddrs(&ifaphead);
 	if (rc) return;
 
-	for (struct ifaddrs* ifap = ifaphead; ifap; ifap = ifap->ifa_next) 
+	for (struct ifaddrs* ifap = ifaphead; ifap; ifap = ifap->ifa_next)
 	{
-		if (ifap->ifa_addr && ifap->ifa_addr->sa_family == AF_LINK) 
+		if (ifap->ifa_addr && ifap->ifa_addr->sa_family == AF_LINK)
 		{
 			struct sockaddr_dl* sdl = reinterpret_cast<struct sockaddr_dl*>(ifap->ifa_addr);
 			caddr_t ap = LLADDR(sdl);
 			int alen = sdl->sdl_alen;
-			if (ap && alen > 0) 
+			if (ap && alen > 0)
 			{
 				std::memcpy(&id, ap, sizeof(id));
 				break;
@@ -179,7 +177,7 @@ void EnvironmentImpl::nodeIdImpl(NodeId& id)
 } // namespace Poco
 
 
-#elif defined(__CYGWIN__) || POCO_OS == POCO_OS_LINUX
+#elif defined(__CYGWIN__) || POCO_OS == POCO_OS_LINUX || POCO_OS == POCO_OS_ANDROID
 //
 // Linux, Cygwin
 //
@@ -189,9 +187,9 @@ void EnvironmentImpl::nodeIdImpl(NodeId& id)
 #include <net/if.h>
 #ifndef __CYGWIN__
 #include <net/if_arp.h>
-#else // workaround for Cygwin, which does not have if_arp.h 
+#else // workaround for Cygwin, which does not have if_arp.h
 #define ARPHRD_ETHER 1 /* Ethernet 10Mbps */
-#endif 
+#endif
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -223,7 +221,7 @@ void EnvironmentImpl::nodeIdImpl(NodeId& id)
 			if (std::sscanf(buffer, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &id[0], &id[1], &id[2], &id[3], &id[4], &id[5]) == 6)
 				return;
 		}
-	}	
+	}
 
 	// if that did not work, search active interfaces
 	int sock = socket(PF_INET, SOCK_DGRAM, 0);
@@ -260,7 +258,7 @@ void EnvironmentImpl::nodeIdImpl(NodeId& id)
 	}
 	for (const char* ptr = buf; ptr < buf + ifc.ifc_len;)
 	{
-		const struct ifreq* ifr = reinterpret_cast<const struct ifreq*>(ptr);		
+		const struct ifreq* ifr = reinterpret_cast<const struct ifreq*>(ptr);
 		int rc = ioctl(sock, SIOCGIFHWADDR, ifr);
 		if (rc != -1)
 		{
@@ -275,6 +273,102 @@ void EnvironmentImpl::nodeIdImpl(NodeId& id)
 	}
 	close(sock);
 	delete [] buf;
+}
+
+
+} // namespace Poco
+
+
+#elif defined(__GNU__)
+//
+// GNU Hurd
+//
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <unistd.h>
+#include <netinet/in.h>
+
+
+namespace Poco {
+
+
+void EnvironmentImpl::nodeIdImpl(NodeId& id)
+{
+	std::memset(&id, 0, sizeof(id));
+	struct ifreq ifr;
+	struct ifconf ifc;
+	char buf[1024];
+
+	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if (sock == -1) return;
+
+	ifc.ifc_len = sizeof(buf);
+	ifc.ifc_buf = buf;
+	if (ioctl(sock, SIOCGIFCONF, &ifc) == -1) return;
+
+	struct ifreq* it = ifc.ifc_req;
+	const struct ifreq* const end = it + (ifc.ifc_len / sizeof(struct ifreq));
+
+	for (; it != end; ++it) {
+		std::strcpy(ifr.ifr_name, it->ifr_name);
+		if (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0) {
+			if (! (ifr.ifr_flags & IFF_LOOPBACK)) { // don't count loopback
+				if (ioctl(sock, SIOCGIFHWADDR, &ifr) == 0) {
+					std::memcpy(&id, ifr.ifr_hwaddr.sa_data, sizeof(id));
+					break;
+				}
+			}
+		}
+		else return;
+	}
+}
+
+
+} // namespace Poco
+
+
+#elif defined(__GNU__)
+//
+// GNU Hurd
+//
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <unistd.h>
+#include <netinet/in.h>
+
+
+namespace Poco {
+
+
+void EnvironmentImpl::nodeIdImpl(NodeId& id)
+{
+	std::memset(&id, 0, sizeof(id));
+	struct ifreq ifr;
+	struct ifconf ifc;
+	char buf[1024];
+
+	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if (sock == -1) return;
+
+	ifc.ifc_len = sizeof(buf);
+	ifc.ifc_buf = buf;
+	if (ioctl(sock, SIOCGIFCONF, &ifc) == -1) return;
+
+	struct ifreq* it = ifc.ifc_req;
+	const struct ifreq* const end = it + (ifc.ifc_len / sizeof(struct ifreq));
+
+	for (; it != end; ++it) {
+		std::strcpy(ifr.ifr_name, it->ifr_name);
+		if (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0) {
+			if (! (ifr.ifr_flags & IFF_LOOPBACK)) { // don't count loopback
+				if (ioctl(sock, SIOCGIFHWADDR, &ifr) == 0) {
+					std::memcpy(&id, ifr.ifr_hwaddr.sa_data, sizeof(id));
+					break;
+				}
+			}
+		}
+		else return;
+	}
 }
 
 
@@ -306,15 +400,16 @@ namespace Poco {
 void EnvironmentImpl::nodeIdImpl(NodeId& id)
 {
 	std::memset(&id, 0, sizeof(id));
+
 	char name[MAXHOSTNAMELEN];
 	if (gethostname(name, sizeof(name)))
-		return;
+		throw SystemException("unable to get hostname");
 
 	struct hostent* pHost = gethostbyname(name);
-	if (!pHost) return;
+	if (!pHost) throw SystemException("unable to get host");
 
 	int s = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (s == -1) return;
+	if (s == -1) throw SystemException("unable to open socket");
 
 	struct arpreq ar;
 	std::memset(&ar, 0, sizeof(ar));
@@ -323,7 +418,7 @@ void EnvironmentImpl::nodeIdImpl(NodeId& id)
 	std::memcpy(&pAddr->sin_addr, *pHost->h_addr_list, sizeof(struct in_addr));
 	int rc = ioctl(s, SIOCGARP, &ar);
 	close(s);
-	if (rc < 0) return;
+	if (rc < 0) throw SystemException("unable to get socket data");
 	std::memcpy(&id, ar.arp_ha.sa_data, sizeof(id));
 }
 

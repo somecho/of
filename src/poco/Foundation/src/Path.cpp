@@ -1,8 +1,6 @@
 //
 // Path.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Path.cpp#5 $
-//
 // Library: Foundation
 // Package: Filesystem
 // Module:  Path
@@ -18,25 +16,17 @@
 #include "Poco/File.h"
 #include "Poco/Exception.h"
 #include "Poco/StringTokenizer.h"
-#if defined(_WIN32) && defined(POCO_WIN32_UTF8)
+#if defined(_WIN32)
 #include "Poco/UnicodeConverter.h"
 #include "Poco/Buffer.h"
 #endif
 #include <algorithm>
 
 
-#if defined(POCO_OS_FAMILY_VMS)
-#include "Path_VMS.cpp"
-#elif defined(POCO_OS_FAMILY_UNIX)
+#if defined(POCO_OS_FAMILY_UNIX)
 #include "Path_UNIX.cpp"
-#elif defined(POCO_OS_FAMILY_WINDOWS) && defined(POCO_WIN32_UTF8)
-#if defined(_WIN32_WCE)
-#include "Path_WINCE.cpp"
-#else
-#include "Path_WIN32U.cpp"
-#endif
 #elif defined(POCO_OS_FAMILY_WINDOWS)
-#include "Path_WIN32.cpp"
+#include "Path_WIN32U.cpp"
 #endif
 
 
@@ -79,51 +69,62 @@ Path::Path(const char* path, Style style)
 }
 
 
-Path::Path(const Path& path): 
-	_node(path._node), 
+Path::Path(const Path& path):
+	_node(path._node),
 	_device(path._device),
 	_name(path._name),
 	_version(path._version),
 	_dirs(path._dirs),
 	_absolute(path._absolute)
-{	
+{
+}
+
+
+Path::Path(Path&& path) noexcept:
+	_node(std::move(path._node)),
+	_device(std::move(path._device)),
+	_name(std::move(path._name)),
+	_version(std::move(path._version)),
+	_dirs(std::move(path._dirs)),
+	_absolute(std::move(path._absolute))
+{
 }
 
 
 Path::Path(const Path& parent, const std::string& fileName):
-	_node(parent._node), 
+	_node(parent._node),
 	_device(parent._device),
 	_name(parent._name),
 	_version(parent._version),
 	_dirs(parent._dirs),
 	_absolute(parent._absolute)
-{	
+{
 	makeDirectory();
 	_name = fileName;
 }
 
 
 Path::Path(const Path& parent, const char* fileName):
-	_node(parent._node), 
+	_node(parent._node),
 	_device(parent._device),
 	_name(parent._name),
 	_version(parent._version),
 	_dirs(parent._dirs),
 	_absolute(parent._absolute)
-{	
+{
 	makeDirectory();
 	_name = fileName;
 }
 
 
 Path::Path(const Path& parent, const Path& relative):
-	_node(parent._node), 
+	_node(parent._node),
 	_device(parent._device),
 	_name(parent._name),
 	_version(parent._version),
 	_dirs(parent._dirs),
 	_absolute(parent._absolute)
-{	
+{
 	resolve(relative);
 }
 
@@ -132,13 +133,25 @@ Path::~Path()
 {
 }
 
-	
+
 Path& Path::operator = (const Path& path)
 {
 	return assign(path);
 }
 
-	
+
+Path& Path::operator = (Path&& path) noexcept
+{
+	_node     = std::move(path._node);
+	_device   = std::move(path._device);
+	_name     = std::move(path._name);
+	_version  = std::move(path._version);
+	_dirs     = std::move(path._dirs);
+	_absolute = std::move(path._absolute);
+	return *this;
+}
+
+
 Path& Path::operator = (const std::string& path)
 {
 	return assign(path);
@@ -152,7 +165,7 @@ Path& Path::operator = (const char* path)
 }
 
 
-void Path::swap(Path& path)
+void Path::swap(Path& path) noexcept
 {
 	std::swap(_node, path._node);
 	std::swap(_device, path._device);
@@ -180,9 +193,7 @@ Path& Path::assign(const Path& path)
 
 Path& Path::assign(const std::string& path)
 {
-#if defined(POCO_OS_FAMILY_VMS)
-	parseVMS(path);
-#elif defined(POCO_OS_FAMILY_WINDOWS)
+#if defined(POCO_OS_FAMILY_WINDOWS)
 	parseWindows(path);
 #else
 	parseUnix(path);
@@ -190,7 +201,7 @@ Path& Path::assign(const std::string& path)
 	return *this;
 }
 
-	
+
 Path& Path::assign(const std::string& path, Style style)
 {
 	switch (style)
@@ -225,16 +236,14 @@ Path& Path::assign(const char* path)
 
 std::string Path::toString() const
 {
-#if defined(POCO_OS_FAMILY_UNIX)
-	return buildUnix();
-#elif defined(POCO_OS_FAMILY_WINDOWS)
+#if defined(POCO_OS_FAMILY_WINDOWS)
 	return buildWindows();
 #else
-	return buildVMS();
+	return buildUnix();
 #endif
 }
 
-	
+
 std::string Path::toString(Style style) const
 {
 	switch (style)
@@ -289,25 +298,21 @@ bool Path::tryParse(const std::string& path, Style style)
 
 Path& Path::parseDirectory(const std::string& path)
 {
-	assign(path);
+	assign(addDirectorySeparator(path));
 	return makeDirectory();
 }
 
 
 Path& Path::parseDirectory(const std::string& path, Style style)
 {
-	assign(path, style);
+	assign(addDirectorySeparator(path, style), style);
 	return makeDirectory();
 }
 
 
 Path& Path::makeDirectory()
 {
-#if defined(POCO_OS_FAMILY_VMS)
-	pushDirectory(getBaseName());
-#else
 	pushDirectory(_name);
-#endif
 	_name.clear();
 	_version.clear();
 	return *this;
@@ -320,9 +325,6 @@ Path& Path::makeFile()
 	{
 		_name = _dirs.back();
 		_dirs.pop_back();
-#if defined(POCO_OS_FAMILY_VMS)
-		setExtension("DIR");
-#endif
 	}
 	return *this;
 }
@@ -340,9 +342,9 @@ Path& Path::makeAbsolute(const Path& base)
 	{
 		Path tmp = base;
 		tmp.makeDirectory();
-		for (StringVec::const_iterator it = _dirs.begin(); it != _dirs.end(); ++it)
+		for (const auto& d: _dirs)
 		{
-			tmp.pushDirectory(*it);
+			tmp.pushDirectory(d);
 		}
 		_node     = tmp._node;
 		_device   = tmp._device;
@@ -441,7 +443,7 @@ Path& Path::setNode(const std::string& node)
 	return *this;
 }
 
-	
+
 Path& Path::setDevice(const std::string& device)
 {
 	_device   = device;
@@ -449,43 +451,33 @@ Path& Path::setDevice(const std::string& device)
 	return *this;
 }
 
-	
+
 const std::string& Path::directory(int n) const
 {
 	poco_assert (0 <= n && n <= _dirs.size());
-	
+
 	if (n < _dirs.size())
 		return _dirs[n];
 	else
-		return _name;	
+		return _name;
 }
 
 
 const std::string& Path::operator [] (int n) const
 {
 	poco_assert (0 <= n && n <= _dirs.size());
-	
+
 	if (n < _dirs.size())
 		return _dirs[n];
 	else
-		return _name;	
+		return _name;
 }
 
-	
+
 Path& Path::pushDirectory(const std::string& dir)
 {
 	if (!dir.empty() && dir != ".")
 	{
-#if defined(POCO_OS_FAMILY_VMS)
-		if (dir == ".." || dir == "-")
-		{
-			if (!_dirs.empty() && _dirs.back() != ".." && _dirs.back() != "-")
-				_dirs.pop_back();
-			else if (!_absolute)
-				_dirs.push_back(dir);
-		}
-		else _dirs.push_back(dir);
-#else
 		if (dir == "..")
 		{
 			if (!_dirs.empty() && _dirs.back() != "..")
@@ -494,16 +486,15 @@ Path& Path::pushDirectory(const std::string& dir)
 				_dirs.push_back(dir);
 		}
 		else _dirs.push_back(dir);
-#endif
 	}
 	return *this;
 }
 
-	
+
 Path& Path::popDirectory()
 {
 	poco_assert (!_dirs.empty());
-	
+
 	_dirs.pop_back();
 	return *this;
 }
@@ -512,13 +503,13 @@ Path& Path::popDirectory()
 Path& Path::popFrontDirectory()
 {
 	poco_assert (!_dirs.empty());
-	
+
 	StringVec::iterator it = _dirs.begin();
 	_dirs.erase(it);
 	return *this;
 }
 
-	
+
 Path& Path::setFileName(const std::string& name)
 {
 	_name = name;
@@ -542,7 +533,7 @@ Path& Path::setBaseName(const std::string& name)
 std::string Path::getBaseName() const
 {
 	std::string::size_type pos = _name.rfind('.');
-	if (pos != std::string::npos)
+	if (pos != std::string::npos && pos != 0)
 		return _name.substr(0, pos);
 	else
 		return _name;
@@ -560,11 +551,11 @@ Path& Path::setExtension(const std::string& extension)
 	return *this;
 }
 
-			
+
 std::string Path::getExtension() const
 {
 	std::string::size_type pos = _name.rfind('.');
-	if (pos != std::string::npos)
+	if (pos != std::string::npos && pos != 0)
 		return _name.substr(pos + 1);
 	else
 		return std::string();
@@ -583,18 +574,67 @@ Path& Path::clear()
 }
 
 
+std::string Path::addDirectorySeparator(const std::string& path)
+{
+	poco_assert(!path.empty());
+
+	if (path.back() != separator())
+	{
+		return path + separator();
+	}
+	return path;
+}
+
+
+std::string Path::addDirectorySeparator(const std::string& path, Style style)
+{
+	poco_assert(!path.empty());
+
+	char ch = '\0';
+	switch (style)
+	{
+	case PATH_UNIX:
+		ch = '/';
+		break;
+	case PATH_WINDOWS:
+		ch = '\\';
+		break;
+	case PATH_VMS:
+		ch = '.';
+		break;
+	case PATH_NATIVE:
+		ch = separator();
+		break;
+	default:
+		poco_bugcheck();
+	}
+
+	if (path.back() != ch)
+	{
+		return path + ch;
+	}
+	return path;
+}
+
+
+std::string Path::self()
+{
+	return PathImpl::selfImpl();
+}
+
+
 std::string Path::current()
 {
 	return PathImpl::currentImpl();
 }
 
-	
+
 std::string Path::home()
 {
 	return PathImpl::homeImpl();
 }
 
-	
+
 std::string Path::configHome()
 {
 #if defined(POCO_OS_FAMILY_UNIX) || defined(POCO_OS_FAMILY_WINDOWS)
@@ -604,7 +644,7 @@ std::string Path::configHome()
 #endif
 }
 
-	
+
 std::string Path::dataHome()
 {
 #if defined(POCO_OS_FAMILY_UNIX) || defined(POCO_OS_FAMILY_WINDOWS)
@@ -614,7 +654,7 @@ std::string Path::dataHome()
 #endif
 }
 
-	
+
 std::string Path::tempHome()
 {
 #if defined(POCO_OS_FAMILY_UNIX) || defined(POCO_OS_FAMILY_WINDOWS)
@@ -624,7 +664,7 @@ std::string Path::tempHome()
 #endif
 }
 
-	
+
 std::string Path::cacheHome()
 {
 #if defined(POCO_OS_FAMILY_UNIX) || defined(POCO_OS_FAMILY_WINDOWS)
@@ -634,13 +674,13 @@ std::string Path::cacheHome()
 #endif
 }
 
-	
+
 std::string Path::temp()
 {
 	return PathImpl::tempImpl();
 }
 
-	
+
 std::string Path::config()
 {
 #if defined(POCO_OS_FAMILY_UNIX) || defined(POCO_OS_FAMILY_WINDOWS)
@@ -650,12 +690,13 @@ std::string Path::config()
 #endif
 }
 
+
 std::string Path::null()
 {
 	return PathImpl::nullImpl();
 }
 
-	
+
 std::string Path::expand(const std::string& path)
 {
 	return PathImpl::expandImpl(path);
@@ -712,7 +753,7 @@ void Path::parseUnix(const std::string& path)
 
 	if (it != end)
 	{
-		if (*it == '/') 
+		if (*it == '/')
 		{
 			_absolute = true; ++it;
 		}
@@ -842,7 +883,7 @@ void Path::parseVMS(const std::string& path)
 						}
 					}
 				}
-			}			
+			}
 			if (name.empty())
 			{
 				if (it != end && *it == '[')
@@ -868,7 +909,7 @@ void Path::parseVMS(const std::string& path)
 								{
 									if (_dirs.empty() || _dirs.back() == "..")
 										_dirs.push_back("..");
-									else 
+									else
 										_dirs.pop_back();
 								}
 								else _dirs.push_back(name);
@@ -939,7 +980,9 @@ void Path::parseGuess(const std::string& path)
 			case '\\': hasBackslash = true; break;
 			case '/':  hasSlash = true; break;
 			case '[':  hasOpenBracket = true;
-			case ']':  hasClosBracket = hasOpenBracket; 
+				[[fallthrough]];
+			case ']':  hasClosBracket = hasOpenBracket;
+				[[fallthrough]];
 			case ';':  semiIt = it; break;
 			}
 		}
@@ -989,9 +1032,9 @@ std::string Path::buildUnix() const
 	{
 		result.append("/");
 	}
-	for (StringVec::const_iterator it = _dirs.begin(); it != _dirs.end(); ++it)
+	for (const auto& d: _dirs)
 	{
-		result.append(*it);
+		result.append(d);
 		result.append("/");
 	}
 	result.append(_name);
@@ -1017,9 +1060,9 @@ std::string Path::buildWindows() const
 	{
 		result.append("\\");
 	}
-	for (StringVec::const_iterator it = _dirs.begin(); it != _dirs.end(); ++it)
+	for (const auto& d: _dirs)
 	{
-		result.append(*it);
+		result.append(d);
 		result.append("\\");
 	}
 	result.append(_name);
@@ -1068,7 +1111,7 @@ std::string Path::buildVMS() const
 
 std::string Path::transcode(const std::string& path)
 {
-#if defined(_WIN32) && defined(POCO_WIN32_UTF8)
+#if defined(_WIN32)
 	std::wstring uniPath;
 	UnicodeConverter::toUTF16(path, uniPath);
 	DWORD len = WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, uniPath.c_str(), static_cast<int>(uniPath.length()), NULL, 0, NULL, NULL);

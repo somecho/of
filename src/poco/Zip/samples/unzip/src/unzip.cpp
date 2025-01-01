@@ -1,8 +1,6 @@
 //
 // unzip.cpp
 //
-// $Id: //poco/1.4/Zip/samples/unzip/src/unzip.cpp#1 $
-//
 // This sample demonstrates the Decompress class.
 //
 // Copyright (c) 2007, Applied Informatics Software Engineering GmbH.
@@ -73,26 +71,26 @@ public:
 	{
 	}
 
-protected:	
+protected:
 	void initialize(Application& self)
 	{
 		loadConfiguration(); // load default configuration files, if present
 		Application::initialize(self);
 		// add your own initialization code here
 	}
-	
+
 	void uninitialize()
 	{
 		// add your own uninitialization code here
 		Application::uninitialize();
 	}
-	
+
 	void reinitialize(Application& self)
 	{
 		Application::reinitialize(self);
 		// add your own reinitialization code here
 	}
-	
+
 	void defineOptions(OptionSet& options)
 	{
 		Application::defineOptions(options);
@@ -110,7 +108,7 @@ protected:
 				.argument("filename")
 				.callback(OptionCallback<UnzipApp>(this, &UnzipApp::handleFile)));
 	}
-	
+
 	void handleHelp(const std::string& name, const std::string& value)
 	{
 		_helpRequested = true;
@@ -122,7 +120,7 @@ protected:
 	{
 		_zipFile = value;
 	}
-	
+
 	void displayHelp()
 	{
 		HelpFormatter helpFormatter(options());
@@ -131,7 +129,7 @@ protected:
 		helpFormatter.setHeader("A application that demonstrates usage of Poco::Zip::Decompress class.");
 		helpFormatter.format(std::cout);
 	}
-	
+
 
 	int main(const std::vector<std::string>& args)
 	{
@@ -152,7 +150,7 @@ protected:
 		}
 		return Application::EXIT_OK;
 	}
-	
+
 private:
 	bool _helpRequested;
 	std::string _zipFile;

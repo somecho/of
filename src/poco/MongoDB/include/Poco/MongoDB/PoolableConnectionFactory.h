@@ -1,8 +1,6 @@
 //
 // PoolableConnectionFactory.h
 //
-// $Id$
-//
 // Library: MongoDB
 // Package: MongoDB
 // Module:  PoolableConnectionFactory
@@ -30,24 +28,38 @@ namespace Poco {
 template<>
 class PoolableObjectFactory<MongoDB::Connection, MongoDB::Connection::Ptr>
 	/// PoolableObjectFactory specialisation for Connection. New connections
-	/// are created with the given address.
+	/// are created with the given address or URI.
+	///
+	/// If a Connection::SocketFactory is given, it must live for the entire
+	/// lifetime of the PoolableObjectFactory.
 {
 public:
-	PoolableObjectFactory(Net::SocketAddress& address)
-		: _address(address)
+	PoolableObjectFactory(Net::SocketAddress& address):
+		_address(address),
+		_pSocketFactory(0)
 	{
 	}
 
-	PoolableObjectFactory(const std::string& address)
-		: _address(address)
+	PoolableObjectFactory(const std::string& address):
+		_address(address),
+		_pSocketFactory(0)
+	{
+	}
+
+	PoolableObjectFactory(const std::string& uri, MongoDB::Connection::SocketFactory& socketFactory):
+		_uri(uri),
+		_pSocketFactory(&socketFactory)
 	{
 	}
 
 	MongoDB::Connection::Ptr createObject()
 	{
-		return new MongoDB::Connection(_address);
+		if (_pSocketFactory)
+			return new MongoDB::Connection(_uri, *_pSocketFactory);
+		else
+			return new MongoDB::Connection(_address);
 	}
-	
+
 	bool validateObject(MongoDB::Connection::Ptr pObject)
 	{
 		return true;
@@ -67,6 +79,8 @@ public:
 
 private:
 	Net::SocketAddress _address;
+	std::string _uri;
+	MongoDB::Connection::SocketFactory* _pSocketFactory;
 };
 
 
@@ -75,18 +89,23 @@ namespace MongoDB {
 
 class PooledConnection
 	/// Helper class for borrowing and returning a connection automatically from a pool.
+	/// Note that the connection pool is not expected to be deleted during the lifetime
+	/// of an instance of PooledConnection.
 {
 public:
-	PooledConnection(Poco::ObjectPool<Connection, Connection::Ptr>& pool, long timeoutMilliseconds = 0) : _pool(pool)
+	PooledConnection(Poco::ObjectPool<Connection, Connection::Ptr>& pool) : _pool(&pool)
 	{
-		_connection = _pool.borrowObject(timeoutMilliseconds);
+		_connection = _pool->borrowObject();
 	}
 
 	virtual ~PooledConnection()
 	{
 		try
 		{
-			_pool.returnObject(_connection);
+			if (_connection)
+			{
+				_pool->returnObject(_connection);
+			}
 		}
 		catch (...)
 		{
@@ -99,14 +118,21 @@ public:
 		return _connection;
 	}
 
+	// Disable copy to prevent unwanted release of resources: C++11 way
+	PooledConnection(const PooledConnection&) = delete;
+	PooledConnection& operator=(const PooledConnection&) = delete;
+
+	// Enable move semantics
+	PooledConnection(PooledConnection&& other) = default;
+	PooledConnection& operator=(PooledConnection&&) = default;
+
 private:
-	Poco::ObjectPool<Connection, Connection::Ptr>& _pool;
+	Poco::ObjectPool<Connection, Connection::Ptr>* _pool;
 	Connection::Ptr _connection;
 };
 
 
-} // namespace MongoDB
-} // namespace Poco
+} } // namespace Poco::MongoDB
 
 
-#endif //MongoDB_PoolableConnectionFactory_INCLUDED
+#endif // MongoDB_PoolableConnectionFactory_INCLUDED

@@ -1,8 +1,6 @@
 //
 // UUIDTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/UUIDTest.h#1 $
-//
 // Definition of the UUIDTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -33,6 +31,8 @@ public:
 	void testVariant();
 	void testSwap();
 	void testTryParse();
+	void testV6();
+	void testV7();
 
 	void setUp();
 	void tearDown();

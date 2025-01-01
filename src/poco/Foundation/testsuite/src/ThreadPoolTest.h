@@ -1,8 +1,6 @@
 //
 // ThreadPoolTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/ThreadPoolTest.h#1 $
-//
 // Definition of the ThreadPoolTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -29,9 +27,8 @@ public:
 	~ThreadPoolTest();
 
 	void testThreadPool();
-	void testThreadPoolUniformDistribution();
-	void testThreadPoolCustomDistribution();
-	
+	void testThreadPoolImmediateShutdown();
+
 	void setUp();
 	void tearDown();
 
@@ -41,7 +38,6 @@ protected:
 	void count();
 
 private:
-	void startThreadPoolTest(int affinityPolicy);
 	Poco::FastMutex _mutex;
 	Poco::Event _event;
 	int   _count;

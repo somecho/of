@@ -1,8 +1,6 @@
 //
 // FileTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/FileTest.h#1 $
-//
 // Definition of the FileTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -28,6 +26,7 @@ public:
 
 	void testFileAttributes1();
 	void testCreateFile();
+	void testExists();
 	void testFileAttributes2();
 	void testFileAttributes3();
 	void testCompare();
@@ -35,11 +34,18 @@ public:
 	void testSize();
 	void testDirectory();
 	void testCopy();
+	void testCopyFailIfDestinationFileExists();
 	void testMove();
+	void testMoveFailIfDestinationFileExists();
 	void testCopyDirectory();
+	void testCopyDirectoryFailIfExists();
 	void testRename();
+	void testRenameFailIfExists();
 	void testRootDir();
-	
+	void testLongPath();
+	void testUnixFileExtension();
+	void testTemporaryFile();
+
 	void setUp();
 	void tearDown();
 

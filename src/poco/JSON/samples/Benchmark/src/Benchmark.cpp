@@ -1,8 +1,6 @@
 //
 // Benchmark.cpp
 //
-// $Id$
-//
 // This sample shows a benchmark of the JSON parser.
 //
 // Copyright (c) 2012, Applied Informatics Software Engineering GmbH.
@@ -13,7 +11,7 @@
 
 
 #include "Poco/JSON/Parser.h"
-#include "Poco/JSON/ParseHandler.h"
+#include "Poco/JSON/Object.h"
 #include "Poco/JSON/JSONException.h"
 #include "Poco/Environment.h"
 #include "Poco/Path.h"
@@ -22,7 +20,7 @@
 #include "Poco/StreamCopier.h"
 #include "Poco/Stopwatch.h"
 #include <iostream>
-#include <iomanip>
+#include <sstream>
 
 
 int main(int argc, char** argv)
@@ -47,7 +45,7 @@ int main(int argc, char** argv)
 		else
 		{
 			std::cout << filePath.toString() << " doesn't exist!" << std::endl;
-			return 1; 
+			return 1;
 		}
 	}
 
@@ -81,7 +79,7 @@ int main(int argc, char** argv)
 		Poco::JSON::Parser sparser;
 		sw.restart();
 		sparser.parse(jsonStr);
-		Poco::DynamicAny result = sparser.result();
+		Poco::Dynamic::Var result = sparser.result();
 		sw.stop();
 		std::cout << "-----------------------------------------" << std::endl;
 		std::cout << "[std::string] parsed/handled in " << sw.elapsed() << " [us]" << std::endl;
@@ -111,7 +109,7 @@ int main(int argc, char** argv)
 		std::cout << "-----------------------------------" << std::endl;
 		std::cout << std::endl;
 	}
-	catch(Poco::JSON::JSONException jsone)
+	catch(Poco::JSON::JSONException& jsone)
 	{
 		std::cout << jsone.message() << std::endl;
 	}

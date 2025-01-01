@@ -1,8 +1,6 @@
 //
 // SocketNotification.h
 //
-// $Id: //poco/1.4/Net/include/Poco/Net/SocketNotification.h#1 $
-//
 // Library: Net
 // Package: Reactor
 // Module:  SocketNotification
@@ -40,21 +38,22 @@ public:
 	explicit SocketNotification(SocketReactor* pReactor);
 		/// Creates the SocketNotification for the given SocketReactor.
 
-	virtual ~SocketNotification();
+	~SocketNotification() override;
 		/// Destroys the SocketNotification.
-		
+
 	SocketReactor& source() const;
-		/// Returns the SocketReactor that generated the notification.	
-		
+		/// Returns the SocketReactor that generated the notification.
+
 	Socket socket() const;
 		/// Returns the socket that caused the notification.
 
-private:
+protected:
 	void setSocket(const Socket& socket);
-	
+
+private:
 	SocketReactor* _pReactor;
 	Socket         _socket;
-	
+
 	friend class SocketNotifier;
 };
 
@@ -66,7 +65,7 @@ public:
 	ReadableNotification(SocketReactor* pReactor);
 		/// Creates the ReadableNotification for the given SocketReactor.
 
-	~ReadableNotification();
+	~ReadableNotification() override;
 		/// Destroys the ReadableNotification.
 };
 
@@ -78,7 +77,7 @@ public:
 	WritableNotification(SocketReactor* pReactor);
 		/// Creates the WritableNotification for the given SocketReactor.
 
-	~WritableNotification();
+	~WritableNotification() override;
 		/// Destroys the WritableNotification.
 };
 
@@ -87,12 +86,38 @@ class Net_API ErrorNotification: public SocketNotification
 	/// This notification is sent if a socket has signalled an error.
 {
 public:
-	ErrorNotification(SocketReactor* pReactor);
+	ErrorNotification(SocketReactor* pReactor, int code = 0, const std::string& description = "");
 		/// Creates the ErrorNotification for the given SocketReactor.
 
-	~ErrorNotification();
+	ErrorNotification(SocketReactor* pReactor, const Socket& socket,
+		int code = 0, const std::string& description = "");
+		/// Creates the ErrorNotification for the given SocketReactor.
+
+	~ErrorNotification() override;
 		/// Destroys the ErrorNotification.
+
+	int code() const;
+		/// Returns the error code.
+
+	const std::string& description() const;
+		/// Returns error description.
+
+private:
+	int _code = 0;
+	std::string _description;
 };
+
+
+inline int ErrorNotification::code() const
+{
+	return _code;
+}
+
+
+inline const std::string& ErrorNotification::description() const
+{
+	return _description;
+}
 
 
 class Net_API TimeoutNotification: public SocketNotification
@@ -103,7 +128,7 @@ public:
 	TimeoutNotification(SocketReactor* pReactor);
 		/// Creates the TimeoutNotification for the given SocketReactor.
 
-	~TimeoutNotification();
+	~TimeoutNotification() override;
 		/// Destroys the TimeoutNotification.
 };
 
@@ -116,7 +141,7 @@ public:
 	IdleNotification(SocketReactor* pReactor);
 		/// Creates the IdleNotification for the given SocketReactor.
 
-	~IdleNotification();
+	~IdleNotification() override;
 		/// Destroys the IdleNotification.
 };
 
@@ -129,7 +154,7 @@ public:
 	ShutdownNotification(SocketReactor* pReactor);
 		/// Creates the ShutdownNotification for the given SocketReactor.
 
-	~ShutdownNotification();
+	~ShutdownNotification() override;
 		/// Destroys the ShutdownNotification.
 };
 
@@ -142,7 +167,7 @@ inline SocketReactor& SocketNotification::source() const
 	return *_pReactor;
 }
 
-	
+
 inline Socket SocketNotification::socket() const
 {
 	return _socket;

@@ -1,8 +1,6 @@
 //
 // Comment.h
 //
-// $Id: //poco/1.4/XML/include/Poco/DOM/Comment.h#1 $
-//
 // Library: XML
 // Package: DOM
 // Module:  DOM
@@ -49,7 +47,7 @@ protected:
 
 private:
 	static const XMLString NODE_NAME;
-	
+
 	friend class Document;
 };
 

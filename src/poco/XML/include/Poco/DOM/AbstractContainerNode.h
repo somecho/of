@@ -1,8 +1,6 @@
 //
 // AbstractContainerNode.h
 //
-// $Id: //poco/1.4/XML/include/Poco/DOM/AbstractContainerNode.h#2 $
-//
 // Library: XML
 // Package: DOM
 // Module:  DOM
@@ -39,6 +37,7 @@ public:
 	Node* firstChild() const;
 	Node* lastChild() const;
 	Node* insertBefore(Node* newChild, Node* refChild);
+	Node* insertAfterNP(Node* newChild, Node* refChild);
 	Node* replaceChild(Node* newChild, Node* oldChild);
 	Node* removeChild(Node* oldChild);
 	Node* appendChild(Node* newChild);
@@ -54,8 +53,8 @@ protected:
 
 	void dispatchNodeRemovedFromDocument();
 	void dispatchNodeInsertedIntoDocument();
-	
-	static const Node* findNode(XMLString::const_iterator& it, const XMLString::const_iterator& end, const Node* pNode, const NSMap* pNSMap);
+
+	static const Node* findNode(XMLString::const_iterator& it, const XMLString::const_iterator& end, const Node* pNode, const NSMap* pNSMap, bool& indexBound);
 	static const Node* findElement(const XMLString& name, const Node* pNode, const NSMap* pNSMap);
 	static const Node* findElement(int index, const Node* pNode, const NSMap* pNSMap);
 	static const Node* findElement(const XMLString& attr, const XMLString& value, const Node* pNode, const NSMap* pNSMap);
@@ -63,6 +62,8 @@ protected:
 	bool hasAttributeValue(const XMLString& name, const XMLString& value, const NSMap* pNSMap) const;
 	static bool namesAreEqual(const Node* pNode1, const Node* pNode2, const NSMap* pNSMap);
 	static bool namesAreEqual(const Node* pNode, const XMLString& name, const NSMap* pNSMap);
+
+	static const XMLString WILDCARD;
 
 private:
 	AbstractNode* _pFirstChild;

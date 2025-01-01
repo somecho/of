@@ -1,8 +1,6 @@
 //
 // Timestamp.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Timestamp.cpp#2 $
-//
 // Library: Foundation
 // Package: DateTime
 // Module:  Timestamp
@@ -32,113 +30,16 @@
 #endif
 #elif defined(POCO_OS_FAMILY_WINDOWS)
 #include "Poco/UnWindows.h"
-#if defined(_WIN32_WCE)
-#include <cmath>
-#endif
 #endif
 
 
-#if defined(_WIN32_WCE) && defined(POCO_WINCE_TIMESTAMP_HACK)
-
-
-//
-// See <http://community.opennetcf.com/articles/cf/archive/2007/11/20/getting-a-millisecond-resolution-datetime-under-windows-ce.aspx>
-// for an explanation of the following code.
-//
-// In short: Windows CE system time in most cases only has a resolution of one second.
-// But we want millisecond resolution.
-//
-
-
-namespace {
-
-
-class TickOffset
-{
-public:
-	TickOffset()
-	{
-		SYSTEMTIME st1, st2;
-		std::memset(&st1, 0, sizeof(SYSTEMTIME));
-		std::memset(&st2, 0, sizeof(SYSTEMTIME));
-		GetSystemTime(&st1);
-		while (true)
-		{
-			GetSystemTime(&st2);
-
-			// wait for a rollover
-			if (st1.wSecond != st2.wSecond)
-			{
-				_offset = GetTickCount() % 1000;
-				break;
-			}
-		}
-	}
-
-	void calibrate(int seconds)
-	{
-		SYSTEMTIME st1, st2;
-		systemTime(&st1);
-
-		WORD s = st1.wSecond;
-		int sum = 0;
-		int remaining = seconds;
-		while (remaining > 0)
-		{
-			systemTime(&st2);
-			WORD s2 = st2.wSecond;
-
-			if (s != s2)
-			{
-				remaining--;
-				// store the offset from zero
-				sum += (st2.wMilliseconds > 500) ? (st2.wMilliseconds - 1000) : st2.wMilliseconds;
-				s = st2.wSecond;
-			}
-		}
-
-		// adjust the offset by the average deviation from zero (round to the integer farthest from zero)
-		if (sum < 0)
-			_offset += (int) std::floor(sum / (float)seconds);
-		else
-			_offset += (int) std::ceil(sum / (float)seconds);
-	}
-
-	void systemTime(SYSTEMTIME* pST)
-	{
-		std::memset(pST, 0, sizeof(SYSTEMTIME));
-		
-		WORD tick = GetTickCount() % 1000;
-		GetSystemTime(pST);
-		WORD ms = (tick >= _offset) ? (tick - _offset) : (1000 - (_offset - tick));
-		pST->wMilliseconds = ms;	
-	}
-
-	void systemTimeAsFileTime(FILETIME* pFT)
-	{
-		SYSTEMTIME st;
-		systemTime(&st);
-		SystemTimeToFileTime(&st, pFT);	
-	}
-
-private:
-	WORD _offset;
-};
-
-
-static TickOffset offset;
-
-
-void GetSystemTimeAsFileTimeWithMillisecondResolution(FILETIME* pFT)
-{
-	offset.systemTimeAsFileTime(pFT);	
-}
-
-
-} // namespace
-
-
-#endif // defined(_WIN32_WCE) && defined(POCO_WINCE_TIMESTAMP_HACK)
+#ifndef POCO_HAVE_CLOCK_GETTIME
+	#if (defined(_POSIX_TIMERS) && defined(CLOCK_REALTIME)) || defined(POCO_VXWORKS) || defined(__QNX__)
+		#ifndef __APPLE__ // See GitHub issue #1453 - not available before Mac OS 10.12/iOS 10
+			#define POCO_HAVE_CLOCK_GETTIME
+		#endif
+	#endif
+#endif
 
 
 namespace Poco {
@@ -185,7 +86,7 @@ Timestamp& Timestamp::operator = (TimeVal tv)
 }
 
 
-void Timestamp::swap(Timestamp& timestamp)
+void Timestamp::swap(Timestamp& timestamp) noexcept
 {
 	std::swap(_ts, timestamp._ts);
 }
@@ -210,11 +111,7 @@ void Timestamp::update()
 #if defined(POCO_OS_FAMILY_WINDOWS)
 
 	FILETIME ft;
-#if defined(_WIN32_WCE) && defined(POCO_WINCE_TIMESTAMP_HACK)
-	GetSystemTimeAsFileTimeWithMillisecondResolution(&ft);
-#else
 	GetSystemTimeAsFileTime(&ft);
-#endif
 
 	ULARGE_INTEGER epoch; // UNIX epoch (1970-01-01 00:00:00) expressed in Windows NT FILETIME
 	epoch.LowPart  = 0xD53E8000;
@@ -226,7 +123,7 @@ void Timestamp::update()
 	ts.QuadPart -= epoch.QuadPart;
 	_ts = ts.QuadPart/10;
 
-#elif defined(POCO_VXWORKS)
+#elif defined(POCO_HAVE_CLOCK_GETTIME)
 
 	struct timespec ts;
 	if (clock_gettime(CLOCK_REALTIME, &ts))
@@ -236,10 +133,10 @@ void Timestamp::update()
 #else
 
 	struct timeval tv;
-	if (gettimeofday(&tv, NULL))
+	if (gettimeofday(&tv, nullptr))
 		throw SystemException("cannot get time of day");
 	_ts = TimeVal(tv.tv_sec)*resolution() + tv.tv_usec;
-	
+
 #endif
 }
 
@@ -276,7 +173,7 @@ Timestamp Timestamp::fromFileTimeNP(UInt32 fileTimeLow, UInt32 fileTimeHigh)
 	ULARGE_INTEGER epoch; // UNIX epoch (1970-01-01 00:00:00) expressed in Windows NT FILETIME
 	epoch.LowPart  = 0xD53E8000;
 	epoch.HighPart = 0x019DB1DE;
-	
+
 	ULARGE_INTEGER ts;
 	ts.LowPart  = fileTimeLow;
 	ts.HighPart = fileTimeHigh;

@@ -1,8 +1,6 @@
 //
 // LoggingSubsystem.cpp
 //
-// $Id: //poco/1.4/Util/src/LoggingSubsystem.cpp#1 $
-//
 // Library: Util
 // Package: Application
 // Module:  LoggingSubsystem
@@ -21,6 +19,7 @@
 
 
 using Poco::Logger;
+using namespace std::string_literals;
 
 
 namespace Poco {
@@ -42,12 +41,12 @@ const char* LoggingSubsystem::name() const
 	return "Logging Subsystem";
 }
 
-	
+
 void LoggingSubsystem::initialize(Application& app)
 {
 	LoggingConfigurator configurator;
-	configurator.configure(&app.config());
-	std::string logger = app.config().getString("application.logger", "Application");
+	configurator.configure(app.configPtr());
+	std::string logger = app.config().getString("application.logger"s, "Application"s);
 	app.setLogger(Logger::get(logger));
 }
 

@@ -1,9 +1,7 @@
 //
 // MySQLException.cpp
 //
-// $Id: //poco/1.4/Data/MySQL/src/MySQLException.cpp#1 $
-//
-// Library: Data
+// Library: Data/MySQL
 // Package: MySQL
 // Module:  MySQLException
 //
@@ -14,9 +12,14 @@
 //
 
 
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
+
 #include "Poco/Data/MySQL/MySQLException.h"
-#include <mysql.h>
-#include <stdio.h>
+#include "Poco/NumberFormatter.h"
+
 
 namespace Poco {
 namespace Data {
@@ -33,16 +36,19 @@ MySQLException::MySQLException(const MySQLException& exc) : Poco::Data::DataExce
 }
 
 
-MySQLException::~MySQLException() throw()
+MySQLException::MySQLException(const std::string& msg, int code) : Poco::Data::DataException(std::string("[MySQL]: ") + msg, code)
 {
 }
 
 
-/////
+MySQLException::~MySQLException() noexcept
+{
+}
+
+
 //
 // ConnectionException
 //
-/////
 
 
 ConnectionException::ConnectionException(const std::string& msg) : MySQLException(msg)
@@ -64,9 +70,7 @@ std::string ConnectionException::compose(const std::string& text, MYSQL* h)
 	str += mysql_error(h);
 
 	str += "\t[mysql_errno]: ";
-	char buff[30];
-	sprintf(buff, "%d", mysql_errno(h));
-	str += buff;
+	Poco::NumberFormatter::append(str, mysql_errno(h));
 
 	str += "\t[mysql_sqlstate]: ";
 	str += mysql_sqlstate(h);
@@ -74,11 +78,9 @@ std::string ConnectionException::compose(const std::string& text, MYSQL* h)
 }
 
 
-/////
 //
 // TransactionException
 //
-/////
 
 
 TransactionException::TransactionException(const std::string& msg) : ConnectionException(msg)
@@ -120,9 +122,7 @@ std::string StatementException::compose(const std::string& text, MYSQL_STMT* h, 
 		str += mysql_stmt_error(h);
 
 		str += "\t[mysql_stmt_errno]: ";
-		char buff[30];
-		sprintf(buff, "%d", mysql_stmt_errno(h));
-		str += buff;
+		Poco::NumberFormatter::append(str, mysql_stmt_errno(h));
 
 		str += "\t[mysql_stmt_sqlstate]: ";
 		str += mysql_stmt_sqlstate(h);
@@ -136,5 +136,6 @@ std::string StatementException::compose(const std::string& text, MYSQL_STMT* h, 
 
 	return str;
 }
+
 
 } } } // namespace Poco::Data::MySQL

@@ -1,8 +1,6 @@
 //
 // JSONConfiguration.h
 //
-// $Id$
-//
 // Library: Util
 // Package: Util
 // Module:  JSONConfiguration
@@ -110,10 +108,10 @@ public:
 
 
 	virtual void setString(const std::string& key, const std::string& value);
-	
 
-	virtual void removeRaw(const std::string& key);	
-	
+
+	virtual void removeRaw(const std::string& key);
+
 
 protected:
 
@@ -135,7 +133,7 @@ private:
 	void getIndexes(std::string& name, std::vector<int>& indexes);
 
 
-	void setValue(const std::string& key, const Poco::DynamicAny& value);
+	void setValue(const std::string& key, const Poco::Dynamic::Var& value);
 
 
  	JSON::Object::Ptr _object;

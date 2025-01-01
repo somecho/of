@@ -1,8 +1,6 @@
 //
 // AbstractPreparator.h
 //
-// $Id: //poco/Main/Data/include/Poco/Data/AbstractPreparator.h#5 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  AbstractPreparator
@@ -23,6 +21,8 @@
 #include "Poco/Data/Data.h"
 #include "Poco/RefCountedObject.h"
 #include "Poco/Data/LOB.h"
+#include "Poco/Nullable.h"
+#include "Poco/UUID.h"
 #include "Poco/UTFString.h"
 #include <vector>
 #include <deque>
@@ -53,13 +53,13 @@ class Data_API AbstractPreparator
 	/// (and memory output locations) before extracting data, e.g. ODBC.
 	/// Extract works as two-phase extract: first we call prepare once, then extract n-times.
 	/// There are cases (bulk operations using std::vector storage) when extract is called only once.
-	/// The value passed to a prepare() call is not used by the prepare, serving only as an indication 
-	/// of the data type being prepared, thus all values are passed as const references. 
-	/// Implementing this interface is not mandatory for a connector. Connectors that only extract data 
+	/// The value passed to a prepare() call is not used by the prepare, serving only as an indication
+	/// of the data type being prepared, thus all values are passed as const references.
+	/// Implementing this interface is not mandatory for a connector. Connectors that only extract data
 	/// after SQL execution (e.g. SQLite) do not need this functionality at all.
 {
 public:
-	typedef SharedPtr<AbstractPreparator> Ptr;
+	using Ptr = SharedPtr<AbstractPreparator>;
 
 	AbstractPreparator(Poco::UInt32 length = 1u);
 		/// Creates the AbstractPreparator.
@@ -163,7 +163,7 @@ public:
 	virtual void prepare(std::size_t pos, const std::list<Poco::UInt64>& val);
 		/// Prepares an UInt64 list.
 
-#ifndef POCO_LONG_IS_64_BIT
+#ifndef POCO_INT64_IS_LONG
 	virtual void prepare(std::size_t pos, const long&) = 0;
 		/// Prepares a long.
 
@@ -178,6 +178,15 @@ public:
 
 	virtual void prepare(std::size_t pos, const std::list<long>& val);
 		/// Prepares a long list.
+
+	virtual void prepare(std::size_t pos, const std::vector<unsigned long>& val);
+		/// Prepares a unsigned long vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<unsigned long>& val);
+		/// Prepares a unsigned long deque.
+
+	virtual void prepare(std::size_t pos, const std::list<unsigned long>& val);
+		/// Prepares a unsigned long list.
 #endif
 
 	virtual void prepare(std::size_t pos, const bool&) = 0;
@@ -240,7 +249,7 @@ public:
 	virtual void prepare(std::size_t pos, const std::list<std::string>& val);
 		/// Prepares a character list.
 
-	virtual void prepare(std::size_t pos, const UTF16String&);
+	virtual void prepare(std::size_t pos, const UTF16String&) = 0;
 		/// Prepares a UTF16String.
 
 	virtual void prepare(std::size_t pos, const std::vector<UTF16String>& val);
@@ -308,9 +317,21 @@ public:
 
 	virtual void prepare(std::size_t pos, const std::deque<Time>& val);
 		/// Prepares a Time deque.
-	
+
 	virtual void prepare(std::size_t pos, const std::list<Time>& val);
 		/// Prepares a Time list.
+
+	virtual void prepare(std::size_t pos, const UUID&) = 0;
+		/// Prepares a UUID.
+
+	virtual void prepare(std::size_t pos, const std::vector<UUID>& val);
+		/// Prepares a UUID vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<UUID>& val);
+		/// Prepares a UUID deque.
+
+	virtual void prepare(std::size_t pos, const std::list<UUID>& val);
+		/// Prepares a UUID list.
 
 	virtual void prepare(std::size_t pos, const Any&) = 0;
 		/// Prepares an Any.
@@ -334,6 +355,296 @@ public:
 		/// Prepares a Var deque.
 
 	virtual void prepare(std::size_t pos, const std::list<Poco::Dynamic::Var>& val);
+		/// Prepares a Var list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Poco::Int8>&);
+		/// Prepares an Int8.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Poco::Int8>>& val);
+		/// Prepares an Int8 vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Poco::Int8>>& val);
+		/// Prepares an Int8 deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Poco::Int8>>& val);
+		/// Prepares an Int8 list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Poco::UInt8>&);
+		/// Prepares an UInt8.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Poco::UInt8>>& val);
+		/// Prepares an UInt8 vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Poco::UInt8>>& val);
+		/// Prepares an UInt8 deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Poco::UInt8>>& val);
+		/// Prepares an UInt8 list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Poco::Int16>&);
+		/// Prepares an Int16.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Poco::Int16>>& val);
+		/// Prepares an Int16 vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Poco::Int16>>& val);
+		/// Prepares an Int16 deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Poco::Int16>>& val);
+		/// Prepares an Int16 list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Poco::UInt16>&);
+		/// Prepares an UInt16.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Poco::UInt16>>& val);
+		/// Prepares an UInt16 vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Poco::UInt16>>& val);
+		/// Prepares an UInt16 deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Poco::UInt16>>& val);
+		/// Prepares an UInt16 list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Poco::Int32>&);
+		/// Prepares an Int32.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Poco::Int32>>& val);
+		/// Prepares an Int32 vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Poco::Int32>>& val);
+		/// Prepares an Int32 deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Poco::Int32>>& val);
+		/// Prepares an Int32 list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Poco::UInt32>&);
+		/// Prepares an UInt32.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Poco::UInt32>>& val);
+		/// Prepares an UInt32 vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Poco::UInt32>>& val);
+		/// Prepares an UInt32 deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Poco::UInt32>>& val);
+		/// Prepares an UInt32 list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Poco::Int64>&);
+		/// Prepares an Int64.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Poco::Int64>>& val);
+		/// Prepares an Int64 vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Poco::Int64>>& val);
+		/// Prepares an Int64 deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Poco::Int64>>& val);
+		/// Prepares an Int64 list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Poco::UInt64>&);
+		/// Prepares an UInt64.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Poco::UInt64>>& val);
+		/// Prepares an UInt64 vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Poco::UInt64>>& val);
+		/// Prepares an UInt64 deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Poco::UInt64>>& val);
+		/// Prepares an UInt64 list.
+
+#ifndef POCO_INT64_IS_LONG
+	virtual void prepare(std::size_t pos, const Poco::Nullable<long>&);
+		/// Prepares a long.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<unsigned long>&);
+		/// Prepares an unsigned long.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<long>>& val);
+		/// Prepares a long vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<long>>& val);
+		/// Prepares a long deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<long>>& val);
+		/// Prepares a long list.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<unsigned long>>& val);
+		/// Prepares a unsigned long vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<unsigned long>>& val);
+		/// Prepares a unsigned long deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<unsigned long>>& val);
+		/// Prepares a unsigned long list.
+#endif
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<bool>&);
+		/// Prepares a boolean.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<bool>>& val);
+		/// Prepares a boolean vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<bool>>& val);
+		/// Prepares a boolean deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<bool>>& val);
+		/// Prepares a boolean list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<float>&);
+		/// Prepares a float.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<float>>& val);
+		/// Prepares a float vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<float>>& val);
+		/// Prepares a float deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<float>>& val);
+		/// Prepares a float list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<double>&);
+		/// Prepares a double.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<double>>& val);
+		/// Prepares a double vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<double>>& val);
+		/// Prepares a double deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<double>>& val);
+		/// Prepares a double list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<char>&);
+		/// Prepares a single character.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<char>>& val);
+		/// Prepares a character vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<char>>& val);
+		/// Prepares a character deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<char>>& val);
+		/// Prepares a character list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<std::string>&);
+		/// Prepares a string.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<std::string>>& val);
+		/// Prepares a string vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<std::string>>& val);
+		/// Prepares a string deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<std::string>>& val);
+		/// Prepares a character list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<UTF16String>&);
+		/// Prepares a UTF16String.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<UTF16String>>& val);
+		/// Prepares a UTF16String vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<UTF16String>>& val);
+		/// Prepares a UTF16String deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<UTF16String>>& val);
+		/// Prepares a UTF16String list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<BLOB>&);
+		/// Prepares a BLOB.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<CLOB>&);
+		/// Prepares a CLOB.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<BLOB>>& val);
+		/// Prepares a BLOB vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<BLOB>>& val);
+		/// Prepares a BLOB deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<BLOB>>& val);
+		/// Prepares a BLOB list.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<CLOB>>& val);
+		/// Prepares a CLOB vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<CLOB>>& val);
+		/// Prepares a CLOB deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<CLOB>>& val);
+		/// Prepares a CLOB list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<DateTime>&);
+		/// Prepares a DateTime.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<DateTime>>& val);
+		/// Prepares a DateTime vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<DateTime>>& val);
+		/// Prepares a DateTime deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<DateTime>>& val);
+		/// Prepares a DateTime list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Date>&);
+		/// Prepares a Date.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Date>>& val);
+		/// Prepares a Date vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Date>>& val);
+		/// Prepares a Date deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Date>>& val);
+		/// Prepares a Date list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Time>&);
+		/// Prepares a Time.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Time>>& val);
+		/// Prepares a Time vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Time>>& val);
+		/// Prepares a Time deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Time>>& val);
+		/// Prepares a Time list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<UUID>&);
+		/// Prepares a UUID.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<UUID>>& val);
+		/// Prepares a UUID vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<UUID>>& val);
+		/// Prepares a UUID deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<UUID>>& val);
+		/// Prepares a UUID list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Any>&);
+		/// Prepares an Any.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Any>>& val);
+		/// Prepares an Any vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Any>>& val);
+		/// Prepares an Any deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Any>>& val);
+		/// Prepares an Any list.
+
+	virtual void prepare(std::size_t pos, const Poco::Nullable<Poco::Dynamic::Var>&);
+		/// Prepares a Var.
+
+	virtual void prepare(std::size_t pos, const std::vector<Poco::Nullable<Poco::Dynamic::Var>>& val);
+		/// Prepares a Var vector.
+
+	virtual void prepare(std::size_t pos, const std::deque<Poco::Nullable<Poco::Dynamic::Var>>& val);
+		/// Prepares a Var deque.
+
+	virtual void prepare(std::size_t pos, const std::list<Poco::Nullable<Poco::Dynamic::Var>>& val);
 		/// Prepares a Var list.
 
 	void setLength(Poco::UInt32 length);

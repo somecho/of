@@ -1,8 +1,6 @@
 //
 // SessionFactory.cpp
 //
-// $Id: //poco/Main/Data/src/SessionFactory.cpp#6 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  SessionFactory
@@ -63,27 +61,30 @@ void SessionFactory::remove(const std::string& key)
 
 Session SessionFactory::create(const std::string& key,
 	const std::string& connectionString,
-	std::size_t timeout)
+	std::size_t loginTimeout)
 {
-	Poco::FastMutex::ScopedLock lock(_mutex);
-	Connectors::iterator it = _connectors.find(key);
-	poco_assert (_connectors.end() != it);
-
-	return Session(it->second.ptrSI->createSession(connectionString, timeout));
+	Poco::SharedPtr<Connector> ptrSI;
+	{
+		Poco::FastMutex::ScopedLock lock(_mutex);
+		Connectors::iterator it = _connectors.find(key);
+		if (_connectors.end() == it) throw Poco::NotFoundException(key);
+		ptrSI = it->second.ptrSI;
+	}
+	return Session(ptrSI->createSession(connectionString, loginTimeout));
 }
 
 
 Session SessionFactory::create(const std::string& uri,
-	std::size_t timeout)
+	std::size_t loginTimeout)
 {
 	URI u(uri);
 	poco_assert (!u.getPath().empty());
-	return create(u.getScheme(), u.getPath().substr(1), timeout);
+	return create(u.getScheme(), u.getPath().substr(1), loginTimeout);
 }
 
 
-SessionFactory::SessionInfo::SessionInfo(Connector* pSI): 
-	cnt(1), 
+SessionFactory::SessionInfo::SessionInfo(Connector* pSI):
+	cnt(1),
 	ptrSI(pSI)
 {
 }

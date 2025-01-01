@@ -1,8 +1,6 @@
 //
 // Event_WIN32.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Event_WIN32.cpp#1 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  Event
@@ -20,9 +18,9 @@
 namespace Poco {
 
 
-EventImpl::EventImpl(EventTypeImpl type)
+EventImpl::EventImpl(bool autoReset)
 {
-	_event = CreateEventW(NULL, type == EVENT_AUTORESET_IMPL ? FALSE : TRUE, FALSE, NULL);
+	_event = CreateEventW(NULL, autoReset ? FALSE : TRUE, FALSE, NULL);
 	if (!_event)
 		throw SystemException("cannot create event");
 }
@@ -48,14 +46,15 @@ void EventImpl::waitImpl()
 
 bool EventImpl::waitImpl(long milliseconds)
 {
-	switch (WaitForSingleObject(_event, milliseconds + 1))
+	poco_assert(milliseconds != INFINITE);
+	switch (WaitForSingleObject(_event, milliseconds ? milliseconds : 1))
 	{
 	case WAIT_TIMEOUT:
 		return false;
 	case WAIT_OBJECT_0:
 		return true;
 	default:
-		throw SystemException("wait for event failed");		
+		throw SystemException("wait for event failed");
 	}
 }
 

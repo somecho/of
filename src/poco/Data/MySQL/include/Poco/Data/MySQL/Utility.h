@@ -1,9 +1,7 @@
 //
 // Utility.h
 //
-// $Id: //poco/Main/Data/MySQL/include/Poco/Data/MySQL/Utility.h#2 $
-//
-// Library: MySQL
+// Library: Data/MySQL
 // Package: MySQL
 // Module:  Utility
 //
@@ -22,10 +20,7 @@
 
 #include "Poco/Data/MySQL/MySQL.h"
 #include "Poco/Data/Session.h"
-
-
-struct st_mysql;
-typedef struct st_mysql MYSQL;
+#include <mysql/mysql.h>
 
 
 namespace Poco {
@@ -37,7 +32,6 @@ class MySQL_API Utility
 	/// Various utility functions for MySQL.
 {
 public:
-
 	static std::string serverInfo(MYSQL* pHandle);
 		/// Returns server info.
 
@@ -55,9 +49,6 @@ public:
 
 	static std::string hostInfo(Poco::Data::Session& session);
 		/// Returns host info.
-
-	static bool hasMicrosecond();
-		/// Returns true if microseconds are supported.
 
 	static MYSQL* handle(Poco::Data::Session& session);
 		/// Returns native MySQL handle for the session.

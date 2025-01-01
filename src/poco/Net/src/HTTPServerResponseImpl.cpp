@@ -1,8 +1,6 @@
 //
 // HTTPServerResponseImpl.cpp
 //
-// $Id: //poco/1.4/Net/src/HTTPServerResponseImpl.cpp#2 $
-//
 // Library: Net
 // Package: HTTPServer
 // Module:  HTTPServerResponseImpl
@@ -30,6 +28,8 @@
 #include "Poco/FileStream.h"
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/DateTimeFormat.h"
+#include "Poco/Error.h"
+#include "Poco/Net/NetException.h"
 
 
 using Poco::File;
@@ -39,6 +39,8 @@ using Poco::StreamCopier;
 using Poco::OpenFileException;
 using Poco::DateTimeFormatter;
 using Poco::DateTimeFormat;
+using Poco::Error;
+using namespace std::string_literals;
 
 
 namespace Poco {
@@ -84,13 +86,13 @@ std::ostream& HTTPServerResponseImpl::send()
 	{
 		HTTPHeaderOutputStream hs(_session);
 		write(hs);
-		_pStream = new HTTPChunkedOutputStream(_session);
+		_pStream = new HTTPChunkedOutputStream(_session, &_session.responseTrailer());
 	}
 	else if (hasContentLength())
 	{
 		Poco::CountingOutputStream cs;
 		write(cs);
-#if defined(POCO_HAVE_INT64)	
+#if defined(POCO_HAVE_INT64)
 		_pStream = new HTTPFixedLengthOutputStream(_session, getContentLength64() + cs.chars());
 #else
 		_pStream = new HTTPFixedLengthOutputStream(_session, getContentLength() + cs.chars());
@@ -114,8 +116,8 @@ void HTTPServerResponseImpl::sendFile(const std::string& path, const std::string
 	File f(path);
 	Timestamp dateTime    = f.getLastModified();
 	File::FileSize length = f.getSize();
-	set("Last-Modified", DateTimeFormatter::format(dateTime, DateTimeFormat::HTTP_FORMAT));
-#if defined(POCO_HAVE_INT64)	
+	set("Last-Modified"s, DateTimeFormatter::format(dateTime, DateTimeFormat::HTTP_FORMAT));
+#if defined(POCO_HAVE_INT64)
 	setContentLength64(length);
 #else
 	setContentLength(static_cast<int>(length));
@@ -130,7 +132,19 @@ void HTTPServerResponseImpl::sendFile(const std::string& path, const std::string
 		write(*_pStream);
 		if (_pRequest && _pRequest->getMethod() != HTTPRequest::HTTP_HEAD)
 		{
+#ifdef POCO_HAVE_SENDFILE
+			_pStream->flush(); // flush the HTTP headers to the socket, required by HTTP 1.0 and above
+
+			Poco::IntPtr sent = 0;
+			Poco::IntPtr offset = 0;
+			while (sent < length)
+			{
+				offset = sent;
+				sent += _session.socket().sendFile(istr, offset);
+			}
+#else
 			StreamCopier::copyStream(istr, *_pStream);
+#endif
 		}
 	}
 	else throw OpenFileException(path);
@@ -143,7 +157,7 @@ void HTTPServerResponseImpl::sendBuffer(const void* pBuffer, std::size_t length)
 
 	setContentLength(static_cast<int>(length));
 	setChunkedTransferEncoding(false);
-	
+
 	_pStream = new HTTPHeaderOutputStream(_session);
 	write(*_pStream);
 	if (_pRequest && _pRequest->getMethod() != HTTPRequest::HTTP_HEAD)
@@ -161,7 +175,7 @@ void HTTPServerResponseImpl::redirect(const std::string& uri, HTTPStatus status)
 	setChunkedTransferEncoding(false);
 
 	setStatusAndReason(status);
-	set("Location", uri);
+	set("Location"s, uri);
 
 	_pStream = new HTTPHeaderOutputStream(_session);
 	write(*_pStream);
@@ -171,12 +185,12 @@ void HTTPServerResponseImpl::redirect(const std::string& uri, HTTPStatus status)
 void HTTPServerResponseImpl::requireAuthentication(const std::string& realm)
 {
 	poco_assert (!_pStream);
-	
+
 	setStatusAndReason(HTTPResponse::HTTP_UNAUTHORIZED);
 	std::string auth("Basic realm=\"");
 	auth.append(realm);
 	auth.append("\"");
-	set("WWW-Authenticate", auth);
+	set("WWW-Authenticate"s, auth);
 }
 
 

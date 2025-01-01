@@ -1,8 +1,6 @@
 //
 // Driver.cpp
 //
-// $Id: //poco/1.4/NetSSL_Win/testsuite/src/Driver.cpp#1 $
-//
 // Console-based test driver for Poco NetSSL.
 //
 // Copyright (c) 2006-2014, Applied Informatics Software Engineering GmbH.
@@ -41,7 +39,7 @@ public:
 		runner.addTest("NetSSLTestSuite", NetSSLTestSuite::suite());
 		return runner.run(_targs) ? 0 : 1;
 	}
-	
+
 	void setup(int argc, char** argv)
 	{
 		init(1, argv);
@@ -55,7 +53,7 @@ protected:
 		loadConfiguration(); // load default configuration files, if present
 		Poco::Util::Application::initialize(self);
 	}
-	
+
 private:
 	std::vector<std::string> _targs;
 };

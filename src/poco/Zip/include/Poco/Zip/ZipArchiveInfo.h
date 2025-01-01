@@ -1,18 +1,16 @@
 //
 // ZipArchiveInfo.h
 //
-// $Id: //poco/1.4/Zip/include/Poco/Zip/ZipArchiveInfo.h#1 $
-//
 // Library: Zip
 // Package: Zip
-// Module:	ZipArchiveInfo
+// Module:  ZipArchiveInfo
 //
 // Definition of the ZipArchiveInfo class.
 //
 // Copyright (c) 2007, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
-// SPDX-License-Identifier: BSL-1.0
+// SPDX-License-Identifier:	BSL-1.0
 //
 
 
@@ -83,7 +81,7 @@ public:
 
 	void setHeaderOffset(std::streamoff val);
 		/// Sets the offset of the header in relation to the begin of this disk
-	
+
 	std::string createHeader() const;
 		/// Creates a header
 
@@ -113,9 +111,9 @@ private:
 		FULLHEADER_SIZE = 22
 	};
 
-	char		   _rawInfo[FULLHEADER_SIZE];
+	char           _rawInfo[FULLHEADER_SIZE];
 	std::streamoff _startPos;
-	std::string	   _comment;
+	std::string    _comment;
 };
 
 
@@ -136,10 +134,10 @@ public:
 	~ZipArchiveInfo64();
 		/// Destroys the ZipArchiveInfo64.
 
-	void getVersionMadeBy(int& major, int& minor);	
+	Poco::UInt16 getVersionMadeBy() const;
 		/// The ZIP version used to create the file
 
-	void getRequiredVersion(int& major, int& minor);
+	Poco::UInt16 getRequiredVersion() const;
 		/// The minimum version required to extract the data
 
 	Poco::UInt32 getDiskNumber() const;
@@ -159,7 +157,7 @@ public:
 
 	std::streamoff getCentralDirectoryOffset() const;
 		/// Returns the offset of the central directory from beginning of first disk
-	
+
 	std::streamoff getHeaderOffset() const;
 		/// Returns the offset of the header in relation to the begin of this disk
 
@@ -177,7 +175,7 @@ public:
 
 	void setHeaderOffset(std::streamoff val);
 		/// Sets the offset of the header in relation to the begin of this disk
-	
+
 	void setTotalNumberOfDisks(Poco::UInt32 val);
 		/// Sets the offset of the central directory from beginning of first disk
 
@@ -211,7 +209,7 @@ private:
 		CENTRALDIRSTARTOFFSET_POS = CENTRALDIRSIZE_POS + CENTRALDIRSIZE_SIZE,
 		CENTRALDIRSTARTOFFSET_SIZE = 8,
 		FULL_HEADER_SIZE = 56,
- 
+
 		LOCATOR_HEADER_POS = 0,
 		NUMBEROFENDOFCENTRALDIRDISK_POS = LOCATOR_HEADER_POS + ZipCommon::HEADER_SIZE,
 		NUMBEROFENDOFCENTRALDIRDISK_SIZE = 4,
@@ -219,13 +217,13 @@ private:
 		ENDOFCENTRALDIROFFSET_SIZE = 8,
 		TOTALNUMBEROFENDDISKS_POS = ENDOFCENTRALDIROFFSET_POS + ENDOFCENTRALDIROFFSET_SIZE,
 		TOTALNUMBEROFENDDISKS_SIZE = 4,
-			   
+
 		FULL_LOCATOR_SIZE = 20
 	};
 
-	char		   _rawInfo[FULL_HEADER_SIZE];
-	std::string	   _extraField;
-	char		   _locInfo[FULL_LOCATOR_SIZE];
+	char           _rawInfo[FULL_HEADER_SIZE];
+	std::string     _extraField;
+	char            _locInfo[FULL_LOCATOR_SIZE];
 	std::streamoff _startPos;
 };
 
@@ -234,6 +232,15 @@ private:
 // inlines
 //
 
+inline Poco::UInt16 ZipArchiveInfo64::getVersionMadeBy() const
+{
+	return ZipUtil::get16BitValue(_rawInfo, VERSIONMADEBY_POS);
+}
+
+inline Poco::UInt16 ZipArchiveInfo64::getRequiredVersion() const
+{
+	return ZipUtil::get16BitValue(_rawInfo, VERSION_NEEDED_POS);
+}
 
 inline Poco::UInt16 ZipArchiveInfo::getDiskNumber() const
 {

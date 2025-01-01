@@ -1,8 +1,6 @@
 //
 // ActiveDispatcher.cpp
 //
-// $Id: //poco/1.4/Foundation/src/ActiveDispatcher.cpp#1 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  ActiveObjects
@@ -31,16 +29,16 @@ namespace
 			_pRunnable(pRunnable)
 		{
 		}
-		
+
 		ActiveRunnableBase::Ptr runnable() const
 		{
 			return _pRunnable;
 		}
-		
+
 	private:
 		ActiveRunnableBase::Ptr _pRunnable;
 	};
-	
+
 	class StopNotification: public Notification
 	{
 	};
@@ -96,6 +94,8 @@ void ActiveDispatcher::run()
 		ActiveRunnableBase::Ptr pRunnable = pMethodNf->runnable();
 		pRunnable->duplicate(); // run will release
 		pRunnable->run();
+		pRunnable = 0;
+		pNf = 0;
 		pNf = _queue.waitDequeueNotification();
 	}
 }

@@ -1,8 +1,6 @@
 //
 // Checksum.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Checksum.cpp#1 $
-//
 // Library: Foundation
 // Package: Core
 // Module:  Checksum
@@ -18,7 +16,7 @@
 #if defined(POCO_UNBUNDLED)
 #include <zlib.h>
 #else
-#include "Poco/zlib.h"
+#include "zlib.h"
 #endif
 
 

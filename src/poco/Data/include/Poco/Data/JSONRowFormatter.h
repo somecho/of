@@ -1,8 +1,6 @@
 //
 // JSONRowFormatter.h
 //
-// $Id: //poco/Main/Data/include/Poco/Data/JSONRowFormatter.h#9 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  JSONRowFormatter
@@ -70,7 +68,7 @@ class Data_API JSONRowFormatter: public Poco::Data::RowFormatter
 	///        ]
 	///      }
 	///
-	/// Total row count will be specified by the Poco::DataRecordSet. Note, however, that this is
+	/// Total row count will be specified by the Poco::SQLRecordSet. Note, however, that this is
 	/// not possible to do accurately in case of result set paging. For those cases, there is
 	/// setTotalRowCount() member function, which allows to explicitly set the total row count.
 	/// If the total row count is preset on the formatter, the Data framework shall not interfere.
@@ -100,25 +98,25 @@ public:
 		///   JSON_FMT_MODE_COLUMN_NAMES
 		///   JSON_FMT_MODE_FULL
 
-	bool printRowCount();
+	bool printRowCount() const;
 		/// Returns true if row count printing is enabled,
 		/// false otherwise.
 
-	bool printColumnNames();
+	bool printColumnNames() const;
 		/// Returns true if column names printing is enabled,
 		/// false otherwise.
 
-	bool isSmall();
+	bool isSmall() const;
 		/// Returns true if compact mode formatting is enabled,
 		/// false otherwise.
 
-	bool isFull();
+	bool isFull() const;
 		/// Returns true if full mode formatting is enabled,
 		/// false otherwise.
 
 
 private:
-	void adjustPrefix();
+	void adjustPrefix() const;
 
 	NameVecPtr _pNames;
 	int        _mode;
@@ -131,25 +129,25 @@ private:
 //
 
 
-inline bool JSONRowFormatter::printRowCount()
+inline bool JSONRowFormatter::printRowCount() const
 {
 	return (_mode & JSON_FMT_MODE_ROW_COUNT) != 0;
 }
 
 
-inline bool JSONRowFormatter::printColumnNames()
+inline bool JSONRowFormatter::printColumnNames() const
 {
 	return (_mode & JSON_FMT_MODE_COLUMN_NAMES) != 0;
 }
 
 
-inline bool JSONRowFormatter::isSmall()
+inline bool JSONRowFormatter::isSmall() const
 {
 	return (_mode & JSON_FMT_MODE_SMALL) != 0;
 }
 
 
-inline bool JSONRowFormatter::isFull()
+inline bool JSONRowFormatter::isFull() const
 {
 	return (_mode & JSON_FMT_MODE_FULL) != 0;
 }

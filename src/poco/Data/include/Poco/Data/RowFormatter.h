@@ -1,8 +1,6 @@
 //
 // RowFormatter.h
 //
-// $Id: //poco/Main/Data/include/Poco/Data/RowFormatter.h#1 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  RowFormatter
@@ -40,7 +38,7 @@ class Data_API RowFormatter
 	/// Row formatter can be either passed to the RecordSet at construction time,
 	/// like in the following example:
 	///
-	/// RecordSet rs(session, "SELECT * FROM Table", new MyRowFormater);
+	/// RecordSet rs(session. "SELECT * FROM Table", new MyRowFormater);
 	///
 	/// or it can be supplied to the statement as in the following example:
 	///
@@ -51,9 +49,9 @@ class Data_API RowFormatter
 	/// Statement always has the ownership of the row formatter and shares
 	/// it with rows through RecordSet.
 	///
-	/// To accommodate for various formatting needs, a formatter can operate in two modes:
-	/// 
-	///	  - progressive: formatted individual row strings are generated and returned from each 
+	/// To accomodate for various formatting needs, a formatter can operate in two modes:
+	///
+	///	  - progressive: formatted individual row strings are gemerated and returned from each
 	///     call to formatValues;
 	///     std::string& formatNames(const NameVecPtr, std::string&) and
 	///     std::string& formatValues(const ValueVec&, std::string&) member calls should be
@@ -65,15 +63,15 @@ class Data_API RowFormatter
 	///     void formatValues(const ValueVec&) member calls should be used in this case
 	///
 	/// When formatter is used in conjunction with Row/RecordSet, the formatting members corresponding
-	/// to the formatter mode are expected to be implemented. If a call is propagated to this parent
+	/// to the formater mode are expected to be implemented. If a call is propagated to this parent
 	/// class, the functions do nothing or silently return empty string respectively.
 	///
 {
 public:
-	typedef SharedPtr<RowFormatter>              Ptr;
-	typedef std::vector<std::string>             NameVec;
-	typedef SharedPtr<std::vector<std::string> > NameVecPtr;
-	typedef std::vector<Poco::Dynamic::Var>      ValueVec;
+	using Ptr = SharedPtr<RowFormatter>;
+	using NameVec = std::vector<std::string>;
+	using NameVecPtr = SharedPtr<std::vector<std::string>>;
+	using ValueVec = std::vector<Poco::Dynamic::Var>;
 
 	static const int INVALID_ROW_COUNT = -1;
 
@@ -108,7 +106,7 @@ public:
 		/// The default implementation does nothing.
 
 	virtual const std::string& toString();
-		/// Throws NotImplementedException. Formatters operating in bulk mode should 
+		/// Throws NotImplementedException. Formatters operating in bulk mode should
 		/// implement this member function to return valid pointer to the formatted result.
 
 	virtual int rowCount() const;
@@ -134,24 +132,23 @@ public:
 		/// to empty strings and row count to INVALID_ROW_COUNT.
 
 	Mode getMode() const;
-		/// Returns the formatter mode.
+		/// Returns the formater mode.
 
 	void setMode(Mode mode);
-		/// Sets the formatter mode.
+		/// Sets the fromatter mode.
 
 protected:
 
-	void setPrefix(const std::string& prefix);
+	virtual void adjustPrefix() const;
+		/// Adjusts the prefix, if needed
+		/// (eg. to contain the total row count);
+		/// default no-op.
+
+	void setPrefix(const std::string& prefix) const;
 		/// Sets the prefix for the formatter.
 
 	void setPostfix(const std::string& postfix);
 		/// Sets the postfix for the formatter
-
-	virtual void adjustPrefix();
-		/// Adjusts prefix after it has been set.
-		/// No-op here, called by setTotalRowCount and
-		/// should be implemented by inheriting classes, 
-		/// if needed.
 
 private:
 
@@ -180,11 +177,10 @@ inline int RowFormatter::getTotalRowCount() const
 inline void RowFormatter::setTotalRowCount(int count)
 {
 	_totalRowCount = count;
-	adjustPrefix();
 }
 
 
-inline void RowFormatter::setPrefix(const std::string& prefix)
+inline void RowFormatter::setPrefix(const std::string& prefix) const
 {
 	_prefix = prefix;
 }
@@ -198,6 +194,7 @@ inline void RowFormatter::setPostfix(const std::string& postfix)
 
 inline const std::string& RowFormatter::prefix() const
 {
+	adjustPrefix();
 	return _prefix;
 }
 
@@ -217,11 +214,6 @@ inline RowFormatter::Mode RowFormatter::getMode() const
 inline void RowFormatter::setMode(Mode mode)
 {
 	_mode = mode;
-}
-
-
-inline void RowFormatter::adjustPrefix()
-{
 }
 
 

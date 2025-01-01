@@ -1,8 +1,6 @@
 //
 // FPETest.cpp
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/FPETest.cpp#1 $
-//
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -14,6 +12,12 @@
 #include "CppUnit/TestCaller.h"
 #include "CppUnit/TestSuite.h"
 #include "Poco/FPEnvironment.h"
+
+
+#ifdef POCO_COMPILER_MSVC
+#pragma warning(push)
+#pragma warning(disable : 4723) // discarding return value of function with 'nodiscard' attribute
+#endif // POCO_COMPILER_MSVC
 
 
 using Poco::FPE;
@@ -36,22 +40,22 @@ void FPETest::testClassify()
 		float b = 0.0f;
 		float nan = a/b;
 		float inf = 1.0f/b;
-		
-		assert (FPE::isNaN(nan));
-		assert (!FPE::isNaN(a));
-		assert (FPE::isInfinite(inf));
-		assert (!FPE::isInfinite(a));
+
+		assertTrue (FPE::isNaN(nan));
+		assertTrue (!FPE::isNaN(a));
+		assertTrue (FPE::isInfinite(inf));
+		assertTrue (!FPE::isInfinite(a));
 	}
 	{
 		double a = 0;
 		double b = 0;
 		double nan = a/b;
 		double inf = 1.0/b;
-		
-		assert (FPE::isNaN(nan));
-		assert (!FPE::isNaN(a));
-		assert (FPE::isInfinite(inf));
-		assert (!FPE::isInfinite(a));
+
+		assertTrue (FPE::isNaN(nan));
+		assertTrue (!FPE::isNaN(a));
+		assertTrue (FPE::isInfinite(inf));
+		assertTrue (!FPE::isInfinite(a));
 	}
 }
 
@@ -88,21 +92,27 @@ void FPETest::testFlags()
 	volatile double b = 0;
 	volatile double c = div(a, b);
 
-	assert (FPE::isFlag(FPE::FP_DIVIDE_BY_ZERO));
-	assert (FPE::isInfinite(c)); 
+#if !defined(POCO_NO_FPENVIRONMENT)
+    assertTrue (FPE::isFlag(FPE::FP_DIVIDE_BY_ZERO));
+#endif
+	assertTrue (FPE::isInfinite(c));
 
 	FPE::clearFlags();
 	a = 1.23456789e210;
 	b = 9.87654321e210;
 	c = mult(a, b);
-	assert (FPE::isFlag(FPE::FP_OVERFLOW));
+#if !defined(POCO_NO_FPENVIRONMENT)
+	assertTrue (FPE::isFlag(FPE::FP_OVERFLOW));
+#endif
 	assertEqualDelta(c, c, 0);
 
 	FPE::clearFlags();
 	a = 1.23456789e-99;
 	b = 9.87654321e210;
-	c = div(a, b);	
-	assert (FPE::isFlag(FPE::FP_UNDERFLOW));
+	c = div(a, b);
+#if !defined(POCO_NO_FPENVIRONMENT)
+	assertTrue (FPE::isFlag(FPE::FP_UNDERFLOW));
+#endif
 	assertEqualDelta(c, c, 0);
 }
 
@@ -118,14 +128,14 @@ void FPETest::testFlags()
 
 void FPETest::testRound()
 {
-#if !defined(__osf__) && !defined(__VMS)
-	FPE::setRoundingMode(FPE::FP_ROUND_TONEAREST);			
-	assert (FPE::getRoundingMode() == FPE::FP_ROUND_TONEAREST);
+#if !defined(__osf__) && !defined(__VMS) && !defined(POCO_NO_FPENVIRONMENT)
+	FPE::setRoundingMode(FPE::FP_ROUND_TONEAREST);
+	assertTrue (FPE::getRoundingMode() == FPE::FP_ROUND_TONEAREST);
 	{
 		FPE env(FPE::FP_ROUND_TOWARDZERO);
-		assert (FPE::getRoundingMode() == FPE::FP_ROUND_TOWARDZERO);
+		assertTrue (FPE::getRoundingMode() == FPE::FP_ROUND_TOWARDZERO);
 	}
-	assert (FPE::getRoundingMode() == FPE::FP_ROUND_TONEAREST);	
+	assertTrue (FPE::getRoundingMode() == FPE::FP_ROUND_TONEAREST);
 #endif
 }
 
@@ -150,3 +160,8 @@ CppUnit::Test* FPETest::suite()
 
 	return pSuite;
 }
+
+
+#ifdef POCO_COMPILER_MSVC
+#pragma warning(pop)
+#endif // POCO_COMPILER_MSVC

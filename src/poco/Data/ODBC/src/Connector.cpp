@@ -1,9 +1,7 @@
 //
 // Connector.cpp
 //
-// $Id: //poco/Main/Data/ODBC/src/Connector.cpp#2 $
-//
-// Library: ODBC
+// Library: Data/ODBC
 // Package: ODBC
 // Module:  Connector
 //
@@ -19,7 +17,11 @@
 #include "Poco/Data/SessionFactory.h"
 
 
-const ODBCConnectorRegistrator pocoODBCConnectorRegistrator;
+#if POCO_DATA_SQL_SERVER_BIG_STRINGS
+	#pragma message ("MS SQLServer ODBC big string capability ENABLED")
+#else
+	#pragma message ("MS SQLServer ODBC big string capability DISABLED")
+#endif
 
 
 namespace Poco {
@@ -27,7 +29,8 @@ namespace Data {
 namespace ODBC {
 
 
-const std::string Connector::KEY(POCO_DATA_ODBC_CONNECTOR_NAME);
+const std::string Connector::KEY("ODBC");
+bool Connector::_bindStringToLongVarChar(true);
 
 
 Connector::Connector()
@@ -55,7 +58,13 @@ void Connector::registerConnector()
 
 void Connector::unregisterConnector()
 {
-	Poco::Data::SessionFactory::instance().remove(POCO_DATA_ODBC_CONNECTOR_NAME);
+	Poco::Data::SessionFactory::instance().remove(KEY);
+}
+
+
+void Connector::bindStringToLongVarChar(bool flag)
+{
+	_bindStringToLongVarChar = flag;
 }
 
 

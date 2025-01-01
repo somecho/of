@@ -1,8 +1,6 @@
 //
 // FileChannel.cpp
 //
-// $Id: //poco/1.4/Foundation/src/FileChannel.cpp#3 $
-//
 // Library: Foundation
 // Package: Logging
 // Module:  FileChannel
@@ -24,7 +22,6 @@
 #include "Poco/DateTime.h"
 #include "Poco/LocalDateTime.h"
 #include "Poco/String.h"
-#include "Poco/Timespan.h"
 #include "Poco/Exception.h"
 #include "Poco/Ascii.h"
 
@@ -42,15 +39,15 @@ const std::string FileChannel::PROP_PURGECOUNT   = "purgeCount";
 const std::string FileChannel::PROP_FLUSH        = "flush";
 const std::string FileChannel::PROP_ROTATEONOPEN = "rotateOnOpen";
 
-FileChannel::FileChannel(): 
+FileChannel::FileChannel():
 	_times("utc"),
 	_compress(false),
-	_flush(true),
+	_flush(false),
 	_rotateOnOpen(false),
-	_pFile(0),
-	_pRotateStrategy(0),
+	_pFile(nullptr),
+	_pRotateStrategy(new NullRotateStrategy()),
 	_pArchiveStrategy(new ArchiveByNumberStrategy),
-	_pPurgeStrategy(0)
+	_pPurgeStrategy(new NullPurgeStrategy())
 {
 }
 
@@ -59,12 +56,12 @@ FileChannel::FileChannel(const std::string& path):
 	_path(path),
 	_times("utc"),
 	_compress(false),
-	_flush(true),
+	_flush(false),
 	_rotateOnOpen(false),
-	_pFile(0),
-	_pRotateStrategy(0),
+	_pFile(nullptr),
+	_pRotateStrategy(new NullRotateStrategy()),
 	_pArchiveStrategy(new ArchiveByNumberStrategy),
-	_pPurgeStrategy(0)
+	_pPurgeStrategy(new NullPurgeStrategy())
 {
 }
 
@@ -88,7 +85,7 @@ FileChannel::~FileChannel()
 void FileChannel::open()
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	if (!_pFile)
 	{
 		_pFile = new LogFile(_path);
@@ -104,6 +101,8 @@ void FileChannel::open()
 				_pFile = new LogFile(_path);
 			}
 		}
+
+		_pFile = _pArchiveStrategy->open(_pFile);
 	}
 }
 
@@ -112,8 +111,11 @@ void FileChannel::close()
 {
 	FastMutex::ScopedLock lock(_mutex);
 
+	if (_pFile != nullptr)
+		_pArchiveStrategy->close();
+
 	delete _pFile;
-	_pFile = 0;
+	_pFile = nullptr;
 }
 
 
@@ -123,7 +125,7 @@ void FileChannel::log(const Message& msg)
 
 	FastMutex::ScopedLock lock(_mutex);
 
-	if (_pRotateStrategy && _pArchiveStrategy && _pRotateStrategy->mustRotate(_pFile))
+	if (_pRotateStrategy->mustRotate(_pFile))
 	{
 		try
 		{
@@ -142,7 +144,7 @@ void FileChannel::log(const Message& msg)
 	_pFile->write(msg.getText(), _flush);
 }
 
-	
+
 void FileChannel::setProperty(const std::string& name, const std::string& value)
 {
 	FastMutex::ScopedLock lock(_mutex);
@@ -211,7 +213,7 @@ Timestamp FileChannel::creationDate() const
 		return 0;
 }
 
-	
+
 UInt64 FileChannel::size() const
 {
 	if (_pFile)
@@ -227,26 +229,26 @@ const std::string& FileChannel::path() const
 }
 
 
-void FileChannel::setRotation(const std::string& rotation)
+RotateStrategy* FileChannel::createRotationStrategy(const std::string& rotation, const std::string& times) const
 {
 	std::string::const_iterator it  = rotation.begin();
 	std::string::const_iterator end = rotation.end();
-	int n = 0;
+	Poco::Int64 n = 0;
 	while (it != end && Ascii::isSpace(*it)) ++it;
 	while (it != end && Ascii::isDigit(*it)) { n *= 10; n += *it++ - '0'; }
 	while (it != end && Ascii::isSpace(*it)) ++it;
 	std::string unit;
 	while (it != end && Ascii::isAlpha(*it)) unit += *it++;
-	
+
 	RotateStrategy* pStrategy = 0;
 	if ((rotation.find(',') != std::string::npos) || (rotation.find(':') != std::string::npos))
 	{
-		if (_times == "utc")
+		if (times == "utc")
 			pStrategy = new RotateAtTimeStrategy<DateTime>(rotation);
-		else if (_times == "local")
+		else if (times == "local")
 			pStrategy = new RotateAtTimeStrategy<LocalDateTime>(rotation);
 		else
-			throw PropertyNotSupportedException("times", _times);
+			throw PropertyNotSupportedException("times", times);
 	}
 	else if (unit == "daily")
 		pStrategy = new RotateByIntervalStrategy(Timespan(1*Timespan::DAYS));
@@ -272,17 +274,64 @@ void FileChannel::setRotation(const std::string& rotation)
 		pStrategy = new RotateBySizeStrategy(n*1024*1024);
 	else if (unit.empty())
 		pStrategy = new RotateBySizeStrategy(n);
-	else if (unit != "never")
+	else if (unit == "never")
+		pStrategy = new NullRotateStrategy();
+	else
 		throw InvalidArgumentException("rotation", rotation);
+
+	return pStrategy;
+}
+
+
+void FileChannel::setRotationStrategy(RotateStrategy* strategy)
+{
+	poco_check_ptr(strategy);
+
 	delete _pRotateStrategy;
-	_pRotateStrategy = pStrategy;
+	_pRotateStrategy = strategy;
+}
+
+
+void FileChannel::setRotation(const std::string& rotation)
+{
+	setRotationStrategy(createRotationStrategy(rotation, _times));
 	_rotation = rotation;
+}
+
+
+ArchiveStrategy* FileChannel::createArchiveStrategy(const std::string& archive, const std::string& times) const
+{
+	ArchiveStrategy* pStrategy = nullptr;
+	if (archive == "number")
+	{
+		pStrategy = new ArchiveByNumberStrategy;
+	}
+	else if (archive == "timestamp")
+	{
+		if (times == "utc")
+			pStrategy = new ArchiveByTimestampStrategy<DateTime>;
+		else if (times == "local")
+			pStrategy = new ArchiveByTimestampStrategy<LocalDateTime>;
+		else
+			throw PropertyNotSupportedException("times", times);
+	}
+	else throw InvalidArgumentException("archive", archive);
+	return pStrategy;
+}
+
+
+void FileChannel::setArchiveStrategy(ArchiveStrategy* strategy)
+{
+	poco_check_ptr(strategy);
+
+	delete _pArchiveStrategy;
+	_pArchiveStrategy = strategy;
 }
 
 
 void FileChannel::setArchive(const std::string& archive)
 {
-	ArchiveStrategy* pStrategy = 0;
+	ArchiveStrategy* pStrategy = nullptr;
 	if (archive == "number")
 	{
 		pStrategy = new ArchiveByNumberStrategy;
@@ -308,71 +357,28 @@ void FileChannel::setCompress(const std::string& compress)
 {
 	_compress = icompare(compress, "true") == 0;
 	if (_pArchiveStrategy)
-		_pArchiveStrategy->compress(_compress);
+	_pArchiveStrategy->compress(_compress);
 }
 
 
 void FileChannel::setPurgeAge(const std::string& age)
 {
-	delete _pPurgeStrategy;
-	_pPurgeStrategy = 0;
-	_purgeAge = "none";
+	if (setNoPurge(age)) return;
 
-	if (age.empty() || 0 == icompare(age, "none"))
-		return;
+	std::string::const_iterator nextToDigit;
+	int num = extractDigit(age, &nextToDigit);
+	Timespan::TimeDiff factor = extractFactor(age, nextToDigit);
 
-	std::string::const_iterator it  = age.begin();
-	std::string::const_iterator end = age.end();
-	int n = 0;
-	while (it != end && Ascii::isSpace(*it)) ++it;
-	while (it != end && Ascii::isDigit(*it)) { n *= 10; n += *it++ - '0'; }
-	if (0 == n)
-		throw InvalidArgumentException("Zero is not valid purge age.");
-	
-	while (it != end && Ascii::isSpace(*it)) ++it;
-
-	std::string unit;
-	while (it != end && Ascii::isAlpha(*it)) unit += *it++;
-	
-	Timespan::TimeDiff factor = Timespan::SECONDS;
-	if (unit == "minutes")
-		factor = Timespan::MINUTES;
-	else if (unit == "hours")
-		factor = Timespan::HOURS;
-	else if (unit == "days")
-		factor = Timespan::DAYS;
-	else if (unit == "weeks")
-		factor = 7*Timespan::DAYS;
-	else if (unit == "months")
-		factor = 30*Timespan::DAYS;
-	else if (unit != "seconds")
-		throw InvalidArgumentException("purgeAge", age);
-
-	_pPurgeStrategy = new PurgeByAgeStrategy(Timespan(factor*n));
+	setPurgeStrategy(new PurgeByAgeStrategy(Timespan(num * factor)));
 	_purgeAge = age;
 }
 
 
 void FileChannel::setPurgeCount(const std::string& count)
 {
-	delete _pPurgeStrategy;
-	_pPurgeStrategy = 0;
-	_purgeAge = "none";
+	if (setNoPurge(count)) return;
 
-	if (count.empty() || 0 == icompare(count, "none"))
-		return;
-
-	std::string::const_iterator it  = count.begin();
-	std::string::const_iterator end = count.end();
-	int n = 0;
-	while (it != end && Ascii::isSpace(*it)) ++it;
-	while (it != end && Ascii::isDigit(*it)) { n *= 10; n += *it++ - '0'; }
-	if (0 == n)
-		throw InvalidArgumentException("Zero is not valid purge count.");
-	while (it != end && Ascii::isSpace(*it)) ++it;
-
-	delete _pPurgeStrategy;
-	_pPurgeStrategy = new PurgeByCountStrategy(n);
+	setPurgeStrategy(new PurgeByCountStrategy(extractDigit(count)));
 	_purgeCount = count;
 }
 
@@ -393,15 +399,84 @@ void FileChannel::purge()
 {
 	if (_pPurgeStrategy)
 	{
-		try
-		{
-			_pPurgeStrategy->purge(_path);
-		}
-		catch (...)
-		{
-		}
+	try
+	{
+		_pPurgeStrategy->purge(_path);
+	}
+	catch (...)
+	{
+	}
 	}
 }
+
+
+bool FileChannel::setNoPurge(const std::string& value)
+{
+	if (value.empty() || 0 == icompare(value, "none"))
+	{
+		delete _pPurgeStrategy;
+		_pPurgeStrategy = new NullPurgeStrategy();
+		_purgeAge = "none";
+		return true;
+	}
+	else return false;
+}
+
+
+int FileChannel::extractDigit(const std::string& value, std::string::const_iterator* nextToDigit) const
+{
+	std::string::const_iterator it  = value.begin();
+	std::string::const_iterator end = value.end();
+	int digit 						= 0;
+
+	while (it != end && Ascii::isSpace(*it)) ++it;
+	while (it != end && Ascii::isDigit(*it))
+	{
+		digit *= 10;
+		digit += *it++ - '0';
+	}
+
+	if (digit == 0)
+		throw InvalidArgumentException("Zero is not valid purge age.");
+
+	if (nextToDigit) *nextToDigit = it;
+	return digit;
+}
+
+
+void FileChannel::setPurgeStrategy(PurgeStrategy* strategy)
+{
+	poco_check_ptr(strategy);
+
+	delete _pPurgeStrategy;
+	_pPurgeStrategy = strategy;
+}
+
+
+Timespan::TimeDiff FileChannel::extractFactor(const std::string& value, std::string::const_iterator start) const
+{
+	while (start != value.end() && Ascii::isSpace(*start)) ++start;
+
+	std::string unit;
+	while (start != value.end() && Ascii::isAlpha(*start)) unit += *start++;
+
+	if (unit == "seconds")
+		return Timespan::SECONDS;
+	if (unit == "minutes")
+		return Timespan::MINUTES;
+	else if (unit == "hours")
+		return Timespan::HOURS;
+	else if (unit == "days")
+		return Timespan::DAYS;
+	else if (unit == "weeks")
+		return 7 * Timespan::DAYS;
+	else if (unit == "months")
+		return 30 * Timespan::DAYS;
+	else throw InvalidArgumentException("purgeAge", value);
+
+	return Timespan::TimeDiff();
+}
+
 
 
 } // namespace Poco

@@ -1,8 +1,6 @@
 //
 // NodeAppender.cpp
 //
-// $Id: //poco/1.4/XML/src/NodeAppender.cpp#1 $
-//
 // Library: XML
 // Package: DOM
 // Module:  NodeAppender
@@ -45,7 +43,7 @@ void NodeAppender::appendChild(Node* newChild)
 
 	if (static_cast<AbstractNode*>(newChild)->_pOwner != _pParent->_pOwner)
 		throw DOMException(DOMException::WRONG_DOCUMENT_ERR);
-		
+
 	if (newChild->nodeType() == Node::DOCUMENT_FRAGMENT_NODE)
 	{
 		AbstractContainerNode* pFrag = static_cast<AbstractContainerNode*>(newChild);
@@ -62,14 +60,14 @@ void NodeAppender::appendChild(Node* newChild)
 				pChild->_pParent = _pParent;
 				pChild = pChild->_pNext;
 			}
-			pFrag->_pFirstChild = 0;
+			pFrag->_pFirstChild = nullptr;
 		}
 	}
 	else
 	{
 		AbstractNode* pAN = static_cast<AbstractNode*>(newChild);
 		pAN->duplicate();
-		if (pAN->_pParent) 
+		if (pAN->_pParent)
 			pAN->_pParent->removeChild(pAN);
 		pAN->_pParent = _pParent;
 		if (_pLast)

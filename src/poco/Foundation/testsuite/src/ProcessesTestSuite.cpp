@@ -1,8 +1,6 @@
 //
 // ProcessesTestSuite.cpp
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/ProcessesTestSuite.cpp#1 $
-//
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -15,6 +13,8 @@
 #include "NamedMutexTest.h"
 #include "NamedEventTest.h"
 #include "SharedMemoryTest.h"
+#include "ProcessRunnerTest.h"
+#include "FileStreamRWLockTest.h"
 
 
 CppUnit::Test* ProcessesTestSuite::suite()
@@ -25,6 +25,8 @@ CppUnit::Test* ProcessesTestSuite::suite()
 	pSuite->addTest(NamedMutexTest::suite());
 	pSuite->addTest(NamedEventTest::suite());
 	pSuite->addTest(SharedMemoryTest::suite());
+	pSuite->addTest(ProcessRunnerTest::suite());
+	pSuite->addTest(FileStreamRWLockTest::suite());
 
 	return pSuite;
 }

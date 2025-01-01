@@ -1,8 +1,6 @@
 //
 // CoreTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/CoreTest.h#1 $
-//
 // Definition of the CoreTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -32,9 +30,13 @@ public:
 	void testFPE();
 	void testEnvironment();
 	void testBuffer();
+	void testFIFOBufferChar();
+	void testFIFOBufferInt();
+	void testFIFOBufferEOFAndError();
 	void testAtomicCounter();
 	void testNullable();
 	void testAscii();
+	void testSrcLoc();
 
 	void setUp();
 	void tearDown();
@@ -42,9 +44,13 @@ public:
 	static CppUnit::Test* suite();
 
 protected:
+	void onReadable(bool& b);
+	void onWritable(bool& b);
+
+private:
 	int _readableToNot;
-	int _writableToNot;
 	int _notToReadable;
+	int _writableToNot;
 	int _notToWritable;
 };
 

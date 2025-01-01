@@ -1,8 +1,6 @@
 //
 // HTTPBasicCredentials.cpp
 //
-// $Id: //poco/1.4/Net/src/HTTPBasicCredentials.cpp#3 $
-//
 // Library: Net
 // Package: HTTP
 // Module:  HTTPBasicCredentials
@@ -39,7 +37,7 @@ HTTPBasicCredentials::HTTPBasicCredentials()
 {
 }
 
-	
+
 HTTPBasicCredentials::HTTPBasicCredentials(const std::string& username, const std::string& password):
 	_username(username),
 	_password(password)
@@ -68,6 +66,14 @@ HTTPBasicCredentials::HTTPBasicCredentials(const std::string& authInfo)
 
 HTTPBasicCredentials::~HTTPBasicCredentials()
 {
+	clear();
+}
+
+
+void HTTPBasicCredentials::clear()
+{
+	Poco::secureClear(_username);
+	Poco::secureClear(_password);
 }
 
 
@@ -75,14 +81,14 @@ void HTTPBasicCredentials::setUsername(const std::string& username)
 {
 	_username = username;
 }
-	
-	
+
+
 void HTTPBasicCredentials::setPassword(const std::string& password)
 {
 	_password = password;
 }
-	
-	
+
+
 void HTTPBasicCredentials::authenticate(HTTPRequest& request) const
 {
 	std::ostringstream ostr;

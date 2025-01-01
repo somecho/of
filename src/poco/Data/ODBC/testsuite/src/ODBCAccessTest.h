@@ -1,8 +1,6 @@
 //
 // ODBCAccessTest.h
 //
-// $Id: //poco/Main/Data/ODBC/testsuite/src/ODBCAccessTest.h#4 $
-//
 // Definition of the ODBCAccessTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -27,19 +25,19 @@
 class ODBCAccessTest: public CppUnit::TestCase
 	/// MS Access ODBC test class
 	/// Tested:
-	/// 
+	///
 	/// Driver		|	DB		| OS
 	/// ------------+-----------+------------------------------------------
 	///	4.00.6305.00| Jet 4.0	| MS Windows XP Professional x64 v.2003/SP1
 {
 public:
 	ODBCAccessTest(const std::string& name);
-	~ODBCAccessTest();
+	~ODBCAccessTest() override;
 
 	void testSimpleAccess();
 
-	void setUp();
-	void tearDown();
+	void setUp() override;
+	void tearDown() override;
 
 	static CppUnit::Test* suite();
 

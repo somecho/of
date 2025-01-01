@@ -1,13 +1,9 @@
 //
 // MessageHeader.cpp
 //
-// $Id$
-//
 // Library: MongoDB
 // Package: MongoDB
 // Module:  MessageHeader
-//
-// Implementation of the MessageHeader class.
 //
 // Copyright (c) 2012, Applied Informatics Software Engineering GmbH.
 // and Contributors.
@@ -18,15 +14,17 @@
 
 #include "Poco/MongoDB/Message.h"
 #include "Poco/Exception.h"
-#include "Poco/Net/SocketStream.h"
-#include "Poco/StreamCopier.h"
 
 
 namespace Poco {
 namespace MongoDB {
 
 
-MessageHeader::MessageHeader(OpCode opCode) : _messageLength(0), _requestID(0), _responseTo(0), _opCode(opCode)
+MessageHeader::MessageHeader(OpCode opCode):
+	_messageLength(0),
+	_requestID(0),
+	_responseTo(0),
+	_opCode(opCode)
 {
 }
 
@@ -44,7 +42,7 @@ void MessageHeader::read(BinaryReader& reader)
 
 	Int32 opCode;
 	reader >> opCode;
-	_opCode = (OpCode) opCode;
+	_opCode = static_cast<OpCode>(opCode);
 
 	if (!reader.good())
 	{
@@ -58,7 +56,7 @@ void MessageHeader::write(BinaryWriter& writer)
 	writer << _messageLength;
 	writer << _requestID;
 	writer << _responseTo;
-	writer << (Int32) _opCode;
+	writer << static_cast<Int32>(_opCode);
 }
 
 

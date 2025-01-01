@@ -1,8 +1,6 @@
 //
 // TestDecorator.h
 //
-// $Id: //poco/1.4/CppUnit/include/CppUnit/TestDecorator.h#1 $
-//
 
 
 #ifndef CppUnit_TestDecorator_INCLUDED
@@ -33,13 +31,13 @@ class CppUnit_API TestDecorator: public Test
 public:
 	TestDecorator(Test* test);
 
-	virtual ~TestDecorator();
+	~TestDecorator() override;
 
-	int countTestCases();
+	int countTestCases() const override;
 
-	void run(TestResult* result);
+	void run(TestResult* result, const Test::Callback& callback = nullptr) override;
 
-	std::string toString();
+	std::string toString() const override;
 
 protected:
 	Test* _test;

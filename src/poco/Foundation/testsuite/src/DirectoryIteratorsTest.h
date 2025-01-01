@@ -1,8 +1,6 @@
 //
 // DirectoryIteratorsTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/DirectoryIteratorsTest.h#1 $
-//
 // Definition of the DirectoryIteratorsTest class.
 //
 // Copyright (c) 2012, Applied Informatics Software Engineering GmbH.
@@ -31,12 +29,12 @@ public:
 	void testSortedDirectoryIterator();
 	void testSimpleRecursiveDirectoryIterator();
 	void testSiblingsFirstRecursiveDirectoryIterator();
-	
+
 	void setUp();
 	void tearDown();
 
 	static CppUnit::Test* suite();
-	
+
 protected:
 	Poco::Path path() const;
 	void createSubdir(Poco::Path& p);

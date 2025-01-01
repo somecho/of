@@ -1,8 +1,6 @@
 //
 // ZipArchive.cpp
 //
-// $Id: //poco/1.4/Zip/src/ZipArchive.cpp#1 $
-//
 // Library: Zip
 // Package: Zip
 // Module:	ZipArchive
@@ -16,12 +14,16 @@
 
 #include "Poco/Zip/ZipArchive.h"
 #include "Poco/Zip/SkipCallback.h"
+#include "Poco/Zip/ZipException.h"
 #include "Poco/Exception.h"
 #include <cstring>
 
 
 namespace Poco {
 namespace Zip {
+
+
+const std::string ZipArchive::EMPTY_COMMENT;
 
 
 ZipArchive::ZipArchive(std::istream& in):
@@ -61,9 +63,36 @@ ZipArchive::~ZipArchive()
 }
 
 
+void ZipArchive::checkConsistency()
+{
+	for (const auto& [filename, dirHeader]: _infos)
+	{
+		Poco::UInt32 dirCRC = dirHeader.getCRC();
+		Poco::UInt64 dirUncompressedSize = dirHeader.getUncompressedSize();
+
+		const auto dataIt = _entries.find(filename);
+		if (dataIt != _entries.end())
+		{
+			const ZipLocalFileHeader &dataHeader = dataIt->second;
+
+			Poco::UInt32 dataCRC = dataHeader.getCRC();
+			Poco::UInt64 dataUncompressedSize = dataHeader.getUncompressedSize();
+
+			if (dataCRC != dirCRC)
+				throw ZipException("CRC-32 mismatch: ", filename);
+
+			if (dataUncompressedSize != dirUncompressedSize)
+				throw ZipException("Uncompressed size mismatch: ", filename);
+		}
+	}
+
+}
+
+
 void ZipArchive::parse(std::istream& in, ParseCallback& pc)
 {
 	// read 4 bytes
+	bool haveSynced = false;
 	while (in.good() && !in.eof())
 	{
 		char header[ZipCommon::HEADER_SIZE]={'\x00', '\x00', '\x00', '\x00'};
@@ -74,6 +103,7 @@ void ZipArchive::parse(std::istream& in, ParseCallback& pc)
 		{
 			ZipLocalFileHeader entry(in, true, pc);
 			poco_assert (_entries.insert(std::make_pair(entry.getFileName(), entry)).second);
+			haveSynced = false;
 		}
 		else if (std::memcmp(header, ZipFileInfo::HEADER, ZipCommon::HEADER_SIZE) == 0)
 		{
@@ -84,23 +114,36 @@ void ZipArchive::parse(std::istream& in, ParseCallback& pc)
 				it->second.setStartPos(info.getOffset());
 			}
 			poco_assert (_infos.insert(std::make_pair(info.getFileName(), info)).second);
+			haveSynced = false;
 		}
 		else if (std::memcmp(header, ZipArchiveInfo::HEADER, ZipCommon::HEADER_SIZE) == 0)
 		{
 			ZipArchiveInfo nfo(in, true);
 			poco_assert (_disks.insert(std::make_pair(nfo.getDiskNumber(), nfo)).second);
+			haveSynced = false;
 		}
 		else if (std::memcmp(header, ZipArchiveInfo64::HEADER, ZipCommon::HEADER_SIZE) == 0)
 		{
 			ZipArchiveInfo64 nfo(in, true);
 			poco_assert (_disks64.insert(std::make_pair(nfo.getDiskNumber(), nfo)).second);
+			haveSynced = false;
 		}
 		else
 		{
-			if (_disks.empty() && _disks64.empty())
-				throw Poco::IllegalStateException("Illegal header in zip file");
+			if (!haveSynced)
+			{
+				// Some Zip files have extra data behind the ZipLocalFileHeader.
+				// Try to re-sync.
+				ZipUtil::sync(in);
+				haveSynced = true;
+			}
 			else
-				throw Poco::IllegalStateException("Garbage after directory header");
+			{
+				if (_disks.empty() && _disks64.empty())
+					throw Poco::IllegalStateException("Illegal header in zip file");
+				else
+					throw Poco::IllegalStateException("Garbage after directory header");
+			}
 		}
 	}
 }
@@ -110,7 +153,18 @@ const std::string& ZipArchive::getZipComment() const
 {
 	// It seems that only the "first" disk is populated (look at Compress::close()), so getting the first ZipArchiveInfo
 	DirectoryInfos::const_iterator it = _disks.begin();
-	return it->second.getZipComment();
+	if (it != _disks.end())
+	{
+		return it->second.getZipComment();
+	}
+	else
+	{
+		DirectoryInfos64::const_iterator it64 = _disks64.begin();
+		if (it64 != _disks64.end())
+			return it->second.getZipComment();
+		else
+			return EMPTY_COMMENT;
+	}
 }
 
 

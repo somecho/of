@@ -1,8 +1,6 @@
 //
 // SyslogTest.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/SyslogTest.h#1 $
-//
 // Definition of the SyslogTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -27,8 +25,10 @@ public:
 	~SyslogTest();
 
 	void testListener();
+	void testChannelFacility();
 	void testChannelOpenClose();
 	void testOldBSD();
+	void testStructuredData();
 
 	void setUp();
 	void tearDown();

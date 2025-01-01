@@ -1,8 +1,6 @@
 //
 // FileStreamTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/FileStreamTest.h#1 $
-//
 // Definition of the FileStreamTest class.
 //
 // Copyright (c) 2007, Applied Informatics Software Engineering GmbH.
@@ -27,6 +25,7 @@ public:
 	~FileStreamTest();
 
 	void testRead();
+	void testWriteReadNativeHandle();
 	void testWrite();
 	void testReadWrite();
 	void testOpen();
@@ -37,6 +36,8 @@ public:
 	void testOpenModeApp();
 	void testSeek();
 	void testMultiOpen();
+	void testBufferSize();
+	void testBufferSizePerformance();
 
 	void setUp();
 	void tearDown();

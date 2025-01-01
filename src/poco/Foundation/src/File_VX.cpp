@@ -1,8 +1,6 @@
 //
 // File_VX.cpp
 //
-// $Id: //poco/1.4/Foundation/src/File_VX.cpp#1 $
-//
 // Library: Foundation
 // Package: Filesystem
 // Module:  File
@@ -64,6 +62,12 @@ void FileImpl::setPathImpl(const std::string& path)
 }
 
 
+std::string FileImpl::getExecutablePathImpl() const
+{
+	return _path;
+}
+
+
 bool FileImpl::existsImpl() const
 {
 	poco_assert (!_path.empty());
@@ -89,7 +93,7 @@ bool FileImpl::canWriteImpl() const
 }
 
 
-bool FileImpl::canExecuteImpl() const
+bool FileImpl::canExecuteImpl(const std::string& absolutePath) const
 {
 	return false;
 }
@@ -234,7 +238,7 @@ void FileImpl::setExecutableImpl(bool flag)
 }
 
 
-void FileImpl::copyToImpl(const std::string& path) const
+void FileImpl::copyToImpl(const std::string& path, int options) const
 {
 	poco_assert (!_path.empty());
 
@@ -242,14 +246,20 @@ void FileImpl::copyToImpl(const std::string& path) const
 	if (sd == -1) handleLastErrorImpl(_path);
 
 	struct stat st;
-	if (fstat(sd, &st) != 0) 
+	if (fstat(sd, &st) != 0)
 	{
 		close(sd);
 		handleLastErrorImpl(_path);
 	}
 	const long blockSize = st.st_blksize;
 
-	int dd = open(path.c_str(), O_CREAT | O_TRUNC | O_WRONLY, st.st_mode & S_IRWXU);
+	int dd;
+	if (options & OPT_FAIL_ON_OVERWRITE_IMPL) {
+		dd = open(path.c_str(), O_CREAT | O_TRUNC | O_EXCL | O_WRONLY, st.st_mode & S_IRWXU);
+	} else {
+		dd = open(path.c_str(), O_CREAT | O_TRUNC | O_WRONLY, st.st_mode & S_IRWXU);
+	}
+
 	if (dd == -1)
 	{
 		close(sd);
@@ -261,7 +271,7 @@ void FileImpl::copyToImpl(const std::string& path) const
 		int n;
 		while ((n = read(sd, buffer.begin(), blockSize)) > 0)
 		{
-			if (write(dd, buffer.begin(), n) != n) 
+			if (write(dd, buffer.begin(), n) != n)
 				handleLastErrorImpl(path);
 		}
 		if (n < 0)
@@ -278,12 +288,23 @@ void FileImpl::copyToImpl(const std::string& path) const
 }
 
 
-void FileImpl::renameToImpl(const std::string& path)
+void FileImpl::renameToImpl(const std::string& path, int options)
 {
 	poco_assert (!_path.empty());
 
+	struct stat st;
+
+	if (stat(path.c_str(), &st) == 0 && (options &OPT_FAIL_ON_OVERWRITE_IMPL))
+		throw FileExistsException(path, EEXIST);
+
 	if (rename(_path.c_str(), path.c_str()) != 0)
 		handleLastErrorImpl(_path);
+}
+
+
+void FileImpl::linkToImpl(const std::string& path, int type) const
+{
+	throw Poco::NotImplementedException("File::linkTo() is not available on this platform");
 }
 
 
@@ -303,7 +324,7 @@ void FileImpl::removeImpl()
 bool FileImpl::createFileImpl()
 {
 	poco_assert (!_path.empty());
-	
+
 	int n = open(_path.c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (n != -1)
 	{
@@ -324,9 +345,45 @@ bool FileImpl::createDirectoryImpl()
 
 	if (existsImpl() && isDirectoryImpl())
 		return false;
-	if (mkdir(_path.c_str()) != 0) 
+	if (mkdir(_path.c_str()) != 0)
 		handleLastErrorImpl(_path);
 	return true;
+}
+
+
+FileImpl::FileSizeImpl FileImpl::totalSpaceImpl() const
+{
+	poco_assert(!_path.empty());
+
+	struct statfs stats;
+	if (statfs(_path.c_str(), &stats) != 0)
+		handleLastErrorImpl(_path);
+
+	return (FileSizeImpl)stats.f_blocks * (FileSizeImpl)stats.f_bsize;
+}
+
+
+FileImpl::FileSizeImpl FileImpl::usableSpaceImpl() const
+{
+	poco_assert(!_path.empty());
+
+	struct statfs stats;
+	if (statfs(_path.c_str(), &stats) != 0)
+		handleLastErrorImpl(_path);
+
+	return (FileSizeImpl)stats.f_bavail * (FileSizeImpl)stats.f_bsize;
+}
+
+
+FileImpl::FileSizeImpl FileImpl::freeSpaceImpl() const
+{
+	poco_assert(!_path.empty());
+
+	struct statfs stats;
+	if (statfs(_path.c_str(), &stats) != 0)
+		handleLastErrorImpl(_path);
+
+	return (FileSizeImpl)stats.f_bfree * (FileSizeImpl)stats.f_bsize;
 }
 
 
@@ -353,7 +410,7 @@ void FileImpl::handleLastErrorImpl(const std::string& path)
 	case ENOSPC:
 		throw FileException("no space left on device", path);
 	case ENOTEMPTY:
-		throw FileException("directory not empty", path);
+		throw DirectoryNotEmptyException(path);
 	case ENAMETOOLONG:
 		throw PathSyntaxException(path);
 	case ENFILE:

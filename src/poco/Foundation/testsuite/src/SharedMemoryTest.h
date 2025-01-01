@@ -1,8 +1,6 @@
 //
 // SharedMemoryTest.h
 //
-// $Id: //poco/Main/template/test.h#7 $
-//
 // Definition of the SharedMemoryTest class.
 //
 // Copyright (c) 2007, Applied Informatics Software Engineering GmbH.
@@ -29,6 +27,7 @@ public:
 
 	void testCreate();
 	void testCreateFromFile();
+	void testCreateLarge();
 
 	void setUp();
 	void tearDown();

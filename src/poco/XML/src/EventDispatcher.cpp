@@ -1,8 +1,6 @@
 //
 // EventDispatcher.cpp
 //
-// $Id: //poco/1.4/XML/src/EventDispatcher.cpp#1 $
-//
 // Library: XML
 // Package: DOM
 // Module:  DOMEvents
@@ -19,7 +17,7 @@
 #include "Poco/DOM/EventListener.h"
 
 
-namespace 
+namespace
 {
 	class DispatchGuard
 	{
@@ -29,12 +27,12 @@ namespace
 		{
 			++_count;
 		}
-		
+
 		~DispatchGuard()
 		{
 			--_count;
 		}
-		
+
 	private:
 		int& _count;
 	};
@@ -50,7 +48,7 @@ EventDispatcher::EventDispatcher():
 {
 }
 
-	
+
 EventDispatcher::~EventDispatcher()
 {
 }
@@ -73,7 +71,7 @@ void EventDispatcher::removeEventListener(const XMLString& type, EventListener* 
 	{
 		if (it->type == type && it->pListener == listener && it->useCapture == useCapture)
 		{
-			it->pListener = 0;
+			it->pListener = nullptr;
 		}
 		if (!_inDispatch && !it->pListener)
 		{

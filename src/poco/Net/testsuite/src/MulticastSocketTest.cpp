@@ -1,8 +1,6 @@
 //
 // MulticastSocketTest.cpp
 //
-// $Id: //poco/1.4/Net/testsuite/src/MulticastSocketTest.cpp#1 $
-//
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -49,15 +47,28 @@ MulticastSocketTest::~MulticastSocketTest()
 
 void MulticastSocketTest::testMulticast()
 {
-	MulticastEchoServer echoServer;
-	MulticastSocket ms;
-	int n = ms.sendTo("hello", 5, echoServer.group());
-	assert (n == 5);
-	char buffer[256];
-	n = ms.receiveBytes(buffer, sizeof(buffer));
-	assert (n == 5);
-	assert (std::string(buffer, n) == "hello");
-	ms.close();
+	try
+	{
+		MulticastEchoServer echoServer;
+		MulticastSocket ms(SocketAddress::IPv4);
+		SocketAddress multicastAddress("234.2.2.2", 4040);
+		ms.joinGroup(multicastAddress.host());
+		ms.setReceiveTimeout(Poco::Timespan(5, 0));
+		int n = ms.sendTo("hello", 5, echoServer.group());
+		assertTrue (n == 5);
+		char buffer[256];
+		n = ms.receiveBytes(buffer, sizeof(buffer));
+		assertTrue (n == 5);
+		assertTrue (std::string(buffer, n) == "hello");
+		ms.leaveGroup(multicastAddress.host());
+		ms.close();
+	}
+	catch (Poco::NotImplementedException&)
+	{
+#if POCO_OS != POCO_OS_ANDROID
+		throw;
+#endif
+	}
 }
 
 

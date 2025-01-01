@@ -1,8 +1,6 @@
 //
 // HashTableTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/HashTableTest.h#1 $
-//
 // Definition of the HashTableTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -14,6 +12,8 @@
 
 #ifndef HashTableTest_INCLUDED
 #define HashTableTest_INCLUDED
+
+#if defined(POCO_TEST_DEPRECATED)
 
 
 #include "Poco/Foundation.h"
@@ -41,5 +41,6 @@ public:
 private:
 };
 
+#endif
 
 #endif // HashTableTest_INCLUDED

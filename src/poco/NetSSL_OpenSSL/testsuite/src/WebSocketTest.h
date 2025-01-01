@@ -1,8 +1,6 @@
 //
 // WebSocketTest.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/WebSocketTest.h#1 $
-//
 // Definition of the WebSocketTest class.
 //
 // Copyright (c) 2012, Applied Informatics Software Engineering GmbH.
@@ -24,13 +22,15 @@ class WebSocketTest: public CppUnit::TestCase
 {
 public:
 	WebSocketTest(const std::string& name);
-	~WebSocketTest();
+	~WebSocketTest() override;
 
+	void testWebSocketTimeout();
 	void testWebSocket();
 	void testWebSocketLarge();
+	void testWebSocketNB();
 
-	void setUp();
-	void tearDown();
+	void setUp() override;
+	void tearDown() override;
 
 	static CppUnit::Test* suite();
 

@@ -1,8 +1,6 @@
 //
 // DirectoryIterator_WIN32U.cpp
 //
-// $Id: //poco/1.4/Foundation/src/DirectoryIterator_WIN32U.cpp#1 $
-//
 // Library: Foundation
 // Package: Filesystem
 // Module:  DirectoryIterator
@@ -15,11 +13,7 @@
 
 
 #include "Poco/DirectoryIterator_WIN32U.h"
-#if defined(_WIN32_WCE)
-#include "Poco/File_WINCE.h"
-#else
 #include "Poco/File_WIN32U.h"
-#endif
 #include "Poco/Path.h"
 #include "Poco/UnicodeConverter.h"
 #include <cstring>
@@ -35,7 +29,7 @@ DirectoryIteratorImpl::DirectoryIteratorImpl(const std::string& path): _fh(INVAL
 	std::string findPath = p.toString();
 	findPath.append("*");
 	std::wstring uFindPath;
-	UnicodeConverter::toUTF16(findPath, uFindPath);
+	FileImpl::convertPath(findPath, uFindPath);
 
 	_fh = FindFirstFileW(uFindPath.c_str(), &_fd);
 	if (_fh == INVALID_HANDLE_VALUE)
@@ -46,7 +40,7 @@ DirectoryIteratorImpl::DirectoryIteratorImpl(const std::string& path): _fh(INVAL
 	else
 	{
 		UnicodeConverter::toUTF8(_fd.cFileName, _current);
-		if (_current == "." || _current == "..")	
+		if (_current == "." || _current == "..")
 			next();
 	}
 }

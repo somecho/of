@@ -1,8 +1,6 @@
 //
 // Session.h
 //
-// $Id: //poco/Main/Data/include/Poco/Data/Session.h#9 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  Session
@@ -25,6 +23,7 @@
 #include "Poco/Data/Statement.h"
 #include "Poco/Data/StatementCreator.h"
 #include "Poco/Data/Binding.h"
+#include "Poco/SharedPtr.h"
 #include "Poco/AutoPtr.h"
 #include "Poco/Any.h"
 #include <algorithm>
@@ -41,46 +40,46 @@ class Data_API Session
 	/// A Session holds a connection to a Database and creates Statement objects.
 	///
 	/// Sessions are always created via the SessionFactory:
-	///    
+	///
 	///     Session ses(SessionFactory::instance().create(connectorKey, connectionString));
-	///    
+	///
 	/// where the first param presents the type of session one wants to create (e.g., for SQLite one would choose "SQLite",
-	/// for ODBC the key is "ODBC") and the second param is the connection string that the session implementation 
+	/// for ODBC the key is "ODBC") and the second param is the connection string that the session implementation
 	/// requires to connect to the database. The format of the connection string is specific to the actual connector.
 	///
 	/// A simpler form to create the session is to pass the connector key and connection string directly to
 	/// the Session constructor.
 	///
 	/// A concrete example to open an SQLite database stored in the file "dummy.db" would be
-	///    
+	///
 	///     Session ses("SQLite", "dummy.db");
-	///    
+	///
 	/// Via a Session one can create two different types of statements. First, statements that should only be executed once and immediately, and
 	/// second, statements that should be executed multiple times, using a separate execute() call.
 	/// The simple one is immediate execution:
-	///    
+	///
 	///     ses << "CREATE TABLE Dummy (data INTEGER(10))", now;
 	///
 	/// The now at the end of the statement is required, otherwise the statement
 	/// would not be executed.
-	///    
+	///
 	/// If one wants to reuse a Statement (and avoid the overhead of repeatedly parsing an SQL statement)
 	/// one uses an explicit Statement object and its execute() method:
-	///    
+	///
 	///     int i = 0;
 	///     Statement stmt = (ses << "INSERT INTO Dummy VALUES(:data)", use(i));
-	///    
+	///
 	///     for (i = 0; i < 100; ++i)
 	///     {
 	///         stmt.execute();
 	///     }
-	///    
+	///
 	/// The above example assigns the variable i to the ":data" placeholder in the SQL query. The query is parsed and compiled exactly
 	/// once, but executed 100 times. At the end the values 0 to 99 will be present in the Table "DUMMY".
 	///
-	/// A faster implementation of the above code will simply create a vector of int
+	/// A faster implementaton of the above code will simply create a vector of int
 	/// and use the vector as parameter to the use clause (you could also use set or multiset instead):
-	///    
+	///
 	///     std::vector<int> data;
 	///     for (int i = 0; i < 100; ++i)
 	///     {
@@ -106,15 +105,15 @@ class Data_API Session
 	///     }
 	///
 	/// The "into" keyword is used to inform the statement where output results should be placed. The limit value ensures
-	/// that during each run at most 50 rows are retrieved. Assuming Dummy contains 100 rows, retData will contain 50 
+	/// that during each run at most 50 rows are retrieved. Assuming Dummy contains 100 rows, retData will contain 50
 	/// elements after the first run and 100 after the second run, i.e.
 	/// the collection is not cleared between consecutive runs. After the second execute stmt.done() will return true.
 	///
-	/// A prepared Statement will behave exactly the same but a further call to execute() will simply reset the Statement, 
+	/// A prepared Statement will behave exactly the same but a further call to execute() will simply reset the Statement,
 	/// execute it again and append more data to the result set.
 	///
 	/// Note that it is possible to append several "bind" or "into" clauses to the statement. Theoretically, one could also have several
-	/// limit clauses but only the last one that was added will be effective. 
+	/// limit clauses but only the last one that was added will be effective.
 	/// Also several preconditions must be met concerning binds and intos.
 	/// Take the following example:
 	///
@@ -124,8 +123,8 @@ class Data_API Session
 	///     ses << "INSERT INTO Person (LastName, Age) VALUES(:ln, :age)", use(nameVec), use(ageVec);
 	///
 	/// The size of all use parameters MUST be the same, otherwise an exception is thrown. Furthermore,
-	/// the amount of use clauses must match the number of wildcards in the query (to be more precise: 
-	/// each binding has a numberOfColumnsHandled() value which defaults to 1. The sum of all these values 
+	/// the amount of use clauses must match the number of wildcards in the query (to be more precise:
+	/// each binding has a numberOfColumnsHandled() value which defaults to 1. The sum of all these values
 	/// must match the wildcard count in the query.
 	/// However, this is only important if you have written your own TypeHandler specializations.
 	/// If you plan to map complex object types to tables see the TypeHandler documentation.
@@ -141,17 +140,23 @@ class Data_API Session
 	///
 	///     std::vector<Person> people;
 	///     ses << "SELECT * FROM PERSON", into(people);
-	/// 
+	///
 	/// Mixing constants or variables with manipulators is allowed provided there are corresponding placeholders for the constants provided in
 	/// the SQL string, such as in following example:
 	///
 	///     std::vector<Person> people;
 	///     ses << "SELECT * FROM %s", into(people), "PERSON";
-	/// 
+	///
 	/// Formatting only kicks in if there are values to be injected into the SQL string, otherwise it is skipped.
 	/// If the formatting will occur and the percent sign is part of the query itself, it can be passed to the query by entering it twice (%%).
 	/// However, if no formatting is used, one percent sign is sufficient as the string will be passed unaltered.
 	/// For complete list of supported data types with their respective specifications, see the documentation for format in Foundation.
+	///
+	/// Transactions are supported via the begin(), commit() and rollback() methods.
+	/// If the session is in autocommit mode, begin() will temporarily disable autocommit mode for the duration of the transaction.
+	/// Calls to either commit() or rollback() will re-enable it.
+	/// Poco::Data::Transaction, a convenient session wrapper class, automates this process and provides RAII-based transactional behavior.
+	/// For more information, see Transation class documentation.
 {
 public:
 	static const std::size_t LOGIN_TIMEOUT_DEFAULT = SessionImpl::LOGIN_TIMEOUT_DEFAULT;
@@ -161,24 +166,30 @@ public:
 	static const Poco::UInt32 TRANSACTION_SERIALIZABLE     = 0x00000008L;
 
 	Session(Poco::AutoPtr<SessionImpl> ptrImpl);
-		/// Creates the Session.
+		/// Creates the Session from SessionImpl.
 
 	Session(const std::string& connector,
 		const std::string& connectionString,
-		std::size_t timeout = LOGIN_TIMEOUT_DEFAULT);
+		std::size_t loginTimeout = LOGIN_TIMEOUT_DEFAULT);
 		/// Creates a new session, using the given connector (which must have
 		/// been registered), and connectionString.
 
 	Session(const std::string& connection,
-		std::size_t timeout = LOGIN_TIMEOUT_DEFAULT);
+		std::size_t loginTimeout = LOGIN_TIMEOUT_DEFAULT);
 		/// Creates a new session, using the given connection (must be in
 		/// "connection:///connectionString" format).
 
 	Session(const Session&);
 		/// Creates a session by copying another one.
 
+	Session(Session&&) noexcept;
+		/// Creates a session by moving another one.
+
 	Session& operator = (const Session&);
 		/// Assignment operator.
+
+	Session& operator = (Session&&) noexcept;
+		/// Move assignment.
 
 	~Session();
 		/// Destroys the Session.
@@ -188,21 +199,26 @@ public:
 
 	template <typename T>
 	Statement operator << (const T& t)
-		/// Creates a Statement with the given data as SQLContent
+		/// Creates a Statement with the given string as SQLContent.
 	{
-		return _statementCreator << t;
+		return (_statementCreator << t);
 	}
 
-	StatementImpl* createStatementImpl();
+	const std::string& dbmsName() const;
+		/// Returns the DBMS name. The name must be set by the
+		/// implementation.
+		/// Defaults to "unknown".
+
+	SharedPtr<StatementImpl> createStatementImpl();
 		/// Creates a StatementImpl.
 
 	void open(const std::string& connect = "");
 		/// Opens the session using the supplied string.
-		/// Can also be used with default empty string to 
+		/// Can also be used with default empty string to
 		/// reconnect a disconnected session.
-		/// If the connection is not established, 
-		/// a ConnectionFailedException is thrown. 
-		/// Zero timeout means indefinite
+		/// If the connection is not established,
+		/// a ConnectionFailedException is thrown.
+		/// Zero timout means indefinite
 
 	void close();
 		/// Closes the session.
@@ -212,6 +228,16 @@ public:
 
 	void reconnect();
 		/// Closes the session and opens it.
+
+	bool isGood();
+		/// Returns true iff the session is good and can be used, false otherwise.
+
+	bool isAutocommit() const;
+		/// Returns true iff the session is in autocommit mode, false otherwise.
+		/// If the session does not support autocommit, it is assumed not to
+		/// be in auto commit mode.
+		/// This function looks for the "autoCommit" feature and returns its value.
+		/// It is recommended for all back-end implementations to support this feature.
 
 	void setLoginTimeout(std::size_t timeout);
 		/// Sets the session login timeout value.
@@ -227,12 +253,19 @@ public:
 
 	void begin();
 		/// Starts a transaction.
+		/// If `session` is in autocommit mode, it is switched to manual commit mode
+		/// for the duration of the transaction and reverted back to the original mode
+		/// after transaction completes (on rollback or commit() call).
 
 	void commit();
 		/// Commits and ends a transaction.
+		/// If `session` was in autocommit mode when the transaction started (begin() call),
+		/// it is switched back to autocommit mode.
 
 	void rollback();
 		/// Rolls back and ends a transaction.
+		/// If `session` was in autocommit mode when the transaction started (begin() call),
+		/// it is switched back to autocommit mode.
 
 	bool canTransact();
 		/// Returns true if session has transaction capabilities.
@@ -262,8 +295,11 @@ public:
 
 	static std::string uri(const std::string& connector,
 		const std::string& connectionString);
-		/// Utility function that returns the URI formatted from supplied 
+		/// Utility function that teturns the URI formatted from supplied
 		/// arguments as "connector:///connectionString".
+
+	bool hasFeature(const std::string& name) const;
+		/// Returns true if session has the named feature.
 
 	void setFeature(const std::string& name, bool state);
 		/// Set the state of a feature.
@@ -273,7 +309,7 @@ public:
 		///
 		/// Throws a NotSupportedException if the requested feature is
 		/// not supported by the underlying implementation.
-	
+
 	bool getFeature(const std::string& name) const;
 		/// Look up the state of a feature.
 		///
@@ -282,6 +318,9 @@ public:
 		///
 		/// Throws a NotSupportedException if the requested feature is
 		/// not supported by the underlying implementation.
+
+	bool hasProperty(const std::string& name) const;
+		/// Returns true if session has the named property.
 
 	void setProperty(const std::string& name, const Poco::Any& value);
 		/// Set the value of a property.
@@ -308,14 +347,28 @@ private:
 	Session();
 
 	Poco::AutoPtr<SessionImpl> _pImpl;
-	StatementCreator           _statementCreator;
+	StatementCreator _statementCreator;
+	bool _wasAutoCommit = false;
 };
 
 
 //
 // inlines
 //
-inline StatementImpl* Session::createStatementImpl()
+
+inline const std::string& Session::dbmsName() const
+{
+	return _pImpl->dbmsName();
+}
+
+
+inline bool Session::isAutocommit() const
+{
+	return _pImpl->isAutocommit();
+}
+
+
+inline SharedPtr<StatementImpl> Session::createStatementImpl()
 {
 	return _pImpl->createStatementImpl();
 }
@@ -345,6 +398,12 @@ inline void Session::reconnect()
 }
 
 
+inline bool Session::isGood()
+{
+	return _pImpl->isGood();
+}
+
+
 inline void Session::setLoginTimeout(std::size_t timeout)
 {
 	_pImpl->setLoginTimeout(timeout);
@@ -366,24 +425,6 @@ inline void Session::setConnectionTimeout(std::size_t timeout)
 inline std::size_t Session::getConnectionTimeout()
 {
 	return _pImpl->getConnectionTimeout();
-}
-
-
-inline void Session::begin()
-{
-	return _pImpl->begin();
-}
-
-
-inline void Session::commit()
-{
-	return _pImpl->commit();
-}
-
-
-inline void Session::rollback()
-{
-	return _pImpl->rollback();
 }
 
 
@@ -442,6 +483,12 @@ inline std::string Session::uri() const
 }
 
 
+inline bool Session::hasFeature(const std::string& name) const
+{
+	return _pImpl->hasFeature(name);
+}
+
+
 inline void Session::setFeature(const std::string& name, bool state)
 {
 	_pImpl->setFeature(name, state);
@@ -453,6 +500,11 @@ inline bool Session::getFeature(const std::string& name) const
 	return const_cast<SessionImpl*>(_pImpl.get())->getFeature(name);
 }
 
+
+inline bool Session::hasProperty(const std::string& name) const
+{
+	return _pImpl->hasProperty(name);
+}
 
 inline void Session::setProperty(const std::string& name, const Poco::Any& value)
 {
@@ -484,9 +536,8 @@ inline void swap(Session& s1, Session& s2)
 namespace std
 {
 	template<>
-	inline void swap<Poco::Data::Session>(Poco::Data::Session& s1, 
-		Poco::Data::Session& s2)
-		/// Full template specialization of std:::swap for Session
+	inline void swap<Poco::Data::Session>(Poco::Data::Session& s1, Poco::Data::Session& s2) noexcept
+		/// Full template specalization of std:::swap for Session
 	{
 		s1.swap(s2);
 	}

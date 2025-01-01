@@ -1,8 +1,6 @@
 //
 // UniqueExpireCacheTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/UniqueExpireCacheTest.h#1 $
-//
 // Tests for ExpireCache
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -34,7 +32,7 @@ public:
 	void testExpireN();
 	void testExpirationDecorator();
 	void testAccessUpdate();
-	
+
 	void setUp();
 	void tearDown();
 	static CppUnit::Test* suite();

@@ -1,8 +1,6 @@
 //
 // TestCase.h
 //
-// $Id: //poco/1.4/CppUnit/include/CppUnit/TestCase.h#1 $
-//
 
 
 #ifndef CppUnit_TestCase_INCLUDED
@@ -12,8 +10,10 @@
 #include "CppUnit/CppUnit.h"
 #include "CppUnit/Guards.h"
 #include "CppUnit/Test.h"
+#include "CppUnit/TestResult.h"
 #include "CppUnit/CppUnitException.h"
 #include <string>
+#include <vector>
 #include <typeinfo>
 
 
@@ -88,16 +88,19 @@ class CppUnit_API TestCase: public Test
     REFERENCEOBJECT (TestCase)
 
 public:
-	TestCase(const std::string& Name);
-	~TestCase();
+	TestCase(const std::string& name, Test::Type testType = Test::Normal);
+	~TestCase() override;
 
-	virtual void run(TestResult* result);
+	void run(TestResult* result, const Test::Callback& callback = nullptr) override;
 	virtual TestResult* run();
-	virtual int countTestCases();
+	int countTestCases() const override;
+	std::string toString() const override;
+	Test::Type getType() const override;
+	void setType(Test::Type testType);
 	const std::string& name() const;
-	std::string toString();
 
 	virtual void setUp();
+	virtual void setUp(const std::vector<std::string>& setup);
 	virtual void tearDown();
 
 protected:
@@ -122,10 +125,17 @@ protected:
                                    long data2LineNumber = CppUnitException::CPPUNIT_UNKNOWNLINENUMBER,
 	                               const std::string& fileName = CppUnitException::CPPUNIT_UNKNOWNFILENAME);
 
-	void assertEquals(long expected,
-	                  long actual,
+	template <typename T1, typename T2,
+		typename = std::enable_if_t<std::is_arithmetic_v<T1>, T1>,
+		typename = std::enable_if_t<std::is_arithmetic_v<T2>, T2>>
+	void assertEquals(T1 expected,
+	                  T2 actual,
 	                  long lineNumber = CppUnitException::CPPUNIT_UNKNOWNLINENUMBER,
-	                  const std::string& fileName = CppUnitException::CPPUNIT_UNKNOWNFILENAME);
+	                  const std::string& fileName = CppUnitException::CPPUNIT_UNKNOWNFILENAME)
+	{
+		if (expected != actual)
+			assertImplementation(false, notEqualsMessage(expected, actual), lineNumber, fileName);
+	}
 
 	void assertEquals(double expected,
 	                  double actual,
@@ -133,7 +143,12 @@ protected:
                       long lineNumber = CppUnitException::CPPUNIT_UNKNOWNLINENUMBER,
                       const std::string& fileName = CppUnitException::CPPUNIT_UNKNOWNFILENAME);
 
-	void assertEquals(const std::string& expected, 
+	void assertEquals(const std::string& expected,
+	                  const std::string& actual,
+	                  long lineNumber = CppUnitException::CPPUNIT_UNKNOWNLINENUMBER,
+	                  const std::string& fileName = CppUnitException::CPPUNIT_UNKNOWNFILENAME);
+
+	void assertEquals(const char* expected,
 	                  const std::string& actual,
 	                  long lineNumber = CppUnitException::CPPUNIT_UNKNOWNLINENUMBER,
 	                  const std::string& fileName = CppUnitException::CPPUNIT_UNKNOWNFILENAME);
@@ -143,8 +158,14 @@ protected:
 	                  long lineNumber = CppUnitException::CPPUNIT_UNKNOWNLINENUMBER,
 	                  const std::string& fileName = CppUnitException::CPPUNIT_UNKNOWNFILENAME);
 
-	std::string notEqualsMessage(long expected, long actual);
-	std::string notEqualsMessage(double expected, double actual);
+	template <typename T1, typename T2,
+		typename = std::enable_if_t<std::is_arithmetic_v<T1>, T1>,
+		typename = std::enable_if_t<std::is_arithmetic_v<T2>, T2>>
+	std::string notEqualsMessage(T1 expected, T2 actual)
+	{
+		return "expected: " + std::to_string(expected) + " but was: " + std::to_string(actual);
+	}
+
 	std::string notEqualsMessage(const void* expected, const void* actual);
 	std::string notEqualsMessage(const std::string& expected, const std::string& actual);
 
@@ -153,7 +174,7 @@ protected:
 	                   long lineNumber = CppUnitException::CPPUNIT_UNKNOWNLINENUMBER,
 	                   const std::string& fileName = CppUnitException::CPPUNIT_UNKNOWNFILENAME);
 
-	void assertNull(const void* pointer,  
+	void assertNull(const void* pointer,
 	                const std::string& pointerExpression = "",
 	                long lineNumber = CppUnitException::CPPUNIT_UNKNOWNLINENUMBER,
 	                const std::string& fileName = CppUnitException::CPPUNIT_UNKNOWNFILENAME);
@@ -169,37 +190,44 @@ protected:
 
 private:
 	const std::string _name;
+	Test::Type _type;
 };
 
 
 // Constructs a test case
-inline TestCase::TestCase(const std::string& name): _name (name)
+inline TestCase::TestCase(const std::string& name, Test::Type testType)
+	: _name (name)
 {
+	setType(testType);
 }
 
 
 // Destructs a test case
-inline TestCase::~TestCase()
-{
-}
+inline TestCase::~TestCase() = default;
 
 
 // Returns a count of all the tests executed
-inline int TestCase::countTestCases()
+inline int TestCase::countTestCases() const
 {
-	return 1; 
+	return 1;
 }
 
 
 // Returns the name of the test case
 inline const std::string& TestCase::name() const
 {
-	return _name; 
+	return _name;
 }
 
 
 // A hook for fixture set up
 inline void TestCase::setUp()
+{
+}
+
+
+// A hook for fixture set up with command line arguments
+inline void TestCase::setUp(const std::vector<std::string>&)
 {
 }
 
@@ -211,10 +239,24 @@ inline void TestCase::tearDown()
 
 
 // Returns the name of the test case instance
-inline std::string TestCase::toString()
+inline std::string TestCase::toString() const
 {
-	const std::type_info& thisClass = typeid(*this); 
-	return std::string(thisClass.name()) + "." + name(); 
+	const std::type_info& thisClass = typeid(*this);
+	return TestResult::demangle(thisClass.name()) + "." + name();
+}
+
+
+// Returns the type of the test, see Test::Type
+inline Test::Type TestCase::getType() const
+{
+	return _type;
+}
+
+
+// Set the type of the test, see Test::Type
+inline void TestCase::setType(Test::Type testType)
+{
+	_type = testType;
 }
 
 
@@ -222,9 +264,18 @@ inline std::string TestCase::toString()
 // and file name at the point of an error.
 // Just goes to show that preprocessors do have some
 // redeeming qualities.
+
+// for backward compatibility only
+// (may conflict with C assert, use at your own risk)
 #undef assert
 #define assert(condition) \
 	(this->assertImplementation((condition), (#condition), __LINE__, __FILE__))
+
+#define assertTrue(condition) \
+	(this->assertImplementation((condition), (#condition), __LINE__, __FILE__))
+
+#define assertFalse(condition) \
+	(this->assertImplementation(!(condition), (#condition), __LINE__, __FILE__))
 
 #define loop_1_assert(data1line, condition) \
 	(this->loop1assertImplementation((condition), (#condition), __LINE__, data1line, __FILE__))
@@ -240,7 +291,7 @@ inline std::string TestCase::toString()
 
 #define assertNullPtr(ptr) \
 	(this->assertNull((ptr), #ptr, __LINE__, __FILE__))
-	
+
 #define assertNotNullPtr(ptr) \
 	(this->assertNotNull((ptr), #ptr, __LINE__, __FILE__))
 

@@ -1,7 +1,58 @@
 #include "ofVideoPlayer.h"
-#include "ofUtils.h"
 #include "ofAppRunner.h"
+#include "ofGLUtils.h"
+#include "ofPixels.h"
+#include <algorithm>
 
+using std::shared_ptr;
+using std::vector;
+using std::string;
+
+
+#ifdef OF_VIDEO_PLAYER_GSTREAMER
+	#include "ofGstVideoPlayer.h"
+	#define OF_VID_PLAYER_TYPE ofGstVideoPlayer
+#endif
+
+#ifdef OF_VIDEO_PLAYER_QUICKTIME
+	#include "ofQuickTimePlayer.h"
+	#define OF_VID_PLAYER_TYPE ofQuickTimePlayer
+#endif
+
+#ifdef OF_VIDEO_PLAYER_QTKIT
+	#include "ofQTKitPlayer.h"
+	#define OF_VID_PLAYER_TYPE ofQTKitPlayer
+#endif
+
+#ifdef OF_VIDEO_PLAYER_AVFOUNDATION
+	#include "ofAVFoundationPlayer.h"
+	#define OF_VID_PLAYER_TYPE ofAVFoundationPlayer
+#endif
+
+#ifdef OF_VIDEO_PLAYER_DIRECTSHOW
+	#include "ofDirectShowPlayer.h"
+	#define OF_VID_PLAYER_TYPE ofDirectShowPlayer
+#endif
+
+#if defined(OF_VIDEO_PLAYER_MEDIA_FOUNDATION)
+	#include "ofMediaFoundationPlayer.h"
+	#define OF_VID_PLAYER_TYPE ofMediaFoundationPlayer
+#endif
+
+#ifdef OF_VIDEO_PLAYER_IOS
+	#include "ofxiOSVideoPlayer.h"
+	#define OF_VID_PLAYER_TYPE ofxiOSVideoPlayer
+#endif
+
+#ifdef OF_VIDEO_PLAYER_ANDROID
+	#include "ofxAndroidVideoPlayer.h"
+	#define OF_VID_PLAYER_TYPE ofxAndroidVideoPlayer
+#endif
+
+#ifdef OF_VIDEO_PLAYER_EMSCRIPTEN
+	#include "ofxEmscriptenVideoPlayer.h"
+	#define OF_VID_PLAYER_TYPE ofxEmscriptenVideoPlayer
+#endif
 
 
 //---------------------------------------------------------------------------
@@ -14,7 +65,7 @@ ofVideoPlayer::ofVideoPlayer (){
 
 //---------------------------------------------------------------------------
 void ofVideoPlayer::setPlayer(shared_ptr<ofBaseVideoPlayer> newPlayer){
-	player = newPlayer;
+	player = std::move(newPlayer);
 	setPixelFormat(internalPixelFormat);	//this means that it will try to set the pixel format you have been using before. 
 											//if the format is not supported ofVideoPlayer's internalPixelFormat will be updated to that of the player's
 }
@@ -22,7 +73,7 @@ void ofVideoPlayer::setPlayer(shared_ptr<ofBaseVideoPlayer> newPlayer){
 //---------------------------------------------------------------------------
 shared_ptr<ofBaseVideoPlayer> ofVideoPlayer::getPlayer(){
 	if( !player ){
-		setPlayer( shared_ptr<OF_VID_PLAYER_TYPE>(new OF_VID_PLAYER_TYPE) );
+		setPlayer(std::make_shared<OF_VID_PLAYER_TYPE>());
 	}
 	return player;
 }
@@ -66,7 +117,7 @@ ofPixelFormat ofVideoPlayer::getPixelFormat() const{
 //---------------------------------------------------------------------------
 bool ofVideoPlayer::load(string name){
 	if( !player ){
-		setPlayer( shared_ptr<OF_VID_PLAYER_TYPE>(new OF_VID_PLAYER_TYPE) );
+		setPlayer(std::make_shared<OF_VID_PLAYER_TYPE>());
 		player->setPixelFormat(internalPixelFormat);
 	}
 	
@@ -77,8 +128,8 @@ bool ofVideoPlayer::load(string name){
         if(bUseTexture){
         	if(player->getTexturePtr()==nullptr){
 				if(tex.empty()) {
-					tex.resize(std::max(player->getPixels().getNumPlanes(),size_t(1)));
-					for(size_t i=0;i<player->getPixels().getNumPlanes();i++){
+					tex.resize(std::max(player->getPixels().getNumPlanes(),static_cast<size_t>(1)));
+					for(std::size_t i=0;i<player->getPixels().getNumPlanes();i++){
 						ofPixels plane = player->getPixels().getPlane(i);
 						tex[i].allocate(plane);
 						if(ofIsGLProgrammableRenderer() && plane.getPixelFormat() == OF_PIXELS_GRAY){
@@ -99,7 +150,7 @@ bool ofVideoPlayer::load(string name){
 //---------------------------------------------------------------------------
 void ofVideoPlayer::loadAsync(string name){
 	if( !player ){
-		setPlayer( shared_ptr<OF_VID_PLAYER_TYPE>(new OF_VID_PLAYER_TYPE) );
+		setPlayer(std::make_shared<OF_VID_PLAYER_TYPE>());
 		player->setPixelFormat(internalPixelFormat);
 	}
 	
@@ -204,13 +255,14 @@ void ofVideoPlayer::update(){
 			
 			if(playerTex == nullptr){
 				if(tex.size()!=player->getPixels().getNumPlanes()){
-					tex.resize(std::max(player->getPixels().getNumPlanes(),size_t(1)));
+					tex.resize(std::max(player->getPixels().getNumPlanes(),static_cast<std::size_t>(1)));
 				}
-				if(player->getWidth() != 0 && player->getHeight() != 0) {
-					for(size_t i=0;i<player->getPixels().getNumPlanes();i++){
+				if(std::size_t(player->getWidth()) != 0 && std::size_t(player->getHeight()) != 0) {
+					for(std::size_t i=0;i<player->getPixels().getNumPlanes();i++){
 						ofPixels plane = player->getPixels().getPlane(i);
 						bool bDiffPixFormat = ( tex[i].isAllocated() && tex[i].texData.glInternalFormat != ofGetGLInternalFormatFromPixelFormat(plane.getPixelFormat()) );
-						if(bDiffPixFormat || !tex[i].isAllocated() || tex[i].getWidth() != plane.getWidth() || tex[i].getHeight() != plane.getHeight()){
+						if(bDiffPixFormat || !tex[i].isAllocated() || std::size_t(tex[i].getWidth()) != plane.getWidth() || std::size_t(tex[i].getHeight()) != plane.getHeight())
+						{
 							tex[i].allocate(plane);
 						}
 						tex[i].loadData(plane);
@@ -370,8 +422,8 @@ void ofVideoPlayer::setPaused(bool _bPause){
 //------------------------------------
 void ofVideoPlayer::setUseTexture(bool bUse){
 	bUseTexture = bUse;
-	if(bUse && player && !player->getTexturePtr() && getWidth()!=0 && getHeight()!=0){
-		for(size_t i=0;i<player->getPixels().getNumPlanes();i++){
+	if(bUse && player && !player->getTexturePtr() && std::size_t(getWidth()) != 0 && std::size_t(getHeight()) != 0){
+		for(std::size_t i=0;i<player->getPixels().getNumPlanes();i++){
 			ofPixels plane = player->getPixels().getPlane(i);
 			bool bDiffPixFormat = ( tex[i].isAllocated() && tex[i].texData.glInternalFormat != ofGetGLInternalFormatFromPixelFormat(plane.getPixelFormat()) );
 			if(!tex[i].isAllocated() || bDiffPixFormat){

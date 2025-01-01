@@ -1,13 +1,11 @@
 #
 # Makefile
 #
-# $Id: //poco/1.4/Foundation/testsuite/Makefile#1 $
-#
 # Makefile for Poco Foundation testsuite
 #
 
 .PHONY: projects
-clean all: projects
+clean distclean all: projects
 projects:
 	$(MAKE) -f Makefile-Driver $(MAKECMDGOALS)
 ifneq ($(LINKMODE),STATIC)

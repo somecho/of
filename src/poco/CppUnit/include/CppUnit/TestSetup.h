@@ -1,8 +1,6 @@
 //
 // TestSetup.h
 //
-// $Id: //poco/1.4/CppUnit/include/CppUnit/TestSetup.h#1 $
-//
 
 
 #ifndef CppUnit_TestSetup_INCLUDED
@@ -26,17 +24,17 @@ class CppUnit_API TestSetup: public TestDecorator
 	REFERENCEOBJECT (TestSetup)
 
 public:
-	TestSetup(Test* test): TestDecorator(test) 
+	TestSetup(Test* test): TestDecorator(test)
 	{
 	}
-	
+
 	void run(TestResult* result);
 
 protected:
-	void setUp() 
+	void setUp()
 	{
 	}
-	
+
 	void tearDown()
 	{
 	}
@@ -46,7 +44,7 @@ protected:
 inline void TestSetup::run(TestResult* result)
 {
 	setUp();
-	TestDecorator::run(result); 
+	TestDecorator::run(result);
 	tearDown();
 }
 

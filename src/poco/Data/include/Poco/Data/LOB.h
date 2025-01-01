@@ -1,8 +1,6 @@
 //
 // LOB.h
 //
-// $Id: //poco/Main/Data/include/Poco/Data/LOB.h#12 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  LOB
@@ -43,10 +41,10 @@ class LOB
 	/// a convenient way to access the data in a LOB.
 {
 public:
-	typedef typename std::vector<T>::const_iterator Iterator;
-	typedef T ValueType;
-	typedef typename std::vector<T> Container;
-	typedef Poco::SharedPtr<Container> ContentPtr;
+	using Iterator = typename std::vector<T>::const_iterator;
+	using ValueType = T;
+	using Container = std::vector<T>;
+	using ContentPtr = Poco::SharedPtr<Container>;
 
 	LOB(): _pContent(new std::vector<T>())
 		/// Creates an empty LOB.
@@ -65,7 +63,15 @@ public:
 	{
 	}
 
-	LOB(const std::basic_string<T>& content):
+	template<typename U = T>
+	LOB(const std::enable_if_t<std::is_same_v<T, U> && std::is_same_v<U, char>, std::string>& content):
+		_pContent(new std::vector<T>(content.begin(), content.end()))
+		/// Creates a LOB from a string.
+	{
+	}
+
+	template<typename U = T>
+	LOB(const std::enable_if_t<std::is_same_v<T, U> && std::is_same_v<U, wchar_t>, std::wstring>& content):
 		_pContent(new std::vector<T>(content.begin(), content.end()))
 		/// Creates a LOB from a string.
 	{
@@ -73,6 +79,10 @@ public:
 
 	LOB(const LOB& other): _pContent(other._pContent)
 		/// Creates a LOB by copying another one.
+	{
+	}
+
+	LOB(LOB&& other) noexcept: _pContent(std::move(other._pContent))
 	{
 	}
 
@@ -89,6 +99,12 @@ public:
 		return *this;
 	}
 
+	LOB& operator = (LOB&& other) noexcept
+	{
+		_pContent = std::move(other._pContent);
+		return *this;
+	}
+
 	bool operator == (const LOB& other) const
 		/// Compares for equality LOB by value.
 	{
@@ -101,7 +117,7 @@ public:
 		return *_pContent != *other._pContent;
 	}
 
-	void swap(LOB& other)
+	void swap(LOB& other) noexcept
 		/// Swaps the LOB with another one.
 	{
 		using std::swap;
@@ -122,7 +138,18 @@ public:
 		if (_pContent->empty())
 			return 0;
 		else
-			return &(*_pContent)[0];
+			return _pContent->data();
+	}
+
+	T* rawContent()
+		/// Returns the raw content.
+		///
+		/// If the LOB is empty, returns NULL.
+	{
+		if (_pContent->empty())
+			return 0;
+		else
+			return _pContent->data();
 	}
 
 	void assignVal(std::size_t count, const T& val)
@@ -145,6 +172,18 @@ public:
 	{
 		poco_assert_dbg (pChar);
 		_pContent->insert(_pContent->end(), pChar, pChar+count);
+	}
+
+	void reserve(std::size_t size)
+		/// Sets the capacity of the internal buffer.
+	{
+		_pContent->reserve(size);
+	}
+
+	void resize(std::size_t size)
+		/// Resizes the internal buffer.
+	{
+		_pContent->resize(size);
 	}
 
 	void clear(bool doCompact = false)
@@ -177,21 +216,27 @@ public:
 		return static_cast<std::size_t>(_pContent->size());
 	}
 
+	std::size_t capacity() const
+		/// Returns the capacity of the underlying buffer.
+	{
+		return static_cast<std::size_t>(_pContent->capacity());
+	}
+
 private:
 	ContentPtr _pContent;
 };
 
 
-typedef LOB<unsigned char> BLOB;
-typedef LOB<char> CLOB;
-
+using BLOB = LOB<unsigned char>;
+using CLOB = LOB<char>;
+using JSON = std::string;
 
 //
 // inlines
 //
 
 template <typename T>
-inline void swap(LOB<T>& b1, LOB<T>& b2)
+inline void swap(LOB<T>& b1, LOB<T>& b2) noexcept
 {
 	b1.swap(b2);
 }
@@ -203,17 +248,15 @@ inline void swap(LOB<T>& b1, LOB<T>& b2)
 namespace std
 {
 	template<>
-	inline void swap<Poco::Data::BLOB>(Poco::Data::BLOB& b1, 
-		Poco::Data::BLOB& b2)
-		/// Full template specialization of std:::swap for BLOB
+	inline void swap<Poco::Data::BLOB>(Poco::Data::BLOB& b1, Poco::Data::BLOB& b2) noexcept
+		/// Full template specalization of std:::swap for BLOB
 	{
 		b1.swap(b2);
 	}
 
 	template<>
-	inline void swap<Poco::Data::CLOB>(Poco::Data::CLOB& c1, 
-		Poco::Data::CLOB& c2)
-		/// Full template specialization of std:::swap for CLOB
+	inline void swap<Poco::Data::CLOB>(Poco::Data::CLOB& c1, Poco::Data::CLOB& c2) noexcept
+		/// Full template specalization of std:::swap for CLOB
 	{
 		c1.swap(c2);
 	}
@@ -240,7 +283,7 @@ public:
 	~VarHolderImpl()
 	{
 	}
-	
+
 	const std::type_info& type() const
 	{
 		return typeid(Poco::Data::BLOB);
@@ -255,7 +298,7 @@ public:
 	{
 		return cloneHolder(pVarHolder, _val);
 	}
-	
+
 	const Poco::Data::BLOB& value() const
 	{
 		return _val;
@@ -278,7 +321,7 @@ public:
 	~VarHolderImpl()
 	{
 	}
-	
+
 	const std::type_info& type() const
 	{
 		return typeid(Poco::Data::CLOB);
@@ -293,7 +336,7 @@ public:
 	{
 		return cloneHolder(pVarHolder, _val);
 	}
-	
+
 	const Poco::Data::CLOB& value() const
 	{
 		return _val;

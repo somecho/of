@@ -1,8 +1,6 @@
 //
 // HTTPTimeServer.cpp
 //
-// $Id: //poco/1.4/Net/samples/HTTPTimeServer/src/HTTPTimeServer.cpp#1 $
-//
 // This sample demonstrates the HTTPServer and related classes.
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
@@ -54,11 +52,11 @@ class TimeRequestHandler: public HTTPRequestHandler
 	/// Return a HTML document with the current date and time.
 {
 public:
-	TimeRequestHandler(const std::string& format): 
+	TimeRequestHandler(const std::string& format):
 		_format(format)
 	{
 	}
-	
+
 	void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
 		Application& app = Application::instance();
@@ -69,15 +67,16 @@ public:
 
 		response.setChunkedTransferEncoding(true);
 		response.setContentType("text/html");
+		response.set("Clear-Site-Data", "\"cookies\"");
 
 		std::ostream& ostr = response.send();
 		ostr << "<html><head><title>HTTPTimeServer powered by POCO C++ Libraries</title>";
-		ostr << "<meta http-equiv=\"refresh\" content=\"1\"></head>";
+		ostr << "</head>";
 		ostr << "<body><p style=\"text-align: center; font-size: 48px;\">";
 		ostr << dt;
 		ostr << "</p></body></html>";
 	}
-	
+
 private:
 	std::string _format;
 };
@@ -98,7 +97,7 @@ public:
 		else
 			return 0;
 	}
-	
+
 private:
 	std::string _format;
 };
@@ -127,7 +126,7 @@ public:
 	HTTPTimeServer(): _helpRequested(false)
 	{
 	}
-	
+
 	~HTTPTimeServer()
 	{
 	}
@@ -138,7 +137,7 @@ protected:
 		loadConfiguration(); // load default configuration files, if present
 		ServerApplication::initialize(self);
 	}
-		
+
 	void uninitialize()
 	{
 		ServerApplication::uninitialize();
@@ -147,7 +146,7 @@ protected:
 	void defineOptions(OptionSet& options)
 	{
 		ServerApplication::defineOptions(options);
-		
+
 		options.addOption(
 			Option("help", "h", "display help information on command line arguments")
 				.required(false)
@@ -185,11 +184,11 @@ protected:
 			int maxQueued  = config().getInt("HTTPTimeServer.maxQueued", 100);
 			int maxThreads = config().getInt("HTTPTimeServer.maxThreads", 16);
 			ThreadPool::defaultPool().addCapacity(maxThreads);
-			
+
 			HTTPServerParams* pParams = new HTTPServerParams;
 			pParams->setMaxQueued(maxQueued);
 			pParams->setMaxThreads(maxThreads);
-			
+
 			// set-up a server socket
 			ServerSocket svs(port);
 			// set-up a HTTPServer instance
@@ -203,7 +202,7 @@ protected:
 		}
 		return Application::EXIT_OK;
 	}
-	
+
 private:
 	bool _helpRequested;
 };

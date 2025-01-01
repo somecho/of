@@ -1,8 +1,6 @@
 //
 // Thread_POSIX.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/Thread_POSIX.h#3 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  Thread
@@ -21,6 +19,7 @@
 
 
 #include "Poco/Foundation.h"
+#include "Poco/Mutex.h"
 #include "Poco/Runnable.h"
 #include "Poco/SignalHandler.h"
 #include "Poco/Event.h"
@@ -33,31 +32,17 @@
 #if !defined(POCO_NO_SYS_SELECT_H)
 #include <sys/select.h>
 #endif
-#include <errno.h>
 #if defined(POCO_VXWORKS)
 #include <cstring>
 #endif
 
-
 namespace Poco {
-
 
 class Foundation_API ThreadImpl
 {
 public:
-
-#if POCO_OS == POCO_OS_LINUX
-	// OS kernel thread ID
-	typedef pid_t TIDImpl;
-#elif POCO_OS == POCO_OS_MAC_OS_X
-	// OS kernel thread ID
-	typedef mach_port_t TIDImpl;
-#else
-	// Default: pthread id
-	typedef pthread_t TIDImpl;
-#endif
-
-	typedef void (*Callable)(void*);
+	using TIDImpl = pthread_t;
+	using Callable = void (*)(void *);
 
 	enum Priority
 	{
@@ -77,6 +62,14 @@ public:
 	~ThreadImpl();
 
 	TIDImpl tidImpl() const;
+	void setNameImpl(const std::string& threadName);
+	std::string getNameImpl() const;
+#ifndef POCO_NO_THREADNAME
+	std::string getOSThreadNameImpl();
+		/// Returns the thread's name, expressed as an operating system
+		/// specific name value. Return empty string if thread is not running.
+		/// For test used only.
+#endif
 	void setPriorityImpl(int prio);
 	int getPriorityImpl() const;
 	void setOSPriorityImpl(int prio, int policy = SCHED_OTHER);
@@ -85,16 +78,17 @@ public:
 	static int getMaxOSPriorityImpl(int policy);
 	void setStackSizeImpl(int size);
 	int getStackSizeImpl() const;
-	void setAffinityImpl(int cpu);
-	int getAffinityImpl() const;
+	void setSignalMaskImpl(uint32_t sigMask);
 	void startImpl(SharedPtr<Runnable> pTarget);
 	void joinImpl();
 	bool joinImpl(long milliseconds);
 	bool isRunningImpl() const;
-	static void sleepImpl(long milliseconds);
 	static void yieldImpl();
 	static ThreadImpl* currentImpl();
 	static TIDImpl currentTidImpl();
+	static long currentOsTidImpl();
+	bool setAffinityImpl(int coreID);
+	int getAffinityImpl() const;
 
 protected:
 	static void* runnableEntry(void* pThread);
@@ -107,7 +101,7 @@ private:
 	public:
 		CurrentThreadHolder()
 		{
-			if (pthread_key_create(&_key, NULL))
+			if (pthread_key_create(&_key, nullptr))
 				throw SystemException("cannot allocate thread context key");
 		}
 		~CurrentThreadHolder()
@@ -132,33 +126,35 @@ private:
 		ThreadData():
 			thread(0),
 			prio(PRIO_NORMAL_IMPL),
+			osPrio(),
 			policy(SCHED_OTHER),
 			done(Event::EVENT_MANUALRESET),
 			stackSize(POCO_THREAD_STACK_SIZE),
 			started(false),
 			joined(false)
 		{
-#if defined(POCO_VXWORKS)
+		#if defined(POCO_VXWORKS)
 			// This workaround is for VxWorks 5.x where
 			// pthread_init() won't properly initialize the thread.
 			std::memset(&thread, 0, sizeof(thread));
-#endif
+		#endif
 		}
 
 		SharedPtr<Runnable> pRunnableTarget;
 		pthread_t     thread;
-		TIDImpl       tid;
 		int           prio;
 		int           osPrio;
 		int           policy;
 		Event         done;
 		std::size_t   stackSize;
-		bool          started;
-		bool          joined;
+		std::atomic<bool> started;
+		std::atomic<bool> joined;
+		std::string   name;
+		int           affinity;
+		mutable FastMutex mutex;
 	};
 
 	AutoPtr<ThreadData> _pData;
-
 	static CurrentThreadHolder _currentThreadHolder;
 
 #if defined(POCO_OS_FAMILY_UNIX) && !defined(POCO_VXWORKS)
@@ -185,6 +181,7 @@ inline int ThreadImpl::getOSPriorityImpl() const
 
 inline bool ThreadImpl::isRunningImpl() const
 {
+	FastMutex::ScopedLock l(_pData->mutex);
 	return !_pData->pRunnableTarget.isNull();
 }
 
@@ -203,7 +200,7 @@ inline int ThreadImpl::getStackSizeImpl() const
 
 inline ThreadImpl::TIDImpl ThreadImpl::tidImpl() const
 {
-	return _pData->tid;
+	return _pData->thread;
 }
 
 

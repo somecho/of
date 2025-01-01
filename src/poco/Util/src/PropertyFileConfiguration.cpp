@@ -1,8 +1,6 @@
 //
 // PropertyFileConfiguration.cpp
 //
-// $Id: //poco/1.4/Util/src/PropertyFileConfiguration.cpp#1 $
-//
 // Library: Util
 // Package: Configuration
 // Module:  PropertyFileConfiguration
@@ -41,7 +39,7 @@ PropertyFileConfiguration::PropertyFileConfiguration(std::istream& istr)
 	load(istr);
 }
 
-	
+
 PropertyFileConfiguration::PropertyFileConfiguration(const std::string& path)
 {
 	load(path);
@@ -52,17 +50,23 @@ PropertyFileConfiguration::~PropertyFileConfiguration()
 {
 }
 
-	
+
 void PropertyFileConfiguration::load(std::istream& istr)
 {
+	AbstractConfiguration::ScopedLock lock(*this);
+
 	clear();
 	while (!istr.eof())
 	{
+		if(istr.fail())
+		{
+			throw Poco::IOException("Broken input stream");
+		}
 		parseLine(istr);
 	}
 }
 
-	
+
 void PropertyFileConfiguration::load(const std::string& path)
 {
 	Poco::FileInputStream istr(path);
@@ -75,14 +79,16 @@ void PropertyFileConfiguration::load(const std::string& path)
 
 void PropertyFileConfiguration::save(std::ostream& ostr) const
 {
+	AbstractConfiguration::ScopedLock lock(*this);
+
 	MapConfiguration::iterator it = begin();
 	MapConfiguration::iterator ed = end();
 	while (it != ed)
 	{
 		ostr << it->first << ": ";
-		for (std::string::const_iterator its = it->second.begin(); its != it->second.end(); ++its)
+		for (auto ch: it->second)
 		{
-			switch (*its)
+			switch (ch)
 			{
 			case '\t':
 				ostr << "\\t";
@@ -100,7 +106,7 @@ void PropertyFileConfiguration::save(std::ostream& ostr) const
 				ostr << "\\\\";
 				break;
 			default:
-				ostr << *its;
+				ostr << ch;
 				break;
 			}
 		}
@@ -127,7 +133,7 @@ void PropertyFileConfiguration::save(const std::string& path) const
 
 void PropertyFileConfiguration::parseLine(std::istream& istr)
 {
-	static const int eof = std::char_traits<char>::eof(); 
+	static const int eof = std::char_traits<char>::eof();
 
 	int c = istr.get();
 	while (c != eof && Poco::Ascii::isSpace(c)) c = istr.get();

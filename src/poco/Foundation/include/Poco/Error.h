@@ -1,8 +1,6 @@
 //
 // Error.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/Error.h#1 $
-//
 // Library: Foundation
 // Package: Core
 // Module:  Error
@@ -45,6 +43,9 @@ public:
 	static std::string getMessage(int errorCode);
 		/// Utility function translating numeric error code to string.
 #endif
+
+	static std::string getLastMessage();
+		/// Utility function returning the last error message.
 };
 
 

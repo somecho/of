@@ -1,8 +1,6 @@
 //
 // PatternFormatter.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/PatternFormatter.h#2 $
-//
 // Library: Foundation
 // Package: Logging
 // Module:  PatternFormatter
@@ -23,8 +21,8 @@
 #include "Poco/Foundation.h"
 #include "Poco/Formatter.h"
 #include "Poco/Message.h"
-
 #include <vector>
+
 
 namespace Poco {
 
@@ -45,9 +43,10 @@ class Foundation_API PatternFormatter: public Formatter
 	///   * %P - message process identifier
 	///   * %T - message thread name
 	///   * %I - message thread identifier (numeric)
-	///   * %O - message thread OS identifier (numeric)
+	///   * %J - message thread OS identifier (numeric)
 	///   * %N - node or host name
 	///   * %U - message source file path (empty string if not set)
+	///	  * %O - message source file filename (empty string if not set)
 	///   * %u - message source line number (0 if not set)
 	///   * %w - message date/time abbreviated weekday (Mon, Tue, ...)
 	///   * %W - message date/time full weekday (Monday, Tuesday, ...)
@@ -80,6 +79,8 @@ class Foundation_API PatternFormatter: public Formatter
 
 {
 public:
+	using Ptr = AutoPtr<PatternFormatter>;
+
 	PatternFormatter();
 		/// Creates a PatternFormatter.
 		/// The format pattern must be specified with
@@ -94,17 +95,19 @@ public:
 
 	void format(const Message& msg, std::string& text);
 		/// Formats the message according to the specified
-		/// format pattern and places the result in text. 
-		
+		/// format pattern and places the result in text.
+
 	void setProperty(const std::string& name, const std::string& value);
 		/// Sets the property with the given name to the given value.
 		///
 		/// The following properties are supported:
-		/// 
+		///
 		///     * pattern: The format pattern. See the PatternFormatter class
 		///       for details.
 		///     * times: Specifies whether times are adjusted for local time
 		///       or taken as they are in UTC. Supported values are "local" and "UTC".
+		///     * priorityNames: Provide a comma-separated list of custom priority names,
+		///       e.g. "Fatal, Critical, Error, Warning, Notice, Information, Debug, Trace"
 		///
 		/// If any other property name is given, a PropertyNotSupported
 		/// exception is thrown.
@@ -116,15 +119,16 @@ public:
 
 	static const std::string PROP_PATTERN;
 	static const std::string PROP_TIMES;
+	static const std::string PROP_PRIORITY_NAMES;
 
 protected:
-	static const std::string& getPriorityName(int);
+	const std::string& getPriorityName(int);
 		/// Returns a string for the given priority value.
-	
+
 private:
 	struct PatternAction
 	{
-		PatternAction(): key(0), length(0) 
+		PatternAction(): key(0), length(0)
 		{
 		}
 
@@ -139,9 +143,15 @@ private:
 		/// which contains the message key, any text that needs to be written first
 		/// a property in case of %[] and required length.
 
+	void parsePriorityNames();
+
+	static const std::string DEFAULT_PRIORITY_NAMES;
+
 	std::vector<PatternAction> _patternActions;
 	bool _localTime;
 	std::string _pattern;
+	std::string _priorityNames;
+	std::string _priorities[9];
 };
 
 

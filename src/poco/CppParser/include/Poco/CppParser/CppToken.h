@@ -1,8 +1,6 @@
 //
 // CppToken.h
 //
-// $Id: //poco/1.4/CppParser/include/Poco/CppParser/CppToken.h#2 $
-//
 // Library: CppParser
 // Package: CppParser
 // Module:  CppToken
@@ -35,7 +33,7 @@ class CppParser_API CppToken: public Poco::Token
 public:
 	CppToken();
 	~CppToken();
-	
+
 protected:
 	void syntaxError(const std::string& expected, const std::string& actual);
 };
@@ -48,6 +46,8 @@ public:
 	{
 		OP_OPENBRACKET = 1, // [
 		OP_CLOSBRACKET,     // ]
+		OP_DBL_OPENBRACKET, // [[
+		OP_DBL_CLOSBRACKET, // ]]
 		OP_OPENPARENT,      // (
 		OP_CLOSPARENT,      // )
 		OP_OPENBRACE,       // {
@@ -60,6 +60,7 @@ public:
 		OP_GE,              // >=
 		OP_SHR,             // >>
 		OP_SHR_ASSIGN,      // >>=
+		OP_SPACESHIP,       // <=>
 		OP_ASSIGN,          // =
 		OP_EQ,              // ==
 		OP_NOT,             // !
@@ -68,7 +69,7 @@ public:
 		OP_BITAND_ASSIGN,   // &=
 		OP_AND,             // &&
 		OP_BITOR,           // |
-		OP_BITOR_ASSIGN,    // |= 
+		OP_BITOR_ASSIGN,    // |=
 		OP_OR,              // ||
 		OP_XOR,             // ^
 		OP_XOR_ASSIGN,      // ^=
@@ -94,17 +95,17 @@ public:
 		OP_SEMICOLON,       // ;
 		OP_QUESTION         // ?
 	};
-	
+
 	OperatorToken();
 	~OperatorToken();
 	Poco::Token::Class tokenClass() const;
 	bool start(char c, std::istream& istr);
 	void finish(std::istream& istr);
 	int asInteger() const;
-	
+
 private:
-	typedef std::map<std::string, int> OpMap;
-	
+	using OpMap = std::map<std::string, int>;
+
 	OpMap _opMap;
 };
 
@@ -114,7 +115,7 @@ class CppParser_API IdentifierToken: public CppToken
 public:
 	enum Keywords
 	{
-		KW_ALIGNAS = 1,
+		KW_ALIGNAS = 100, // Note: start with 100 to avoid overlapping definitions with operators
 		KW_ALIGNOF,
 		KW_AND,
 		KW_AND_EQ,
@@ -199,17 +200,17 @@ public:
 		KW_XOR,
 		KW_XOR_EQ
 	};
-	
+
 	IdentifierToken();
 	~IdentifierToken();
 	Poco::Token::Class tokenClass() const;
 	bool start(char c, std::istream& istr);
 	void finish(std::istream& istr);
 	int asInteger() const;
-	
+
 private:
-	typedef std::map<std::string, int> KWMap;
-	
+	using KWMap = std::map<std::string, int>;
+
 	KWMap _kwMap;
 };
 
@@ -248,7 +249,13 @@ public:
 	void finish(std::istream& istr);
 	int asInteger() const;
 	double asFloat() const;
-	
+
+protected:
+	void finishHex(std::istream& istr, int next);
+	void finishBin(std::istream& istr, int next);
+	void finishExp(std::istream& istr, int next);
+	void finishSuffix(std::istream& istr, int next);
+
 private:
 	bool _isFloat;
 };

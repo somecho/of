@@ -1,8 +1,6 @@
 //
 // RowIterator.cpp
 //
-// $Id: //poco/Main/Data/src/RowIterator.cpp#1 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  RowIterator
@@ -28,7 +26,7 @@ namespace Data {
 const std::size_t RowIterator::POSITION_END = std::numeric_limits<std::size_t>::max();
 
 
-RowIterator::RowIterator(RecordSet* pRecordSet, bool positionEnd): 
+RowIterator::RowIterator(RecordSet* pRecordSet, bool positionEnd):
 	_pRecordSet(pRecordSet),
 	_position(positionEnd ? POSITION_END : 0)
 {
@@ -41,6 +39,14 @@ RowIterator::RowIterator(const RowIterator& other):
 {
 }
 
+
+RowIterator::RowIterator(RowIterator&& other) noexcept:
+	_pRecordSet(other._pRecordSet),
+	_position(other._position)
+{
+	other._pRecordSet = nullptr;
+	other._position = POSITION_END;
+}
 
 RowIterator::~RowIterator()
 {
@@ -55,10 +61,18 @@ RowIterator& RowIterator::operator = (const RowIterator& other)
 }
 
 
-void RowIterator::swap(RowIterator& other)
+RowIterator& RowIterator::operator = (RowIterator&& other) noexcept
+{
+	_pRecordSet = std::move(other._pRecordSet);
+	_position = std::move(other._position);
+	return *this;
+}
+
+
+void RowIterator::swap(RowIterator& other) noexcept
 {
 	using std::swap;
-	
+
 	swap(_pRecordSet, other._pRecordSet);
 	swap(_position, other._position);
 }

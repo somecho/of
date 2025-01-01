@@ -1,8 +1,6 @@
 //
 // LinearHashTableTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/LinearHashTableTest.h#1 $
-//
 // Definition of the LinearHashTableTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -24,17 +22,20 @@ class LinearHashTableTest: public CppUnit::TestCase
 {
 public:
 	LinearHashTableTest(const std::string& name);
-	~LinearHashTableTest();
+	~LinearHashTableTest() override;
 
 	void testInsert();
 	void testErase();
 	void testIterator();
 	void testConstIterator();
+
+#if defined(POCO_TEST_DEPRECATED)
 	void testPerformanceInt();
 	void testPerformanceStr();
-	
-	void setUp();
-	void tearDown();
+#endif
+
+	void setUp() override;
+	void tearDown() override;
 
 	static CppUnit::Test* suite();
 

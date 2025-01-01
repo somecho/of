@@ -1,8 +1,6 @@
 //
 // Application.cpp
 //
-// $Id: //poco/1.4/Util/src/Application.cpp#6 $
-//
 // Library: Util
 // Package: Application
 // Module:  Application
@@ -29,6 +27,7 @@
 #include "Poco/Util/Option.h"
 #include "Poco/Util/OptionProcessor.h"
 #include "Poco/Util/Validator.h"
+#include "Poco/Util/OptionException.h"
 #include "Poco/Environment.h"
 #include "Poco/Exception.h"
 #include "Poco/NumberFormatter.h"
@@ -42,10 +41,14 @@
 #endif
 #if defined(POCO_OS_FAMILY_UNIX) && !defined(POCO_VXWORKS)
 #include "Poco/SignalHandler.h"
+#include <stdio.h>
+#include <sys/ioctl.h>
+#if POCO_OS == POCO_OS_SOLARIS
+#include <stropts.h>
+#include <termios.h>
 #endif
-#if defined(POCO_WIN32_UTF8) && !defined(POCO_NO_WSTRING)
+#endif
 #include "Poco/UnicodeConverter.h"
-#endif
 
 
 using Poco::Logger;
@@ -59,6 +62,9 @@ using Poco::AutoPtr;
 using Poco::icompare;
 
 
+using namespace std::string_literals;
+
+
 namespace Poco {
 namespace Util {
 
@@ -70,9 +76,9 @@ Application::Application():
 	_pConfig(new LayeredConfiguration),
 	_initialized(false),
 	_unixOptions(true),
-	_pLogger(&Logger::get("ApplicationStartup")),
+	_pLogger(&Logger::get("ApplicationStartup"s)),
 	_stopOptionsProcessing(false),
-	_loadedConfigs(0)
+	_ignoreUnknownOptions(false)
 {
 	setup();
 }
@@ -82,9 +88,9 @@ Application::Application(int argc, char* argv[]):
 	_pConfig(new LayeredConfiguration),
 	_initialized(false),
 	_unixOptions(true),
-	_pLogger(&Logger::get("ApplicationStartup")),
+	_pLogger(&Logger::get("ApplicationStartup"s)),
 	_stopOptionsProcessing(false),
-	_loadedConfigs(0)
+	_ignoreUnknownOptions(false)
 {
 	setup();
 	init(argc, argv);
@@ -100,12 +106,12 @@ Application::~Application()
 void Application::setup()
 {
 	poco_assert (_pInstance == 0);
-	
-	_pConfig->add(new SystemConfiguration, PRIO_SYSTEM, false, false);
-	_pConfig->add(new MapConfiguration, PRIO_APPLICATION, true, false);
-	
+
+	_pConfig->add(new SystemConfiguration, PRIO_SYSTEM, false);
+	_pConfig->add(new MapConfiguration, PRIO_APPLICATION, true);
+
 	addSubsystem(new LoggingSubsystem);
-	
+
 #if defined(POCO_OS_FAMILY_UNIX) && !defined(POCO_VXWORKS)
 	_workingDirAtLaunch = Path::current();
 
@@ -119,7 +125,7 @@ void Application::setup()
 	_pInstance = this;
 
 	AutoPtr<ConsoleChannel> pCC = new ConsoleChannel;
-	Logger::setChannel("", pCC);
+	Logger::setChannel(""s, pCC);
 }
 
 
@@ -138,7 +144,7 @@ void Application::init(int argc, char* argv[])
 }
 
 
-#if defined(POCO_WIN32_UTF8) && !defined(POCO_NO_WSTRING)
+#if defined(_WIN32)
 void Application::init(int argc, wchar_t* argv[])
 {
 	std::vector<std::string> args;
@@ -164,14 +170,14 @@ void Application::init()
 {
 	Path appPath;
 	getApplicationPath(appPath);
-	_pConfig->setString("application.path", appPath.toString());
-	_pConfig->setString("application.name", appPath.getFileName());
-	_pConfig->setString("application.baseName", appPath.getBaseName());
-	_pConfig->setString("application.dir", appPath.parent().toString());
-	_pConfig->setString("application.configDir", Path::configHome() + appPath.getBaseName() + Path::separator());
-	_pConfig->setString("application.cacheDir", Path::cacheHome() + appPath.getBaseName() + Path::separator());
-	_pConfig->setString("application.tempDir", Path::tempHome() + appPath.getBaseName() + Path::separator());
-	_pConfig->setString("application.dataDir", Path::dataHome() + appPath.getBaseName() + Path::separator());
+	_pConfig->setString("application.path"s, appPath.toString());
+	_pConfig->setString("application.name"s, appPath.getFileName());
+	_pConfig->setString("application.baseName"s, appPath.getBaseName());
+	_pConfig->setString("application.dir"s, appPath.parent().toString());
+	_pConfig->setString("application.configDir"s, Path::configHome() + appPath.getBaseName() + Path::separator());
+	_pConfig->setString("application.cacheDir"s, Path::cacheHome() + appPath.getBaseName() + Path::separator());
+	_pConfig->setString("application.tempDir"s, Path::tempHome() + appPath.getBaseName() + Path::separator());
+	_pConfig->setString("application.dataDir"s, Path::dataHome() + appPath.getBaseName() + Path::separator());
 	processOptions();
 }
 
@@ -184,22 +190,22 @@ const char* Application::name() const
 
 void Application::initialize(Application& self)
 {
-	for (SubsystemVec::iterator it = _subsystems.begin(); it != _subsystems.end(); ++it)
+	for (auto& pSub: _subsystems)
 	{
-		_pLogger->debug(std::string("Initializing subsystem: ") + (*it)->name());
-		(*it)->initialize(self);
+		_pLogger->debug("Initializing subsystem: "s + pSub->name());
+		pSub->initialize(self);
 	}
 	_initialized = true;
 }
 
-	
+
 void Application::uninitialize()
 {
 	if (_initialized)
 	{
 		for (SubsystemVec::reverse_iterator it = _subsystems.rbegin(); it != _subsystems.rend(); ++it)
 		{
-			_pLogger->debug(std::string("Uninitializing subsystem: ") + (*it)->name());
+			_pLogger->debug("Uninitializing subsystem: "s + (*it)->name());
 			(*it)->uninitialize();
 		}
 		_initialized = false;
@@ -209,10 +215,10 @@ void Application::uninitialize()
 
 void Application::reinitialize(Application& self)
 {
-	for (SubsystemVec::iterator it = _subsystems.begin(); it != _subsystems.end(); ++it)
+	for (auto& pSub: _subsystems)
 	{
-		_pLogger->debug(std::string("Re-initializing subsystem: ") + (*it)->name());
-		(*it)->reinitialize(self);
+		_pLogger->debug("Re-initializing subsystem: "s + pSub->name());
+		pSub->reinitialize(self);
 	}
 }
 
@@ -229,40 +235,39 @@ int Application::loadConfiguration(int priority)
 	Path appPath;
 	getApplicationPath(appPath);
 	Path confPath;
-	if (findAppConfigFile(appPath.getBaseName(), "properties", confPath))
+	if (findAppConfigFile(appPath.getBaseName(), "properties"s, confPath))
 	{
-		_pConfig->add(new PropertyFileConfiguration(confPath.toString()), priority, false, false);
+		_pConfig->add(new PropertyFileConfiguration(confPath.toString()), priority, false);
 		++n;
 	}
 #ifndef POCO_UTIL_NO_INIFILECONFIGURATION
-	if (findAppConfigFile(appPath.getBaseName(), "ini", confPath))
+	if (findAppConfigFile(appPath.getBaseName(), "ini"s, confPath))
 	{
-		_pConfig->add(new IniFileConfiguration(confPath.toString()), priority, false, false);
+		_pConfig->add(new IniFileConfiguration(confPath.toString()), priority, false);
 		++n;
 	}
 #endif
 #ifndef POCO_UTIL_NO_JSONCONFIGURATION
-	if (findAppConfigFile(appPath.getBaseName(), "json", confPath))
+	if (findAppConfigFile(appPath.getBaseName(), "json"s, confPath))
 	{
-		_pConfig->add(new JSONConfiguration(confPath.toString()), priority, false, false);
+		_pConfig->add(new JSONConfiguration(confPath.toString()), priority, false);
 		++n;
 	}
 #endif
 #ifndef POCO_UTIL_NO_XMLCONFIGURATION
-	if (findAppConfigFile(appPath.getBaseName(), "xml", confPath))
+	if (findAppConfigFile(appPath.getBaseName(), "xml"s, confPath))
 	{
-		_pConfig->add(new XMLConfiguration(confPath.toString()), priority, false, false);
+		_pConfig->add(new XMLConfiguration(confPath.toString()), priority, false);
 		++n;
 	}
 #endif
-	if (n > 0 && _loadedConfigs == 0)
+	if (n > 0)
 	{
 		if (!confPath.isAbsolute())
-			_pConfig->setString("application.configDir", confPath.absolute().parent().toString());
+			_pConfig->setString("application.configDir"s, confPath.absolute().parent().toString());
 		else
-			_pConfig->setString("application.configDir", confPath.parent().toString());
+			_pConfig->setString("application.configDir"s, confPath.parent().toString());
 	}
-	_loadedConfigs += n;
 	return n;
 }
 
@@ -274,52 +279,51 @@ void Application::loadConfiguration(const std::string& path, int priority)
 	std::string ext = confPath.getExtension();
 	if (icompare(ext, "properties") == 0)
 	{
-		_pConfig->add(new PropertyFileConfiguration(confPath.toString()), priority, false, false);
+		_pConfig->add(new PropertyFileConfiguration(confPath.toString()), priority, false);
 		++n;
 	}
 #ifndef POCO_UTIL_NO_INIFILECONFIGURATION
 	else if (icompare(ext, "ini") == 0)
 	{
-		_pConfig->add(new IniFileConfiguration(confPath.toString()), priority, false, false);
+		_pConfig->add(new IniFileConfiguration(confPath.toString()), priority, false);
 		++n;
 	}
 #endif
 #ifndef POCO_UTIL_NO_JSONCONFIGURATION
 	else if (icompare(ext, "json") == 0)
 	{
-		_pConfig->add(new JSONConfiguration(confPath.toString()), priority, false, false);
+		_pConfig->add(new JSONConfiguration(confPath.toString()), priority, false);
 		++n;
 	}
 #endif
 #ifndef POCO_UTIL_NO_XMLCONFIGURATION
 	else if (icompare(ext, "xml") == 0)
 	{
-		_pConfig->add(new XMLConfiguration(confPath.toString()), priority, false, false);
+		_pConfig->add(new XMLConfiguration(confPath.toString()), priority, false);
 		++n;
 	}
 #endif
 	else throw Poco::InvalidArgumentException("Unsupported configuration file type", ext);
 
-	if (n > 0 && _loadedConfigs == 0)
+	if (n > 0 && !_pConfig->has("application.configDir"s))
 	{
 		if (!confPath.isAbsolute())
-			_pConfig->setString("application.configDir", confPath.absolute().parent().toString());
+			_pConfig->setString("application.configDir"s, confPath.absolute().parent().toString());
 		else
-			_pConfig->setString("application.configDir", confPath.parent().toString());
+			_pConfig->setString("application.configDir"s, confPath.parent().toString());
 	}
-	_loadedConfigs += n;
 }
 
 
 std::string Application::commandName() const
 {
-	return _pConfig->getString("application.baseName");
+	return _pConfig->getString("application.baseName"s);
 }
 
 
 std::string Application::commandPath() const
 {
-	return _pConfig->getString("application.path");
+	return _pConfig->getString("application.path"s);
 }
 
 
@@ -329,13 +333,42 @@ void Application::stopOptionsProcessing()
 }
 
 
+void Application::ignoreUnknownOptions()
+{
+	_ignoreUnknownOptions = true;
+}
+
+Application::WindowSize Application::windowSize()
+{
+	WindowSize size{0, 0};
+
+#if defined(POCO_OS_FAMILY_WINDOWS)
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+    {
+    	size.width  = csbi.srWindow.Right  - csbi.srWindow.Left + 1;
+    	size.height = csbi.srWindow.Bottom - csbi.srWindow.Top  + 1;
+    }
+#elif defined(POCO_OS_FAMILY_UNIX)
+	struct winsize winsz;
+    if (ioctl(0, TIOCGWINSZ , &winsz) != -1)
+    {
+    	size.width  = winsz.ws_col;
+    	size.height = winsz.ws_row;
+    }
+#endif
+
+	return size;
+}
+
+
 int Application::run()
 {
 	int rc = EXIT_CONFIG;
-	initialize(*this);
 
 	try
 	{
+		initialize(*this);
 		rc = EXIT_SOFTWARE;
 		rc = main(_unprocessedArgs);
 	}
@@ -349,7 +382,7 @@ int Application::run()
 	}
 	catch (...)
 	{
-		logger().fatal("system exception");
+		logger().fatal("system exception"s);
 	}
 
 	uninitialize();
@@ -366,7 +399,7 @@ int Application::main(const ArgVec& args)
 void Application::setArgs(int argc, char* argv[])
 {
 	_command = argv[0];
-	_pConfig->setInt("application.argc", argc);
+	_pConfig->setInt("application.argc"s, argc);
 	_unprocessedArgs.reserve(argc);
 	std::string argvKey = "application.argv[";
 	for (int i = 0; i < argc; ++i)
@@ -381,9 +414,9 @@ void Application::setArgs(int argc, char* argv[])
 void Application::setArgs(const ArgVec& args)
 {
 	poco_assert (!args.empty());
-	
+
 	_command = args[0];
-	_pConfig->setInt("application.argc", (int) args.size());
+	_pConfig->setInt("application.argc"s, (int) args.size());
 	_unprocessedArgs = args;
 	std::string argvKey = "application.argv[";
 	for (int i = 0; i < args.size(); ++i)
@@ -405,7 +438,21 @@ void Application::processOptions()
 	{
 		std::string name;
 		std::string value;
-		if (processor.process(*it, name, value))
+		bool success = false;
+
+		if (_ignoreUnknownOptions)
+		{
+			try
+			{
+				success = processor.process(*it, name, value);
+			} catch (Poco::Util::UnknownOptionException&) { }
+		}
+		else
+		{
+			success = processor.process(*it, name, value);
+		}
+
+		if (success)
 		{
 			if (!name.empty()) // "--" option to end options processing or deferred argument
 			{
@@ -413,10 +460,15 @@ void Application::processOptions()
 			}
 			it = _unprocessedArgs.erase(it);
 		}
-		else ++it;
+		else
+		{
+			++it;
+		}
 	}
 	if (!_stopOptionsProcessing)
+	{
 		processor.checkRequired();
+	}
 }
 
 
@@ -438,12 +490,11 @@ void Application::getApplicationPath(Poco::Path& appPath) const
 	}
 	else
 	{
-		if (!Environment::has("PATH") || !Path::find(Environment::get("PATH"), _command, appPath))
+		if (!Path::find(Environment::get("PATH"s), _command, appPath))
 			appPath = Path(_workingDirAtLaunch, _command);
 		appPath.makeAbsolute();
 	}
 #elif defined(POCO_OS_FAMILY_WINDOWS)
-	#if defined(POCO_WIN32_UTF8) && !defined(POCO_NO_WSTRING)
 		wchar_t path[1024];
 		int n = GetModuleFileNameW(0, path, sizeof(path)/sizeof(wchar_t));
 		if (n > 0)
@@ -453,24 +504,24 @@ void Application::getApplicationPath(Poco::Path& appPath) const
 			appPath = p;
 		}
 		else throw SystemException("Cannot get application file name.");
-	#else
-		char path[1024];
-		int n = GetModuleFileNameA(0, path, sizeof(path));
-		if (n > 0)
-			appPath = path;
-		else
-			throw SystemException("Cannot get application file name.");
-	#endif
 #else
 	appPath = _command;
 #endif
 }
 
 
+void Application::getApplicationDirectory(Poco::Path& dir) const
+{
+	Path appPath;
+	getApplicationPath(appPath);
+	dir = appPath.parent();
+}
+
+
 bool Application::findFile(Poco::Path& path) const
 {
 	if (path.isAbsolute()) return true;
-	
+
 	Path appPath;
 	getApplicationPath(appPath);
 	Path base = appPath.parent();
@@ -513,34 +564,11 @@ bool Application::findAppConfigFile(const std::string& appName, const std::strin
 }
 
 
-bool Application::findAppConfigFile(const Path& basePath, const std::string& appName, const std::string& extension, Path& path) const
-{
-	poco_assert (!appName.empty());
-	
-	Path p(basePath,appName);
-	p.setExtension(extension);
-	bool found = findFile(p);
-	if (!found)
-	{
-#if defined(_DEBUG)
-		if (appName[appName.length() - 1] == 'd')
-		{
-			p.setBaseName(appName.substr(0, appName.length() - 1));
-			found = findFile(p);
-		}
-#endif
-	}
-	if (found)
-		path = p;
-	return found;
-}
-
-
 void Application::defineOptions(OptionSet& options)
 {
-	for (SubsystemVec::iterator it = _subsystems.begin(); it != _subsystems.end(); ++it)
+	for (auto& pSub: _subsystems)
 	{
-		(*it)->defineOptions(options);
+		pSub->defineOptions(options);
 	}
 }
 

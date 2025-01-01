@@ -1,8 +1,6 @@
 #
 # Makefile
 #
-# $Id: //poco/1.4/Net/Makefile#3 $
-#
 # Makefile for Poco Net
 #
 
@@ -26,14 +24,17 @@ objects = \
 	HTTPRequestHandlerFactory HTTPStreamFactory ServerSocketImpl TCPServerParams \
 	QuotedPrintableEncoder QuotedPrintableDecoder StringPartSource \
 	FTPClientSession FTPStreamFactory PartHandler PartSource PartStore NullPartHandler \
-	SocketReactor SocketNotifier SocketNotification AbstractHTTPRequestHandler \
+	SocketReactor SocketProactor SocketNotifier SocketNotification AbstractHTTPRequestHandler \
 	MailRecipient MailMessage MailStream SMTPClientSession POP3ClientSession \
 	RawSocket RawSocketImpl ICMPClient ICMPEventArgs ICMPPacket ICMPPacketImpl \
 	ICMPSocket ICMPSocketImpl ICMPv4PacketImpl \
 	NTPClient NTPEventArgs NTPPacket \
 	RemoteSyslogChannel RemoteSyslogListener SMTPChannel \
 	WebSocket WebSocketImpl \
-	OAuth10Credentials OAuth20Credentials
+	OAuth10Credentials OAuth20Credentials \
+	PollSet UDPClient UDPServerParams \
+	NTLMCredentials SSPINTLMCredentials HTTPNTLMCredentials \
+	EscapeHTMLStream
 
 target         = PocoNet
 target_version = $(LIBVERSION)

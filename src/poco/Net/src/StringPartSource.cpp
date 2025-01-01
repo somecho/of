@@ -1,8 +1,6 @@
 //
 // StringPartSource.cpp
 //
-// $Id: //poco/1.4/Net/src/StringPartSource.cpp#1 $
-//
 // Library: Net
 // Package: Messages
 // Module:  StringPartSource
@@ -53,7 +51,7 @@ std::istream& StringPartSource::stream()
 	return _istr;
 }
 
-	
+
 const std::string& StringPartSource::filename() const
 {
 	return _filename;

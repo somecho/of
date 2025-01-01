@@ -1,8 +1,6 @@
 //
 // ParseHandler.h
 //
-// $Id$
-//
 // Library: JSON
 // Package: JSON
 // Module:  ParseHandler
@@ -28,70 +26,75 @@ namespace Poco {
 namespace JSON {
 
 
-class JSON_API ParseHandler : public Handler
-	/// Provides a default handler for the JSON parser.
-	/// This handler will build up an object or array based
-	/// on the handlers called by the parser.
+class JSON_API ParseHandler: public Handler
+	/// ParseHandler is the default handler for the JSON Parser.
+	///
+	/// This handler will construct an Object or Array based
+	/// on the handlers called by the Parser.
 {
 public:
 	ParseHandler(bool preserveObjectOrder = false);
 		/// Creates the ParseHandler.
+		///
+		/// If preserveObjectOrder is true, the order of properties
+		/// inside objects is preserved. Otherwise, items
+		/// will be sorted by keys.
 
-	virtual ~ParseHandler();
+	~ParseHandler() override;
 		/// Destroys the ParseHandler.
 
-	virtual void reset();
+	void reset() override;
 		/// Resets the handler state.
-		
-	void startObject();
+
+	void startObject() override;
 		/// Handles a '{'; a new object is started.
 
-	void endObject();
+	void endObject() override;
 		/// Handles a '}'; the object is closed.
 
-	void startArray();
+	void startArray() override;
 		/// Handles a '['; a new array is started.
 
-	void endArray();
+	void endArray() override;
 		/// Handles a ']'; the array is closed.
 
-	void key(const std::string& k);
+	void key(const std::string& k) override;
 		/// A key is read
 
-	Dynamic::Var asVar() const;
+	Dynamic::Var asVar() const override;
 		/// Returns the result of the parser (an object or an array).
 
-	virtual void value(int v);
+	void value(int v) override;
 		/// An integer value is read
 
-	virtual void value(unsigned v);
+	void value(unsigned v) override;
 		/// An unsigned value is read. This will only be triggered if the
 		/// value cannot fit into a signed int.
 
 #if defined(POCO_HAVE_INT64)
-	virtual void value(Int64 v);
+	void value(Int64 v) override;
 		/// A 64-bit integer value is read
 
-	virtual void value(UInt64 v);
+	void value(UInt64 v) override;
 		/// An unsigned 64-bit integer value is read. This will only be
 		/// triggered if the value cannot fit into a signed 64-bit integer.
 #endif
 
-	virtual void value(const std::string& s);
+	void value(const std::string& s) override;
 		/// A string value is read.
 
-	virtual void value(double d);
+	void value(double d) override;
 		/// A double value is read.
 
-	virtual void value(bool b);
+	void value(bool b) override;
 		/// A boolean value is read.
 
-	virtual void null();
+	void null() override;
 		/// A null value is read.
 
 private:
 	void setValue(const Poco::Dynamic::Var& value);
-	typedef std::stack<Dynamic::Var> Stack;
+	using Stack = std::stack<Dynamic::Var>;
 
 	Stack        _stack;
 	std::string  _key;
@@ -100,6 +103,9 @@ private:
 };
 
 
+//
+// inlines
+//
 inline Dynamic::Var ParseHandler::asVar() const
 {
 	return _result;
@@ -157,11 +163,7 @@ inline void ParseHandler::null()
 }
 
 
-typedef ParseHandler ParseHandler;
-//@ deprecated
-
-
-}} // namespace Poco::JSON
+} } // namespace Poco::JSON
 
 
 #endif // JSON_ParseHandler_INCLUDED

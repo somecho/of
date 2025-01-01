@@ -1,13 +1,11 @@
 #
 # Makefile
 #
-# $Id$
-#
 # Makefile for Poco MongoDB Samples
 #
 
 .PHONY: projects
-clean all: projects
+clean distclean all: projects
 projects:
 	$(MAKE) -C SQLToMongo $(MAKECMDGOALS)
 

@@ -1,8 +1,6 @@
 //
 // SQLiteTest.h
 //
-// $Id: //poco/Main/Data/SQLite/testsuite/src/SQLiteTest.h#4 $
-//
 // Definition of the SQLiteTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -34,6 +32,7 @@ public:
 	SQLiteTest(const std::string& name);
 	~SQLiteTest();
 
+	void testBind();
 	void testBinding();
 	void testZeroRows();
 	void testSimpleAccess();
@@ -76,8 +75,10 @@ public:
 	void testIllegalRange();
 	void testSingleSelect();
 	void testEmptyDB();
+	void testNonexistingDB();
 
 	void testCLOB();
+	void testBLOB();
 
 	void testTuple1();
 	void testTupleVector1();
@@ -102,9 +103,12 @@ public:
 
 	void testDateTime();
 
+	void testUUID();
+
 	void testInternalExtraction();
 	void testPrimaryKeyConstraint();
 	void testNullable();
+	void testNullableVector();
 	void testNulls();
 	void testRowIterator();
 	void testAsync();
@@ -129,13 +133,19 @@ public:
 	void testRollbackCallback();
 	void testNotifier();
 
-	void testSessionTransaction();
+	void testSessionTransactionReadCommitted();
+	void testSessionTransactionReadUncommitted();
+	void testSessionTransactionSerializable();
+	void testSessionTransactionRepeatableRead();
 	void testTransaction();
 	void testTransactor();
 
-	void testFTS3();
+	void testFTS();
 
-	void testJSONRowFormatter();
+	void testIllegalFilePath();
+	void testTransactionTypeProperty();
+
+	void testRecordsetCopyMove();
 
 	void setUp();
 	void tearDown();
@@ -154,7 +164,6 @@ public:
 
 private:
 	void setTransactionIsolation(Poco::Data::Session& session, Poco::UInt32 ti);
-	void checkJSON(const std::string& sql, const std::string& json, int mode = 0);
 
 	static int _insertCounter;
 	static int _updateCounter;

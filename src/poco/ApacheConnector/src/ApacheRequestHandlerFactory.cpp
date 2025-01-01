@@ -1,8 +1,6 @@
 //
 // ApacheRequestHandlerFactory.cpp
 //
-// $Id: //poco/1.4/ApacheConnector/src/ApacheRequestHandlerFactory.cpp#2 $
-//
 // Copyright (c) 2006-2011, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -36,7 +34,7 @@ ApacheRequestHandlerFactory::~ApacheRequestHandlerFactory()
 Poco::Net::HTTPRequestHandler* ApacheRequestHandlerFactory::createRequestHandler(const Poco::Net::HTTPServerRequest& request)
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	// only if the given uri is found in _uris we are
 	// handling this request.
 	RequestHandlerFactories::iterator it = _requestHandlers.begin();
@@ -77,7 +75,7 @@ void ApacheRequestHandlerFactory::handleURIs(const std::string& uris)
 
 
 void ApacheRequestHandlerFactory::addRequestHandlerFactory(const std::string& dllPath, const std::string& factoryName, const std::string& uri)
-{	
+{
 	try
 	{
 		_loader.loadLibrary(dllPath);

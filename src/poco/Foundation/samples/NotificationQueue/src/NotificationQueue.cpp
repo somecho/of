@@ -1,8 +1,6 @@
 //
 // NotificationQueue.cpp
 //
-// $Id: //poco/1.4/Foundation/samples/NotificationQueue/src/NotificationQueue.cpp#1 $
-//
 // This sample demonstrates the NotificationQueue, ThreadPool,
 // FastMutex and ScopedLock classes.
 //
@@ -38,12 +36,12 @@ class WorkNotification: public Notification
 {
 public:
 	typedef AutoPtr<WorkNotification> Ptr;
-	
+
 	WorkNotification(int data):
 		_data(data)
 	{
 	}
-	
+
 	int data() const
 	{
 		return _data;
@@ -64,7 +62,7 @@ public:
 		_queue(queue)
 	{
 	}
-	
+
 	void run()
 	{
 		Poco::Random rnd;
@@ -86,7 +84,7 @@ public:
 			else break;
 		}
 	}
-	
+
 private:
 	std::string        _name;
 	NotificationQueue& _queue;
@@ -100,7 +98,7 @@ FastMutex Worker::_mutex;
 int main(int argc, char** argv)
 {
 	NotificationQueue queue;
-	
+
 	// create some worker threads
 	Worker worker1("Worker 1", queue);
 	Worker worker2("Worker 2", queue);
@@ -116,15 +114,15 @@ int main(int argc, char** argv)
 	{
 		queue.enqueueNotification(new WorkNotification(i));
 	}
-	
-	// wait until queue is empty and all threads are 
+
+	// wait until queue is empty and all threads are
 	// waiting for new work.
 	while (!queue.empty()) Thread::sleep(200);
 	Thread::sleep(500);
-	
+
 	// stop all worker threads
 	queue.wakeUpAll();
 	ThreadPool::defaultPool().joinAll();
-	
+
 	return 0;
 }

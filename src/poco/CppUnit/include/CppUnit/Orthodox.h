@@ -1,8 +1,6 @@
 //
 // Orthodox.h
 //
-// $Id: //poco/1.4/CppUnit/include/CppUnit/Orthodox.h#1 $
-//
 
 
 #ifndef CppUnit_Orthodox_INCLUDED
@@ -17,7 +15,7 @@ namespace CppUnit {
 
 
 /*
- * Orthodox performs a simple set of tests on an arbitrary
+ * Orthodox performs a simple set of tests on an arbitary
  * class to make sure that it supports at least the
  * following operations:
  *
@@ -47,22 +45,22 @@ namespace CppUnit {
  *
  * see TestSuite
  */
-template <class ClassUnderTest> 
+template <class ClassUnderTest>
 class Orthodox: public TestCase
 {
 public:
-	Orthodox(): TestCase("Orthodox") 
+	Orthodox(): TestCase("Orthodox")
 	{
 	}
 
 protected:
     ClassUnderTest call(ClassUnderTest object);
-    void runTest ();
+	void runTest () override;
 };
 
 
 // Run an orthodoxy test
-template <class ClassUnderTest> 
+template <class ClassUnderTest>
 void Orthodox<ClassUnderTest>::runTest()
 {
     // make sure we have a default constructor
@@ -92,7 +90,7 @@ void Orthodox<ClassUnderTest>::runTest()
 
 
 // Exercise a call
-template <class ClassUnderTest> 
+template <class ClassUnderTest>
 ClassUnderTest Orthodox<ClassUnderTest>::call(ClassUnderTest object)
 {
     return object;

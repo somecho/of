@@ -1,8 +1,6 @@
 //
 // UniqueExpireLRUCacheTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/UniqueExpireLRUCacheTest.h#1 $
-//
 // Tests for UniqueExpireLRUCache
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -34,7 +32,7 @@ public:
 	void testCacheSize2();
 	void testCacheSizeN();
 	void testDuplicateAdd();
-	
+
 	void setUp();
 	void tearDown();
 	static CppUnit::Test* suite();

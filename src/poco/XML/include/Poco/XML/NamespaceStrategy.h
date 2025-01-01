@@ -1,8 +1,6 @@
 //
 // NamespaceStrategy.h
 //
-// $Id: //poco/1.4/XML/include/Poco/XML/NamespaceStrategy.h#1 $
-//
 // Library: XML
 // Package: XML
 // Module:  NamespaceStrategy
@@ -44,7 +42,7 @@ public:
 	virtual void startElement(const XMLChar* name, const XMLChar** atts, int specifiedCount, ContentHandler* pContentHandler) = 0;
 		/// Translate the arguments as delivered by Expat and
 		/// call the startElement() method of the ContentHandler.
-		
+
 	virtual void endElement(const XMLChar* name, ContentHandler* pContentHandler) = 0;
 		/// Translate the arguments as delivered by Expat and
 		/// call the endElement() method of the ContentHandler.
@@ -64,10 +62,10 @@ class XML_API NoNamespacesStrategy: public NamespaceStrategy
 public:
 	NoNamespacesStrategy();
 	~NoNamespacesStrategy();
-	
+
 	void startElement(const XMLChar* name, const XMLChar** atts, int specifiedCount, ContentHandler* pContentHandler);
 	void endElement(const XMLChar* name, ContentHandler* pContentHandler);
-	
+
 private:
 	XMLString _name;
 	AttributesImpl _attrs;
@@ -81,7 +79,7 @@ class XML_API NoNamespacePrefixesStrategy: public NamespaceStrategy
 public:
 	NoNamespacePrefixesStrategy();
 	~NoNamespacePrefixesStrategy();
-	
+
 	void startElement(const XMLChar* name, const XMLChar** atts, int specifiedCount, ContentHandler* pContentHandler);
 	void endElement(const XMLChar* name, ContentHandler* pContentHandler);
 
@@ -99,10 +97,10 @@ class XML_API NamespacePrefixesStrategy: public NamespaceStrategy
 public:
 	NamespacePrefixesStrategy();
 	~NamespacePrefixesStrategy();
-	
+
 	void startElement(const XMLChar* name, const XMLChar** atts, int specifiedCount, ContentHandler* pContentHandler);
 	void endElement(const XMLChar* name, ContentHandler* pContentHandler);
-	
+
 private:
 	XMLString _uri;
 	XMLString _local;

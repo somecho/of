@@ -1,8 +1,6 @@
 //
 // MailStreamTest.cpp
 //
-// $Id: //poco/1.4/Net/testsuite/src/MailStreamTest.cpp#1 $
-//
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -47,12 +45,12 @@ void MailStreamTest::testMailInputStream()
 		"..\r\n"
 		".\r\n"
 	);
-	
+
 	MailInputStream mis(istr);
 	std::ostringstream ostr;
 	StreamCopier::copyStream(mis, ostr);
 	std::string s(ostr.str());
-	assert (s ==
+	assertTrue (s ==
 		"From: john.doe@no.domain\r\n"
 		"To: jane.doe@no.domain\r\n"
 		"Subject: test\r\n"
@@ -62,7 +60,7 @@ void MailStreamTest::testMailInputStream()
 		".This line starts with a period.\r\n"
 		".and this one too\r\n"
 		".\r\n"
-	);	
+	);
 }
 
 
@@ -74,25 +72,27 @@ void MailStreamTest::testMailOutputStream()
 		"Subject: test\r\n"
 		"\r\n"
 		"This is a test.\r\n"
+		"\n.\n"
 		"\rThis.is.\ngarbage\r.\r\n"
 		".This line starts with a period.\r\n"
 		"\r\n"
 		".and this one too\r\n"
 		".\r\n"
 	);
-	
+
 	std::ostringstream ostr;
 	MailOutputStream mos(ostr);
 	mos << msg;
 	mos.close();
 	std::string s(ostr.str());
-	assert (s == 
+	assertTrue (s ==
 		"From: john.doe@no.domain\r\n"
 		"To: jane.doe@no.domain\r\n"
 		"Subject: test\r\n"
 		"\r\n"
 		"This is a test.\r\n"
-		"\rThis.is.\ngarbage\r.\r\n"
+		"\r\n..\r\n"
+		"\rThis.is.\r\ngarbage\r.\r\n"
 		"..This line starts with a period.\r\n"
 		"\r\n"
 		"..and this one too\r\n"

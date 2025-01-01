@@ -1,8 +1,6 @@
 //
 // Mutex_VX.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/Mutex_VX.h#1 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  Mutex
@@ -31,21 +29,15 @@ namespace Poco {
 
 class Foundation_API MutexImpl
 {
-public:
-	enum MutexTypeImpl
-	{
-		MUTEX_RECURSIVE_IMPL,
-		MUTEX_NONRECURSIVE_IMPL,
-	};
-
 protected:
-	explicit MutexImpl(MutexTypeImpl type);
+	MutexImpl();
+	MutexImpl(bool fast);
 	~MutexImpl();
 	void lockImpl();
 	bool tryLockImpl();
 	bool tryLockImpl(long milliseconds);
 	void unlockImpl();
-	
+
 private:
 	SEM_ID _sem;
 };

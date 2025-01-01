@@ -6,6 +6,7 @@
 // - Rui Lopes (ruiglopes@yahoo.com)
 // - Detlev Vendt (detlev.vendt@brillit.de)
 // - Petr Pytelka (pyta@lightcomp.com)
+// - Hervé Drolon (drolon@infonie.fr)
 //
 // This file is part of FreeImage 3
 //
@@ -48,10 +49,10 @@ using namespace std;
 // Plugin search list
 // =====================================================================
 
-const char *
+const wchar_t *
 s_search_list[] = {
-	"",
-	"plugins\\",
+	L"",
+	L"plugins\\",
 };
 
 static int s_search_list_size = sizeof(s_search_list) / sizeof(char *);
@@ -265,36 +266,43 @@ FreeImage_Initialise(BOOL load_local_plugins_only) {
 	        s_plugins->AddNode(InitHDR);
 			s_plugins->AddNode(InitG3);
 			s_plugins->AddNode(InitSGI);
+			#if INCLUDE_LIB_OPENEXR
 			s_plugins->AddNode(InitEXR);
+			#endif
 			s_plugins->AddNode(InitJ2K);
 			s_plugins->AddNode(InitJP2);
 			s_plugins->AddNode(InitPFM);
 			s_plugins->AddNode(InitPICT);
+			#if INCLUDE_LIB_RAW
 			s_plugins->AddNode(InitRAW);
+			#endif
+			#if INCLUDE_LIB_WEBP
 			s_plugins->AddNode(InitWEBP);
+			#endif
+			#if INCLUDE_LIB_JXR
 #if !(defined(_MSC_VER) && (_MSC_VER <= 1310))
 			s_plugins->AddNode(InitJXR);
 #endif // unsupported by MS Visual Studio 2003 !!!
+			#endif
 			
 			// external plugin initialization
 
 #ifdef _WIN32
 			if (!load_local_plugins_only) {
+				const DWORD nPathSize = 8 * _MAX_PATH;	// should be enough to handle a path
 				int count = 0;
-				char buffer[MAX_PATH + 200];
-				wchar_t current_dir[2 * _MAX_PATH], module[2 * _MAX_PATH];
+				wchar_t buffer[nPathSize];
+				wchar_t current_dir[nPathSize];
+				wchar_t module_name[nPathSize];
 				BOOL bOk = FALSE;
 
-				// store the current directory. then set the directory to the application location
-
-				if (GetCurrentDirectoryW(2 * _MAX_PATH, current_dir) != 0) {
-					if (GetModuleFileNameW(NULL, module, 2 * _MAX_PATH) != 0) {
-						wchar_t *last_point = wcsrchr(module, L'\\');
-
+				// store the current directory, then set the directory to the application location
+				if (GetCurrentDirectoryW(nPathSize, current_dir) != 0) {
+					if (GetModuleFileNameW(NULL, module_name, nPathSize) != 0) {
+						wchar_t *last_point = wcsrchr(module_name, L'\\');
 						if (last_point) {
 							*last_point = L'\0';
-
-							bOk = SetCurrentDirectoryW(module);
+							bOk = SetCurrentDirectoryW(module_name);
 						}
 					}
 				}
@@ -302,18 +310,18 @@ FreeImage_Initialise(BOOL load_local_plugins_only) {
 				// search for plugins
 
 				while (count < s_search_list_size) {
-					_finddata_t find_data;
+					_wfinddata64_t find_data;
 					long find_handle;
 
-					strcpy(buffer, s_search_list[count]);
-					strcat(buffer, "*.fip");
+					wcscpy(buffer, s_search_list[count]);
+					wcscat(buffer, L"*.fip");
 
-					if ((find_handle = (long)_findfirst(buffer, &find_data)) != -1L) {
+					if ((find_handle = _wfindfirst64(buffer, &find_data)) != -1L) {
 						do {
-							strcpy(buffer, s_search_list[count]);
-							strncat(buffer, find_data.name, MAX_PATH + 200);
+							wcscpy(buffer, s_search_list[count]);
+							wcscat(buffer, find_data.name);
 
-							HINSTANCE instance = LoadLibrary(buffer);
+							HINSTANCE instance = LoadLibraryW(buffer);
 
 							if (instance != NULL) {
 								FARPROC proc_address = GetProcAddress(instance, "_Init@8");
@@ -324,10 +332,11 @@ FreeImage_Initialise(BOOL load_local_plugins_only) {
 									FreeLibrary(instance);
 								}
 							}
-						} while (_findnext(find_handle, &find_data) != -1L);
+						} while (_wfindnext64(find_handle, &find_data) != -1L);
 
 						_findclose(find_handle);
 					}
+
 
 					count++;
 				}
@@ -516,9 +525,9 @@ FreeImage_RegisterLocalPlugin(FI_InitProc proc_address, const char *format, cons
 
 #ifdef _WIN32
 FREE_IMAGE_FORMAT DLL_CALLCONV
-FreeImage_RegisterExternalPlugin(const char *path, const char *format, const char *description, const char *extension, const char *regexpr) {
+FreeImage_RegisterExternalPlugin(const wchar_t *path, const char *format, const char *description, const char *extension, const char *regexpr) {
 	if (path != NULL) {
-		HINSTANCE instance = LoadLibrary(path);
+		HINSTANCE instance = LoadLibraryW(path);
 
 		if (instance != NULL) {
 			FARPROC proc_address = GetProcAddress(instance, "_Init@8");

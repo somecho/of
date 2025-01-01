@@ -1,8 +1,6 @@
 //
 // UDPEchoServer.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/UDPEchoServer.h#1 $
-//
 // Definition of the UDPEchoServer class.
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
@@ -40,10 +38,10 @@ public:
 	Poco::UInt16 port() const;
 		/// Returns the port the echo server is
 		/// listening on.
-		
+
 	Poco::Net::SocketAddress address() const;
-		/// Returns the address of the server.	
-		
+		/// Returns the address of the server.
+
 	void run();
 		/// Does the work.
 
@@ -51,7 +49,7 @@ private:
 	Poco::Net::DatagramSocket _socket;
 	Poco::Thread _thread;
 	Poco::Event  _ready;
-	bool         _stop;
+	std::atomic<bool> _stop;
 };
 
 

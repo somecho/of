@@ -1,8 +1,6 @@
 //
 // IPAddressTest.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/IPAddressTest.h#1 $
-//
 // Definition of the IPAddressTest class.
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
@@ -41,6 +39,7 @@ public:
 	void testPrefixLen();
 	void testOperators();
 	void testByteOrderMacros();
+	void testScoped();
 
 	void setUp();
 	void tearDown();

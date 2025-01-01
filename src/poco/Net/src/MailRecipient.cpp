@@ -1,8 +1,6 @@
 //
 // MailRecipient.cpp
 //
-// $Id: //poco/1.4/Net/src/MailRecipient.cpp#1 $
-//
 // Library: Net
 // Package: Mail
 // Module:  MailRecipient
@@ -27,7 +25,7 @@ MailRecipient::MailRecipient():
 {
 }
 
-	
+
 MailRecipient::MailRecipient(const MailRecipient& recipient):
 	_address(recipient._address),
 	_realName(recipient._realName),
@@ -35,7 +33,7 @@ MailRecipient::MailRecipient(const MailRecipient& recipient):
 {
 }
 
-	
+
 MailRecipient::MailRecipient(RecipientType type, const std::string& address):
 	_address(address),
 	_type(type)
@@ -55,7 +53,7 @@ MailRecipient::~MailRecipient()
 {
 }
 
-	
+
 MailRecipient& MailRecipient::operator = (const MailRecipient& recipient)
 {
 	if (this != &recipient)
@@ -67,26 +65,26 @@ MailRecipient& MailRecipient::operator = (const MailRecipient& recipient)
 }
 
 
-void MailRecipient::swap(MailRecipient& recipient)
+void MailRecipient::swap(MailRecipient& recipient) noexcept
 {
 	std::swap(_type, recipient._type);
 	std::swap(_address, recipient._address);
 	std::swap(_realName, recipient._realName);
 }
 
-	
+
 void MailRecipient::setType(RecipientType type)
 {
 	_type = type;
 }
 
-	
+
 void MailRecipient::setAddress(const std::string& address)
 {
 	_address = address;
 }
 
-	
+
 void MailRecipient::setRealName(const std::string& realName)
 {
 	_realName = realName;

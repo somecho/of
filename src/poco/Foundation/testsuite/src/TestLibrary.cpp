@@ -1,8 +1,6 @@
 //
 // TestLibrary.cpp
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/TestLibrary.cpp#1 $
-//
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -24,11 +22,11 @@ public:
 	PluginA()
 	{
 	}
-	
+
 	~PluginA()
 	{
 	}
-	
+
 	std::string name() const
 	{
 		return "PluginA";
@@ -42,11 +40,11 @@ public:
 	PluginB()
 	{
 	}
-	
+
 	~PluginB()
 	{
 	}
-	
+
 	std::string name() const
 	{
 		return "PluginB";
@@ -60,11 +58,11 @@ public:
 	PluginC()
 	{
 	}
-	
+
 	~PluginC()
 	{
 	}
-	
+
 	std::string name() const
 	{
 		return "PluginC";
@@ -87,7 +85,7 @@ void pocoInitializeLibrary()
 
 void pocoUninitializeLibrary()
 {
-	std::cout << "TestLibrary uninitialzing" << std::endl;
+	std::cout << "TestLibrary uninitializing" << std::endl;
 }
 
 

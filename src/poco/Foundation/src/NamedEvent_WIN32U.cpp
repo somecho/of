@@ -1,8 +1,6 @@
 //
 // NamedEvent_WIN32.cpp
 //
-// $Id: //poco/1.4/Foundation/src/NamedEvent_WIN32U.cpp#1 $
-//
 // Library: Foundation
 // Package: Processes
 // Module:  NamedEvent
@@ -31,7 +29,7 @@ NamedEventImpl::NamedEventImpl(const std::string& name):
 	_event = CreateEventW(NULL, FALSE, FALSE, _uname.c_str());
 	if (!_event)
 	{
-		DWORD dwRetVal = GetLastError(); 
+		DWORD dwRetVal = GetLastError();
 		throw SystemException(format("cannot create named event %s [Error %d: %s]", _name, (int)dwRetVal, Error::getMessage(dwRetVal)));
 	}
 }

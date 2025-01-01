@@ -1,8 +1,6 @@
 //
 // PartSource.cpp
 //
-// $Id: //poco/1.4/Net/src/PartSource.cpp#1 $
-//
 // Library: Net
 // Package: Messages
 // Module:  PartSource
@@ -29,7 +27,7 @@ PartSource::PartSource():
 {
 }
 
-	
+
 PartSource::PartSource(const std::string& mediaType):
 	_mediaType(mediaType)
 {

@@ -1,8 +1,6 @@
 //
 // SHA1Engine.cpp
 //
-// $Id: //poco/1.4/Foundation/src/SHA1Engine.cpp#1 $
-//
 // Library: Foundation
 // Package: Crypt
 // Module:  SHA1Engine
@@ -56,7 +54,7 @@ inline void SHA1Engine::byteReverse(UInt32* buffer, int byteCount)
 #endif // POCO_ARCH_LITTLE_ENDIAN
 }
 
-	
+
 void SHA1Engine::updateImpl(const void* buffer_, std::size_t count)
 {
 	const BYTE* buffer = (const BYTE*) buffer_;
@@ -73,7 +71,7 @@ void SHA1Engine::updateImpl(const void* buffer_, std::size_t count)
 	{
 		db[_context.slop++] = *(buffer++);
 		if (_context.slop == BLOCK_SIZE)
-		{ 
+		{
 			/* transform this one block */
 			SHA1_BYTE_REVERSE(_context.data, BLOCK_SIZE);
 			transform();
@@ -145,7 +143,15 @@ const DigestEngine::Digest& SHA1Engine::digest()
 	for (count = 0; count < DIGEST_SIZE; count++)
 		hash[count] = (BYTE) ((_context.digest[count>>2]) >> (8*(3-(count & 0x3)))) & 0xff;
 	_digest.clear();
+#if defined(POCO_COMPILER_GCC)
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wstringop-overflow"
+	#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
 	_digest.insert(_digest.begin(), hash, hash + DIGEST_SIZE);
+#if defined(POCO_COMPILER_GCC)
+	#pragma GCC diagnostic pop
+#endif
 	reset();
 	return _digest;
 }

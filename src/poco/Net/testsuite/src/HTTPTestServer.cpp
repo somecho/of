@@ -1,8 +1,6 @@
 //
 // HTTPTestServer.cpp
 //
-// $Id: //poco/1.4/Net/testsuite/src/HTTPTestServer.cpp#4 $
-//
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -30,6 +28,17 @@ const std::string HTTPTestServer::LARGE_BODY(4000, 'x');
 
 HTTPTestServer::HTTPTestServer():
 	_socket(SocketAddress()),
+	_thread("HTTPTestServer"),
+	_stop(false)
+{
+	_thread.start(*this);
+	_ready.wait();
+	_lastRequest.reserve(4000);
+}
+
+
+HTTPTestServer::HTTPTestServer(const std::string& addr) :
+	_socket(SocketAddress(addr)),
 	_thread("HTTPTestServer"),
 	_stop(false)
 {
@@ -76,13 +85,15 @@ void HTTPTestServer::run()
 				{
 					_lastRequest.append(buffer, n);
 					if (!requestComplete())
+					{
 						n = ss.receiveBytes(buffer, sizeof(buffer));
+					}
 					else
 						n = 0;
 				}
 				std::string response = handleRequest();
-				ss.sendBytes(response.data(), (int) response.size());
-				Poco::Thread::sleep(1000);
+				n = ss.sendBytes(response.data(), (int) response.size());
+				if (n) Poco::Thread::sleep(1000);
 				try
 				{
 					ss.shutdown();
@@ -103,7 +114,7 @@ void HTTPTestServer::run()
 
 bool HTTPTestServer::requestComplete() const
 {
-	return ((_lastRequest.substr(0, 3) == "GET" || _lastRequest.substr(0, 4) == "HEAD") && 
+	return ((_lastRequest.substr(0, 3) == "GET" || _lastRequest.substr(0, 4) == "HEAD") &&
 	        (_lastRequest.find("\r\n\r\n") != std::string::npos)) ||
 	        (_lastRequest.find("\r\n0\r\n") != std::string::npos);
 }
@@ -119,7 +130,7 @@ std::string HTTPTestServer::handleRequest() const
 		std::string body(SMALL_BODY);
 		response.append("HTTP/1.0 200 OK\r\n");
 		response.append("Content-Type: text/plain\r\n");
-		response.append("Content-Length: "); 
+		response.append("Content-Length: ");
 		response.append(NumberFormatter::format((int) body.size()));
 		response.append("\r\n");
 		response.append("Connection: Close\r\n");
@@ -134,13 +145,41 @@ std::string HTTPTestServer::handleRequest() const
 		std::string body(LARGE_BODY);
 		response.append("HTTP/1.0 200 OK\r\n");
 		response.append("Content-Type: text/plain\r\n");
-		response.append("Content-Length: "); 
+		response.append("Content-Length: ");
 		response.append(NumberFormatter::format((int) body.size()));
 		response.append("\r\n");
 		response.append("Connection: Close\r\n");
 		response.append("\r\n");
 		if (_lastRequest.substr(0, 3) == "GET")
 			response.append(body);
+	}
+	else if (_lastRequest.substr(0, 12) == "POST /expect")
+	{
+		std::string::size_type pos = _lastRequest.find("\r\n\r\n");
+		pos += 4;
+		std::string body = _lastRequest.substr(pos);
+		response.append("HTTP/1.1 100 Continue\r\n\r\n");
+		response.append("HTTP/1.1 200 OK\r\n");
+		response.append("Content-Type: text/plain\r\n");
+		if (_lastRequest.find("Content-Length") != std::string::npos)
+		{
+			response.append("Content-Length: ");
+			response.append(NumberFormatter::format((int) body.size()));
+			response.append("\r\n");
+		}
+		else if (_lastRequest.find("chunked") != std::string::npos)
+		{
+			response.append("Transfer-Encoding: chunked\r\n");
+		}
+		response.append("Connection: Close\r\n");
+		response.append("\r\n");
+		response.append(body);
+	}
+	else if (_lastRequest.substr(0, 10) == "POST /fail")
+	{
+		response.append("HTTP/1.1 400 Bad Request\r\n");
+		response.append("Connection: Close\r\n");
+		response.append("\r\n");
 	}
 	else if (_lastRequest.substr(0, 4) == "POST")
 	{
@@ -151,7 +190,7 @@ std::string HTTPTestServer::handleRequest() const
 		response.append("Content-Type: text/plain\r\n");
 		if (_lastRequest.find("Content-Length") != std::string::npos)
 		{
-			response.append("Content-Length: "); 
+			response.append("Content-Length: ");
 			response.append(NumberFormatter::format((int) body.size()));
 			response.append("\r\n");
 		}
@@ -169,13 +208,13 @@ std::string HTTPTestServer::handleRequest() const
 		response.append("HTTP/1.1 200 OK\r\n");
 		response.append("Connection: keep-alive\r\n");
 		response.append("Content-Type: text/plain\r\n");
-		response.append("Content-Length: "); 
+		response.append("Content-Length: ");
 		response.append(NumberFormatter::format((int) body.size()));
 		response.append("\r\n\r\n");
 		response.append("HTTP/1.1 200 OK\r\n");
 		response.append("Connection: Keep-Alive\r\n");
 		response.append("Content-Type: text/plain\r\n");
-		response.append("Content-Length: "); 
+		response.append("Content-Length: ");
 		response.append(NumberFormatter::format((int) body.size()));
 		response.append("\r\n\r\n");
 		response.append(body);
@@ -191,9 +230,24 @@ std::string HTTPTestServer::handleRequest() const
 		response.append("HTTP/1.1 200 OK\r\n");
 		response.append("Connection: close\r\n");
 		response.append("Content-Type: text/plain\r\n");
-		response.append("Content-Length: "); 
+		response.append("Content-Length: ");
 		response.append(NumberFormatter::format((int) body.size()));
 		response.append("\r\n\r\n");
+	}
+	else if (_lastRequest.substr(0, 12) == "GET /trailer")
+	{
+		std::string body(LARGE_BODY);
+		response.append("HTTP/1.1 200 OK\r\n");
+		response.append("Connection: keep-alive\r\n");
+		response.append("Content-Type: text/plain\r\n");
+		response.append("Transfer-Encoding: chunked\r\n\r\n");
+		response.append(NumberFormatter::formatHex((unsigned) body.length()));
+		response.append("\r\n");
+		response.append(body);
+		response.append("\r\n0\r\n");
+		response.append("Trailer-1: Value 1\r\n");
+		response.append("Trailer-2: Value 2\r\n");
+		response.append("\r\n");
 	}
 	else if (_lastRequest.substr(0, 13) == "GET /redirect")
 	{
@@ -207,12 +261,12 @@ std::string HTTPTestServer::handleRequest() const
 		response.append("\r\n");
 	}
 	else if (_lastRequest.substr(0, 5) == "GET /" ||
-	    _lastRequest.substr(0, 6) == "HEAD /")
+	         _lastRequest.substr(0, 6) == "HEAD /")
 	{
 		std::string body(SMALL_BODY);
 		response.append("HTTP/1.0 200 OK\r\n");
 		response.append("Content-Type: text/plain\r\n");
-		response.append("Content-Length: "); 
+		response.append("Content-Length: ");
 		response.append(NumberFormatter::format((int) body.size()));
 		response.append("\r\n");
 		response.append("Connection: Close\r\n");

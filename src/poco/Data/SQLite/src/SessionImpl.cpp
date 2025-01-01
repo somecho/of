@@ -1,9 +1,7 @@
 //
 // SessionImpl.cpp
 //
-// $Id: //poco/Main/Data/SQLite/src/SessionImpl.cpp#5 $
-//
-// Library: SQLite
+// Library: Data/SQLite
 // Package: SQLite
 // Module:  SessionImpl
 //
@@ -19,8 +17,7 @@
 #include "Poco/Data/SQLite/SQLiteStatementImpl.h"
 #include "Poco/Data/SQLite/SQLiteException.h"
 #include "Poco/Data/Session.h"
-#include "Poco/ActiveMethod.h"
-#include "Poco/ActiveResult.h"
+#include "Poco/Stopwatch.h"
 #include "Poco/String.h"
 #include "Poco/Mutex.h"
 #include "Poco/Data/DataException.h"
@@ -43,24 +40,32 @@ namespace SQLite {
 
 
 const std::string SessionImpl::DEFERRED_BEGIN_TRANSACTION("BEGIN DEFERRED");
+const std::string SessionImpl::EXCLUSIVE_BEGIN_TRANSACTION("BEGIN EXCLUSIVE");
+const std::string SessionImpl::IMMEDIATE_BEGIN_TRANSACTION("BEGIN IMMEDIATE");
 const std::string SessionImpl::COMMIT_TRANSACTION("COMMIT");
 const std::string SessionImpl::ABORT_TRANSACTION("ROLLBACK");
+const std::string SessionImpl::SQLITE_READ_UNCOMMITTED = "PRAGMA read_uncommitted = true";
+const std::string SessionImpl::SQLITE_READ_COMMITTED  = "PRAGMA read_uncommitted = false";
+
 
 
 SessionImpl::SessionImpl(const std::string& fileName, std::size_t loginTimeout):
 	Poco::Data::AbstractSessionImpl<SessionImpl>(fileName, loginTimeout),
 	_connector(Connector::KEY),
-	_pDB(0),
+	_pDB(nullptr),
 	_connected(false),
-	_isTransaction(false)
+	_isTransaction(false),
+	_transactionType(TransactionType::DEFERRED),
+	_transactionIsolationLevel(Session::TRANSACTION_READ_COMMITTED)
 {
 	open();
-	setConnectionTimeout(CONNECTION_TIMEOUT_DEFAULT);
+	setConnectionTimeout(loginTimeout);
 	setProperty("handle", _pDB);
-	addFeature("autoCommit", 
-		&SessionImpl::autoCommit, 
+	addFeature("autoCommit",
+		&SessionImpl::autoCommit,
 		&SessionImpl::isAutoCommit);
 	addProperty("connectionTimeout", &SessionImpl::setConnectionTimeout, &SessionImpl::getConnectionTimeout);
+	addProperty(Utility::TRANSACTION_TYPE_PROPERTY_KEY, &SessionImpl::setTransactionType, &SessionImpl::getTransactionType);
 }
 
 
@@ -77,7 +82,13 @@ SessionImpl::~SessionImpl()
 }
 
 
-Poco::Data::StatementImpl* SessionImpl::createStatementImpl()
+void SessionImpl::setName()
+{
+	setDBMSName("SQLite"s);
+}
+
+
+Poco::Data::StatementImpl::Ptr SessionImpl::createStatementImpl()
 {
 	poco_check_ptr (_pDB);
 	return new SQLiteStatementImpl(*this, _pDB);
@@ -88,7 +99,18 @@ void SessionImpl::begin()
 {
 	Poco::Mutex::ScopedLock l(_mutex);
 	SQLiteStatementImpl tmp(*this, _pDB);
-	tmp.add(DEFERRED_BEGIN_TRANSACTION);
+	switch (_transactionType)
+	{
+	case TransactionType::DEFERRED:
+		tmp.add(DEFERRED_BEGIN_TRANSACTION);
+		break;
+	case TransactionType::EXCLUSIVE:
+		tmp.add(EXCLUSIVE_BEGIN_TRANSACTION);
+		break;
+	case TransactionType::IMMEDIATE:
+		tmp.add(IMMEDIATE_BEGIN_TRANSACTION);
+		break;
+	}
 	tmp.execute();
 	_isTransaction = true;
 }
@@ -116,55 +138,58 @@ void SessionImpl::rollback()
 
 void SessionImpl::setTransactionIsolation(Poco::UInt32 ti)
 {
-	if (ti != Session::TRANSACTION_READ_COMMITTED)
-		throw Poco::InvalidArgumentException("setTransactionIsolation()");
+	Poco::Mutex::ScopedLock l(_mutex);
+	SQLiteStatementImpl tmp(*this, _pDB);
+	switch (ti)
+	{
+	case Session::TRANSACTION_READ_COMMITTED:
+		tmp.add(SQLITE_READ_COMMITTED);
+		_transactionIsolationLevel = Session::TRANSACTION_READ_COMMITTED;
+		break;
+	case Session::TRANSACTION_READ_UNCOMMITTED:
+		tmp.add(SQLITE_READ_UNCOMMITTED);
+		_transactionIsolationLevel = Session::TRANSACTION_READ_UNCOMMITTED;
+		break;
+	case Session::TRANSACTION_REPEATABLE_READ:
+		throw Poco::InvalidArgumentException("setTransactionIsolation(TRANSACTION_REPEATABLE_READ) - unsupported");
+	case Session::TRANSACTION_SERIALIZABLE:
+		throw Poco::InvalidArgumentException("setTransactionIsolation(TRANSACTION_SERIALIZABLE) - unsupported [SQLite transactions are serializable by design]");
+	default:
+		throw Poco::InvalidArgumentException(Poco::format("setTransactionIsolation(%u) - unsupported", ti));
+		break;
+	}
+	tmp.execute();
 }
 
 
-Poco::UInt32 SessionImpl::getTransactionIsolation()
+Poco::UInt32 SessionImpl::getTransactionIsolation() const
 {
-	return Session::TRANSACTION_READ_COMMITTED;
+	return _transactionIsolationLevel;
 }
 
 
-bool SessionImpl::hasTransactionIsolation(Poco::UInt32 ti)
+bool SessionImpl::hasTransactionIsolation(Poco::UInt32 ti) const
 {
-	if (ti == Session::TRANSACTION_READ_COMMITTED) return true;
+	switch (ti)
+	{
+	case Session::TRANSACTION_READ_COMMITTED:
+		return true;
+	case Session::TRANSACTION_READ_UNCOMMITTED:
+		return true;
+	case Session::TRANSACTION_REPEATABLE_READ:
+		return false;
+	case Session::TRANSACTION_SERIALIZABLE:
+		return false;
+	}
+
 	return false;
 }
 
 
-bool SessionImpl::isTransactionIsolation(Poco::UInt32 ti)
+bool SessionImpl::isTransactionIsolation(Poco::UInt32 ti) const
 {
-	if (ti == Session::TRANSACTION_READ_COMMITTED) return true;
-	return false;
+	return getTransactionIsolation() == ti;
 }
-
-
-class ActiveConnector
-{
-public:
-	ActiveConnector(const std::string& connectString, sqlite3** ppDB):
-		connect(this, &ActiveConnector::connectImpl),
-		_connectString(connectString),
-		_ppDB(ppDB)
-	{
-		poco_check_ptr(_ppDB);
-	}
-	
-	ActiveMethod<int, void, ActiveConnector> connect;
-	
-private:
-	ActiveConnector();
-
-	inline int connectImpl()
-	{
-		return sqlite3_open_v2(_connectString.c_str(), _ppDB, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
-	}
-
-	std::string _connectString;
-	sqlite3**   _ppDB;
-};
 
 
 void SessionImpl::open(const std::string& connect)
@@ -182,20 +207,27 @@ void SessionImpl::open(const std::string& connect)
 
 	try
 	{
-		ActiveConnector connector(connectionString(), &_pDB);
-		ActiveResult<int> result = connector.connect();
-		if (!result.tryWait(getLoginTimeout() * 1000))
-			throw ConnectionFailedException("Timed out.");
-
-		int rc = result.data();
-		if (rc != 0)
+		int rc = 0;
+		size_t tout = getLoginTimeout();
+		Stopwatch sw; sw.start();
+		while (true)
 		{
+			rc = sqlite3_open_v2(connectionString().c_str(), &_pDB,
+				SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, nullptr);
+			if (rc == SQLITE_OK) break;
+			if (!_pDB)
+				throw ConnectionFailedException(std::string(sqlite3_errstr(rc)));
+			if (sw.elapsedSeconds() >= tout)
+			{
+				Utility::throwException(_pDB, rc);
+			}
+			Thread::sleep(10);
 			close();
-			Utility::throwException(rc);
 		}
-	} 
+	}
 	catch (SQLiteException& ex)
 	{
+		close();
 		throw ConnectionFailedException(ex.displayText());
 	}
 
@@ -207,15 +239,21 @@ void SessionImpl::close()
 {
 	if (_pDB)
 	{
-		sqlite3_close(_pDB);
-		_pDB = 0;
+		sqlite3_close_v2(_pDB);
+		_pDB = nullptr;
 	}
 
 	_connected = false;
 }
 
 
-bool SessionImpl::isConnected()
+void SessionImpl::reset()
+{
+
+}
+
+
+bool SessionImpl::isConnected() const
 {
 	return _connected;
 }
@@ -223,9 +261,9 @@ bool SessionImpl::isConnected()
 
 void SessionImpl::setConnectionTimeout(std::size_t timeout)
 {
-	int tout = 1000 * timeout;
+	int tout = static_cast<int>(1000 * timeout);
 	int rc = sqlite3_busy_timeout(_pDB, tout);
-	if (rc != 0) Utility::throwException(rc);
+	if (rc != 0) Utility::throwException(_pDB, rc);
 	_timeout = tout;
 }
 
@@ -236,23 +274,32 @@ void SessionImpl::setConnectionTimeout(const std::string& prop, const Poco::Any&
 }
 
 
-Poco::Any SessionImpl::getConnectionTimeout(const std::string& prop)
+Poco::Any SessionImpl::getConnectionTimeout(const std::string& prop) const
 {
 	return Poco::Any(_timeout/1000);
 }
 
+void SessionImpl::setTransactionType(TransactionType transactionType)
+{
+	_transactionType = transactionType;
+}
+
+void SessionImpl::setTransactionType(const std::string &prop, const Poco::Any& value)
+{
+	setTransactionType(Poco::RefAnyCast<TransactionType>(value));
+}
+
+Poco::Any SessionImpl::getTransactionType(const std::string& prop) const
+{
+	return Poco::Any(_transactionType);
+}
 
 void SessionImpl::autoCommit(const std::string&, bool)
 {
-	// The problem here is to decide whether to call commit or rollback
-	// when autocommit is set to true. Hence, it is best not to implement
-	// this explicit call and only implicitly support autocommit setting.
-	throw NotImplementedException(
-		"SQLite autocommit is implicit with begin/commit/rollback.");
 }
 
 
-bool SessionImpl::isAutoCommit(const std::string&)
+bool SessionImpl::isAutoCommit(const std::string&) const
 {
 	Poco::Mutex::ScopedLock l(_mutex);
 	return (0 != sqlite3_get_autocommit(_pDB));

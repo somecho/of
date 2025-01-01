@@ -1,8 +1,6 @@
 //
 // ElementsByTagNameList.cpp
 //
-// $Id: //poco/1.4/XML/src/ElementsByTagNameList.cpp#1 $
-//
 // Library: XML
 // Package: DOM
 // Module:  DOM
@@ -30,7 +28,7 @@ ElementsByTagNameList::ElementsByTagNameList(const Node* pParent, const XMLStrin
 	_count(0)
 {
 	poco_check_ptr (pParent);
-	
+
 	_pParent->duplicate();
 }
 
@@ -96,7 +94,7 @@ ElementsByTagNameListNS::ElementsByTagNameListNS(const Node* pParent, const XMLS
 	_count(0)
 {
 	poco_check_ptr (pParent);
-	
+
 	_pParent->duplicate();
 }
 

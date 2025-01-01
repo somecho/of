@@ -1,8 +1,6 @@
 //
 // SMTPClientSessionTest.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/SMTPClientSessionTest.h#1 $
-//
 // Definition of the SMTPClientSessionTest class.
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
@@ -33,7 +31,7 @@ public:
 	void testSendMultiRecipient();
 	void testMultiSeparateRecipient();
 	void testSendFailed();
-	
+
 	void setUp();
 	void tearDown();
 

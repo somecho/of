@@ -1,8 +1,6 @@
 //
 // RWLockTest.cpp
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/RWLockTest.cpp#1 $
-//
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -16,6 +14,7 @@
 #include "Poco/RWLock.h"
 #include "Poco/Thread.h"
 #include "Poco/Runnable.h"
+#include <atomic>
 
 
 using Poco::RWLock;
@@ -26,10 +25,15 @@ using Poco::Runnable;
 class RWLockRunnable: public Runnable
 {
 public:
-	RWLockRunnable(RWLock& lock, volatile int& counter): _lock(lock), _counter(counter), _ok(true)
+#ifdef __cpp_lib_atomic_ref
+	RWLockRunnable(RWLock& lock, int& counter):
+#else
+	RWLockRunnable(RWLock& lock, volatile int& counter):
+#endif
+		_lock(lock), _counter(counter), _ok(true)
 	{
 	}
-	
+
 	void run()
 	{
 		int lastCount = 0;
@@ -59,15 +63,19 @@ public:
 			_lock.unlock();
 		}
 	}
-	
+
 	bool ok() const
 	{
 		return _ok;
 	}
-	
+
 private:
 	RWLock& _lock;
+#ifdef __cpp_lib_atomic_ref
+	std::atomic_ref<int> _counter;
+#else
 	volatile int& _counter;
+#endif
 	bool _ok;
 };
 
@@ -75,10 +83,15 @@ private:
 class RWTryLockRunnable: public Runnable
 {
 public:
-	RWTryLockRunnable(RWLock& lock, volatile int& counter): _lock(lock), _counter(counter), _ok(true)
+#ifdef __cpp_lib_atomic_ref
+	RWTryLockRunnable(RWLock& lock, int& counter):
+#else
+	RWTryLockRunnable(RWLock& lock, volatile int& counter):
+#endif
+		_lock(lock), _counter(counter), _ok(true)
 	{
 	}
-	
+
 	void run()
 	{
 		int lastCount = 0;
@@ -108,15 +121,19 @@ public:
 			_lock.unlock();
 		}
 	}
-	
+
 	bool ok() const
 	{
 		return _ok;
 	}
-	
+
 private:
 	RWLock& _lock;
+#ifdef __cpp_lib_atomic_ref
+	std::atomic_ref<int> _counter;
+#else
 	volatile int& _counter;
+#endif
 	bool _ok;
 };
 
@@ -155,12 +172,12 @@ void RWLockTest::testLock()
 	t3.join();
 	t4.join();
 	t5.join();
-	assert (counter == 50000);
-	assert (r1.ok());
-	assert (r2.ok());
-	assert (r3.ok());
-	assert (r4.ok());
-	assert (r5.ok());
+	assertTrue (counter == 50000);
+	assertTrue (r1.ok());
+	assertTrue (r2.ok());
+	assertTrue (r3.ok());
+	assertTrue (r4.ok());
+	assertTrue (r5.ok());
 }
 
 
@@ -188,12 +205,12 @@ void RWLockTest::testTryLock()
 	t3.join();
 	t4.join();
 	t5.join();
-	assert (counter == 50000);
-	assert (r1.ok());
-	assert (r2.ok());
-	assert (r3.ok());
-	assert (r4.ok());
-	assert (r5.ok());
+	assertTrue (counter == 50000);
+	assertTrue (r1.ok());
+	assertTrue (r2.ok());
+	assertTrue (r3.ok());
+	assertTrue (r4.ok());
+	assertTrue (r5.ok());
 }
 
 
@@ -211,8 +228,8 @@ CppUnit::Test* RWLockTest::suite()
 {
 	CppUnit::TestSuite* pSuite = new CppUnit::TestSuite("RWLockTest");
 
-	CppUnit_addTest(pSuite, RWLockTest, testLock);
-	CppUnit_addTest(pSuite, RWLockTest, testTryLock);
+	CppUnit_addLongTest(pSuite, RWLockTest, testLock);
+	CppUnit_addLongTest(pSuite, RWLockTest, testTryLock);
 
 	return pSuite;
 }

@@ -1,8 +1,6 @@
 //
 // RegularExpressionTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/RegularExpressionTest.h#1 $
-//
 // Definition of the RegularExpressionTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -33,6 +31,7 @@ public:
 	void testMatch4();
 	void testMatch5();
 	void testMatch6();
+	void testMatchDateTime();
 	void testExtract();
 	void testSplit1();
 	void testSplit2();
@@ -41,6 +40,7 @@ public:
 	void testSubst3();
 	void testSubst4();
 	void testError();
+	void testGroup();
 
 	void setUp();
 	void tearDown();

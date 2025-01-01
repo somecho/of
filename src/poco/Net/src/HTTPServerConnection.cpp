@@ -1,8 +1,6 @@
 //
 // HTTPServerConnection.cpp
 //
-// $Id: //poco/1.4/Net/src/HTTPServerConnection.cpp#1 $
-//
 // Library: Net
 // Package: HTTPServer
 // Module:  HTTPServerConnection
@@ -27,6 +25,9 @@
 #include <memory>
 
 
+using namespace std::string_literals;
+
+
 namespace Poco {
 namespace Net {
 
@@ -38,7 +39,7 @@ HTTPServerConnection::HTTPServerConnection(const StreamSocket& socket, HTTPServe
 	_stopped(false)
 {
 	poco_check_ptr (pFactory);
-	
+
 	_pFactory->serverStopped += Poco::delegate(this, &HTTPServerConnection::onServerStopped);
 }
 
@@ -69,21 +70,23 @@ void HTTPServerConnection::run()
 			{
 				HTTPServerResponseImpl response(session);
 				HTTPServerRequestImpl request(response, session, _pParams);
-			
+
 				Poco::Timestamp now;
 				response.setDate(now);
 				response.setVersion(request.getVersion());
 				response.setKeepAlive(_pParams->getKeepAlive() && request.getKeepAlive() && session.canKeepAlive());
 				if (!server.empty())
-					response.set("Server", server);
+					response.set("Server"s, server);
 				try
 				{
-					std::auto_ptr<HTTPRequestHandler> pHandler(_pFactory->createRequestHandler(request));
+					session.requestTrailer().clear();
+					session.responseTrailer().clear();
+					std::unique_ptr<HTTPRequestHandler> pHandler(_pFactory->createRequestHandler(request));
 					if (pHandler.get())
 					{
-						if (request.expectContinue())
+						if (request.getExpectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
 							response.sendContinue();
-					
+
 						pHandler->handleRequest(request, response);
 						session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
 					}

@@ -1,8 +1,6 @@
 //
 // VSXMLWriter.h
 //
-// $Id: //poco/1.4/ProGen/src/VSXMLWriter.h#1 $
-//
 // Definition of the VSXMLWriter class.
 //
 // Copyright (c) 2010, Applied Informatics Software Engineering GmbH.
@@ -30,7 +28,7 @@ class VSXMLWriter: public Poco::XML::ContentHandler
 public:
 	VSXMLWriter(std::ostream& ostr, bool convertBool);
 	~VSXMLWriter();
-		
+
 	// ContentHandler
 	void setDocumentLocator(const Poco::XML::Locator* loc);
 	void startDocument();

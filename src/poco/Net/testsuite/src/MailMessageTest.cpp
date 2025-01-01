@@ -1,8 +1,6 @@
 //
 // MailMessageTest.cpp
 //
-// $Id: //poco/1.4/Net/testsuite/src/MailMessageTest.cpp#2 $
-//
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -14,6 +12,7 @@
 #include "CppUnit/TestCaller.h"
 #include "CppUnit/TestSuite.h"
 #include "Poco/Net/MailMessage.h"
+#include "Poco/Net/MailStream.h"
 #include "Poco/Net/MailRecipient.h"
 #include "Poco/Net/PartHandler.h"
 #include "Poco/Net/StringPartSource.h"
@@ -22,11 +21,16 @@
 #include "Poco/Timestamp.h"
 #include "Poco/FileStream.h"
 #include "Poco/String.h"
+#include "Poco/TemporaryFile.h"
 #include <sstream>
+#include <fstream>
 #include <vector>
+#include <iostream>
 
 
 using Poco::Net::MailMessage;
+using Poco::Net::MailInputStream;
+using Poco::Net::MailOutputStream;
 using Poco::Net::MailRecipient;
 using Poco::Net::MessageHeader;
 using Poco::Net::PartHandler;
@@ -38,6 +42,7 @@ using Poco::Timestamp;
 using Poco::FileInputStream;
 using Poco::replaceInPlace;
 using Poco::icompare;
+using Poco::TemporaryFile;
 
 
 namespace
@@ -48,7 +53,7 @@ namespace
 		StringPartHandler()
 		{
 		}
-		
+
 		void handlePart(const MessageHeader& header, std::istream& stream)
 		{
 			_disp.push_back(header["Content-Disposition"]);
@@ -62,7 +67,7 @@ namespace
 			}
 			_data.push_back(data);
 		}
-		
+
 		const std::vector<std::string>& data() const
 		{
 			return _data;
@@ -77,7 +82,7 @@ namespace
 		{
 			return _type;
 		}
-		
+
 	private:
 		std::vector<std::string> _data;
 		std::vector<std::string> _disp;
@@ -117,14 +122,14 @@ void MailMessageTest::testWriteQP()
 	);
 	Timestamp ts(0);
 	message.setDate(ts);
-	
-	assert (!message.isMultipart());
-	
+
+	assertTrue (!message.isMultipart());
+
 	std::ostringstream str;
 	message.write(str);
 	std::string s = str.str();
 
-	assert (s == 
+	assertTrue (s ==
 		"Date: Thu, 1 Jan 1970 00:00:00 GMT\r\n"
 		"Content-Type: text/plain\r\n"
 		"Subject: Test Message\r\n"
@@ -156,11 +161,11 @@ void MailMessageTest::testWrite8Bit()
 	);
 	Timestamp ts(0);
 	message.setDate(ts);
-	
+
 	std::ostringstream str;
 	message.write(str);
 	std::string s = str.str();
-	assert (s == 
+	assertTrue (s ==
 		"Date: Thu, 1 Jan 1970 00:00:00 GMT\r\n"
 		"Content-Type: text/plain\r\n"
 		"Subject: Test Message\r\n"
@@ -192,7 +197,7 @@ void MailMessageTest::testWriteBase64()
 	std::ostringstream str;
 	message.write(str);
 	std::string s = str.str();
-	assert (s == 
+	assertTrue (s ==
 		"Date: Thu, 1 Jan 1970 00:00:00 GMT\r\n"
 		"Content-Type: text/plain\r\n"
 		"Subject: Test Message\r\n"
@@ -228,11 +233,11 @@ void MailMessageTest::testWriteManyRecipients()
 	);
 	Timestamp ts(0);
 	message.setDate(ts);
-	
+
 	std::ostringstream str;
 	message.write(str);
 	std::string s = str.str();
-	assert (s == 
+	assertTrue (s ==
 		"Date: Thu, 1 Jan 1970 00:00:00 GMT\r\n"
 		"Content-Type: text/plain\r\n"
 		"Subject: Test Message\r\n"
@@ -262,7 +267,7 @@ void MailMessageTest::testWriteMultiPart()
 	pSPS->headers().set("Content-ID", "abcd1234");
 	message.addAttachment("sample", pSPS);
 
-	assert (message.isMultipart());
+	assertTrue (message.isMultipart());
 
 	std::ostringstream str;
 	message.write(str);
@@ -303,7 +308,7 @@ void MailMessageTest::testWriteMultiPart()
 			msg += *it;
 	}
 
-	assert (s == msg);
+	assertTrue (s == msg);
 }
 
 
@@ -323,13 +328,13 @@ void MailMessageTest::testReadQP()
 		"his should be enough.\r\n"
 		"And here is some more =3Dfe.\r\n"
 	);
-	
+
 	MailMessage message;
 	message.read(istr);
-	
-	assert (message.getSender() == "poco@appinf.com");
-	assert (message.getContentType() == "text/plain");
-	assert (message.getContent() == 
+
+	assertTrue (message.getSender() == "poco@appinf.com");
+	assertTrue (message.getContentType() == "text/plain");
+	assertTrue (message.getContent() ==
 		"Hello, world!\r\n"
 		"This is a test for the MailMessage class.\r\n"
 		"To test the quoted-printable encoding, we'll put an extra long line here. This should be enough.\r\n"
@@ -354,9 +359,9 @@ void MailMessageTest::testReadDefaultTransferEncoding()
 	MailMessage message;
 	message.read(istr);
 
-	assert (message.getSender() == "poco@appinf.com");
-	assert (message.getContentType() == "text/plain");
-	assert (message.getContent() ==
+	assertTrue (message.getSender() == "poco@appinf.com");
+	assertTrue (message.getContentType() == "text/plain");
+	assertTrue (message.getContent() ==
 		"Hello, world!\r\n"
 		"This is a test for the MailMessage class.\r\n"
 	);
@@ -376,13 +381,13 @@ void MailMessageTest::testRead8Bit()
 		"Hello, world!\r\n"
 		"This is a test for the MailMessage class.\r\n"
 	);
-	
+
 	MailMessage message;
 	message.read(istr);
-	
-	assert (message.getSender() == "poco@appinf.com");
-	assert (message.getContentType() == "text/plain");
-	assert (message.getContent() == 
+
+	assertTrue (message.getSender() == "poco@appinf.com");
+	assertTrue (message.getContentType() == "text/plain");
+	assertTrue (message.getContent() ==
 		"Hello, world!\r\n"
 		"This is a test for the MailMessage class.\r\n"
 	);
@@ -415,19 +420,19 @@ void MailMessageTest::testReadMultiPart()
 		"VGhpcyBpcyBzb21lIGJpbmFyeSBkYXRhLiBSZWFsbHku\r\n"
 		"--MIME_boundary_01234567--\r\n"
 	);
-	
+
 	StringPartHandler handler;
 	MailMessage message;
 	message.read(istr, handler);
-	
-	assert (handler.data().size() == 2);
-	assert (handler.data()[0] == "Hello World!\r\n");
-	assert (handler.type()[0] == "text/plain");
-	assert (handler.disp()[0] == "inline");
 
-	assert (handler.data()[1] == "This is some binary data. Really.");
-	assert (handler.type()[1] == "application/octet-stream; name=sample");
-	assert (handler.disp()[1] == "attachment; filename=sample.dat");
+	assertTrue (handler.data().size() == 2);
+	assertTrue (handler.data()[0] == "Hello World!\r\n");
+	assertTrue (handler.type()[0] == "text/plain");
+	assertTrue (handler.disp()[0] == "inline");
+
+	assertTrue (handler.data()[1] == "This is some binary data. Really.");
+	assertTrue (handler.type()[1] == "application/octet-stream; name=sample");
+	assertTrue (handler.disp()[1] == "attachment; filename=sample.dat");
 }
 
 
@@ -457,13 +462,13 @@ void MailMessageTest::testReadMultiPartWithAttachmentNames()
 		"VGhpcyBpcyBzb21lIGJpbmFyeSBkYXRhLiBSZWFsbHku\r\n"
 		"--MIME_boundary_01234567--\r\n"
 	);
-	
+
 	MailMessage message;
 	message.read(istr);
-	
-	assert (message.parts().size() == 2);
-	assert (message.parts()[1].name == "sample");
-	assert (message.parts()[1].pSource->filename() == "sample.dat");
+
+	assertTrue (message.parts().size() == 2);
+	assertTrue (message.parts()[1].name == "sample");
+	assertTrue (message.parts()[1].pSource->filename() == "sample.dat");
 }
 
 
@@ -497,14 +502,143 @@ void MailMessageTest::testReadMultiPartDefaultTransferEncoding()
 	MailMessage message;
 	message.read(istr, handler);
 
-	assert (handler.data().size() == 2);
-	assert (handler.data()[0] == "Hello World!\r\n");
-	assert (handler.type()[0] == "text/plain");
-	assert (handler.disp()[0] == "inline");
+	assertTrue (handler.data().size() == 2);
+	assertTrue (handler.data()[0] == "Hello World!\r\n");
+	assertTrue (handler.type()[0] == "text/plain");
+	assertTrue (handler.disp()[0] == "inline");
 
-	assert (handler.data()[1] == "This is some binary data. Really.");
-	assert (handler.type()[1] == "application/octet-stream; name=sample");
-	assert (handler.disp()[1] == "attachment; filename=sample.dat");
+	assertTrue (handler.data()[1] == "This is some binary data. Really.");
+	assertTrue (handler.type()[1] == "application/octet-stream; name=sample");
+	assertTrue (handler.disp()[1] == "attachment; filename=sample.dat");
+}
+
+
+void MailMessageTest::testReadMultiPartMixedCaseHeaders()
+{
+	std::istringstream istr(
+		"Content-type: multipart/mixed; boundary=MIME_boundary_01234567\r\n"
+		"Date: Thu, 1 Jan 1970 00:00:00 GMT\r\n"
+		"From: poco@appinf.com\r\n"
+		"Mime-Version: 1.0\r\n"
+		"Subject: Test Message\r\n"
+		"To: John Doe <john.doe@no.where>\r\n"
+		"\r\n"
+		"\r\n"
+		"--MIME_boundary_01234567\r\n"
+		"content-disposition: inline\r\n"
+		"Content-type: text/plain\r\n"
+		"\r\n"
+		"Hello World!\r\n"
+		"\r\n"
+		"--MIME_boundary_01234567\r\n"
+		"Content-DISposition: attachment; filename=sample.dat\r\n"
+		"content-Transfer-encodING: base64\r\n"
+		"Content-Type: application/octet-stream; name=sample\r\n"
+		"\r\n"
+		"VGhpcyBpcyBzb21lIGJpbmFyeSBkYXRhLiBSZWFsbHku\r\n"
+		"--MIME_boundary_01234567--\r\n"
+	);
+
+	MailMessage message;
+  	MailInputStream mis(istr);
+  	message.read(mis);
+
+	assertTrue (message.isMultipart());
+	assertTrue (message.parts().size() == 2);
+	assertTrue (message.get(MailMessage::HEADER_CONTENT_TYPE) == "multipart/mixed; boundary=MIME_boundary_01234567");
+
+	assertTrue (message.parts()[0].encoding == MailMessage::ContentTransferEncoding::ENCODING_7BIT);
+	assertTrue (message.parts()[0].disposition == MailMessage::ContentDisposition::CONTENT_INLINE);
+	assertTrue (message.parts()[0].pSource->headers().get(MailMessage::HEADER_CONTENT_TYPE) == "text/plain");
+
+	assertTrue (message.parts()[1].encoding == MailMessage::ContentTransferEncoding::ENCODING_BASE64);
+	assertTrue (message.parts()[1].disposition == MailMessage::ContentDisposition::CONTENT_ATTACHMENT);
+	assertTrue (message.parts()[1].pSource->filename() == "sample.dat");
+	assertTrue (message.parts()[1].pSource->headers().get(MailMessage::HEADER_CONTENT_TYPE) == "application/octet-stream; name=sample");
+}
+
+
+void MailMessageTest::testReadMultiPartInvalidContentDisposition()
+{
+        std::istringstream istr(
+                "Content-type: multipart/mixed; boundary=MIME_boundary_01234567\r\n"
+                "Date: Thu, 1 Jan 1970 00:00:00 GMT\r\n"
+                "From: poco@appinf.com\r\n"
+                "Mime-Version: 1.0\r\n"
+                "Subject: Test Message\r\n"
+                "To: John Doe <john.doe@no.where>\r\n"
+                "\r\n"
+                "\r\n"
+                "Hello World!\r\n"
+                "\r\n"
+                "--MIME_boundary_01234567\r\n"
+                "Content-Disposition: \r\n"
+                "Content-Transfer-Encoding: base64\r\n"
+                "Content-Type: application/octet-stream; name=sample\r\n"
+                "\r\n"
+                "VGhpcyBpcyBzb21lIGJpbmFyeSBkYXRhLiBSZWFsbHku\r\n"
+                "--MIME_boundary_01234567--\r\n"
+        );
+
+        MailMessage message;
+        MailInputStream mis(istr);
+        message.read(mis);
+
+        assertTrue (message.isMultipart());
+        assertTrue (message.parts().size() == 1);
+        assertTrue (message.get(MailMessage::HEADER_CONTENT_TYPE) == "multipart/mixed; boundary=MIME_boundary_01234567");
+
+        assertTrue (message.parts()[0].encoding == MailMessage::ContentTransferEncoding::ENCODING_BASE64);
+        assertTrue (message.parts()[0].disposition == MailMessage::ContentDisposition::CONTENT_INLINE);
+        assertTrue (message.parts()[0].pSource->headers().get(MailMessage::HEADER_CONTENT_TYPE) == "application/octet-stream; name=sample");
+}
+
+
+void MailMessageTest::testReadMultiPartNoFinalBoundaryFromFile()
+{
+	std::string data(
+		"Content-Type: multipart/mixed; boundary=MIME_boundary_01234567\r\n"
+		"Date: Thu, 1 Jan 1970 00:00:00 GMT\r\n"
+		"From: poco@appinf.com\r\n"
+		"Mime-Version: 1.0\r\n"
+		"Subject: Test Message\r\n"
+		"To: John Doe <john.doe@no.where>\r\n"
+		"\r\n"
+		"\r\n"
+		"--MIME_boundary_01234567\r\n"
+		"Content-Disposition: inline\r\n"
+		"Content-Transfer-Encoding: 8bit\r\n"
+		"Content-Type: text/plain\r\n"
+		"\r\n"
+		"Hello World!\r\n"
+		"\r\n"
+		"--MIME_boundary_01234567\r\n"
+		"Content-Disposition: attachment; filename=sample.dat\r\n"
+		"Content-Transfer-Encoding: base64\r\n"
+		"Content-Type: application/octet-stream; name=sample\r\n"
+		"\r\n"
+		"VGhpcyBpcyBzb21lIGJpbmFyeSBkYXRhLiBSZWFsbHku\r\n"
+	);
+
+	// The problem occurs during reading message from file.
+	// (For stringstreams it works fine.)
+	// https://github.com/pocoproject/poco/issues/2401
+	TemporaryFile file;
+	std::ofstream(file.path()) << data;
+	std::ifstream istr(file.path());
+
+	StringPartHandler handler;
+	MailMessage message;
+	message.read(istr, handler);
+
+	assertTrue (handler.data().size() == 2);
+	assertTrue (handler.data()[0] == "Hello World!\r\n");
+	assertTrue (handler.type()[0] == "text/plain");
+	assertTrue (handler.disp()[0] == "inline");
+
+	assertTrue (handler.data()[1] == "This is some binary data. Really.");
+	assertTrue (handler.type()[1] == "application/octet-stream; name=sample");
+	assertTrue (handler.disp()[1] == "attachment; filename=sample.dat");
 }
 
 
@@ -541,9 +675,9 @@ void MailMessageTest::testReadWriteMultiPart()
 
 	message.read(istr);
 	message.write(ostr);
-	
+
 	std::string msgout(ostr.str());
-	assert (msgout == msgin);
+	assertTrue (msgout == msgin);
 }
 
 
@@ -580,7 +714,7 @@ void MailMessageTest::testReadWriteMultiPartStore()
 	MailMessage message(&pfsf);
 
 	message.read(istr);
-	
+
 	MailMessage::PartVec::const_iterator it = message.parts().begin();
 	MailMessage::PartVec::const_iterator end = message.parts().end();
 	for (; it != end; ++it)
@@ -589,27 +723,27 @@ void MailMessageTest::testReadWriteMultiPartStore()
 		if (fps && fps->filename().size())
 		{
 			std::string filename = fps->filename();
-			assert (filename == "sample.dat");
+			assertTrue (filename == "sample.dat");
 			std::string path = fps->path();
 			// for security reasons, the filesystem temporary
 			// filename is not the same as attachment name
 			std::size_t sz = (path.size() > filename.size()) ? filename.size() : path.size();
-			assert (0 != icompare(path, path.size() - sz, sz, path));
-			
+			assertTrue (0 != icompare(path, path.size() - sz, sz, path));
+
 			Poco::FileInputStream fis(path);
-			assert (fis.good());
+			assertTrue (fis.good());
 			std::string read;
 			std::string line;
 			while (std::getline(fis, line)) read += line;
 
-			assert (!read.empty());
-			assert (read == "This is some binary data. Really.");
+			assertTrue (!read.empty());
+			assertTrue (read == "This is some binary data. Really.");
 		}
 	}
-	
+
 	message.write(ostr);
 	std::string msgout(ostr.str());
-	assert (msgout == msgin);
+	assertTrue (msgout == msgin);
 }
 
 
@@ -617,18 +751,18 @@ void MailMessageTest::testEncodeWord()
 {
 	std::string plain("this is pure ASCII");
 	std::string encoded = MailMessage::encodeWord(plain, "ISO-8859-1");
-	assert (encoded == plain);
-	
+	assertTrue (encoded == plain);
+
 	plain = "This text contains German Umlauts: \304\326";
 	encoded = MailMessage::encodeWord(plain, "ISO-8859-1");
-	assert (encoded == "=?ISO-8859-1?q?This_text_contains_German_Umlauts=3A_=C4=D6?=");
-	
+	assertTrue (encoded == "=?ISO-8859-1?q?This_text_contains_German_Umlauts=3A_=C4=D6?=");
+
 	plain = "This text contains German Umlauts: \304\326. "
 	        "It is also a very long text. Longer than 75 "
 	        "characters. Long enough to become three lines "
 	        "after being word-encoded.";
 	encoded = MailMessage::encodeWord(plain, "ISO-8859-1");
-	assert (encoded == "=?ISO-8859-1?q?This_text_contains_German_Umlauts=3A_=C4=D6=2E_It_?=\r\n"
+	assertTrue (encoded == "=?ISO-8859-1?q?This_text_contains_German_Umlauts=3A_=C4=D6=2E_It_?=\r\n"
 	                   " =?ISO-8859-1?q?is_also_a_very_long_text=2E_Longer_than_75_characters=2E_?=\r\n"
 	                   " =?ISO-8859-1?q?Long_enough_to_become_three_lines_after_being_word-encode?=\r\n"
 	                   " =?ISO-8859-1?q?d=2E?=");
@@ -659,6 +793,9 @@ CppUnit::Test* MailMessageTest::suite()
 	CppUnit_addTest(pSuite, MailMessageTest, testRead8Bit);
 	CppUnit_addTest(pSuite, MailMessageTest, testReadMultiPart);
 	CppUnit_addTest(pSuite, MailMessageTest, testReadMultiPartDefaultTransferEncoding);
+	CppUnit_addTest(pSuite, MailMessageTest, testReadMultiPartMixedCaseHeaders);
+	CppUnit_addTest(pSuite, MailMessageTest, testReadMultiPartInvalidContentDisposition);
+	CppUnit_addTest(pSuite, MailMessageTest, testReadMultiPartNoFinalBoundaryFromFile);
 	CppUnit_addTest(pSuite, MailMessageTest, testReadWriteMultiPart);
 	CppUnit_addTest(pSuite, MailMessageTest, testReadWriteMultiPartStore);
 	CppUnit_addTest(pSuite, MailMessageTest, testEncodeWord);

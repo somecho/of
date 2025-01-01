@@ -1,8 +1,6 @@
 //
 // Preparator.cpp
 //
-// $Id: //poco/Main/Data/testsuite/src/Preparator.cpp#3 $
-//
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -70,7 +68,7 @@ void Preparator::prepare(std::size_t pos, const Poco::UInt64&)
 }
 
 
-#ifndef POCO_LONG_IS_64_BIT
+#ifndef POCO_INT64_IS_LONG
 void Preparator::prepare(std::size_t pos, const long&)
 {
 }
@@ -133,6 +131,11 @@ void Preparator::prepare(std::size_t pos, const Poco::Data::Time&)
 
 
 void Preparator::prepare(std::size_t pos, const Poco::DateTime&)
+{
+}
+
+
+void Preparator::prepare(std::size_t pos, const Poco::UUID&)
 {
 }
 

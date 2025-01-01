@@ -1,8 +1,6 @@
 //
 // ObjectPoolTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/ObjectPoolTest.h#1 $
-//
 // Definition of the ObjectPoolTest class.
 //
 // Copyright (c) 2010-2012, Applied Informatics Software Engineering GmbH.
@@ -27,6 +25,7 @@ public:
 	~ObjectPoolTest();
 
 	void testObjectPool();
+	void testObjectPoolWaitOnBorrowObject();
 
 	void setUp();
 	void tearDown();

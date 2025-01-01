@@ -3,15 +3,17 @@
 
 
 #include "ofMatrix4x4.h"
+
 #include <limits>
 #include <stdlib.h>
-#include "ofConstants.h"
+#include <iomanip>
 
 #if (_MSC_VER)
 #undef min
 // see: http://stackoverflow.com/questions/1904635/warning-c4003-and-errors-c2589-and-c2059-on-x-stdnumericlimitsintmax
 #endif
 
+// FIXME: why not using std::numeric_limits<double>::epsilon()
 inline bool equivalent(double lhs,double rhs,double epsilon=1e-6)
 { double delta = rhs-lhs; return delta<0.0?delta>=-epsilon:delta<=epsilon; }
 template<typename T>
@@ -889,7 +891,7 @@ void ofMatrix4x4::makePerspectiveMatrix(double fovy,double aspectRatio,
                                             double zNear, double zFar)
 {
     // calculate the appropriate left, right etc.
-    double tan_fovy = tan(fovy*0.5*DEG_TO_RAD);
+    double tan_fovy = tan(ofDegToRad(fovy*0.5));
     double right  =  tan_fovy * aspectRatio * zNear;
     double left   = -right;
     double top    =  tan_fovy * zNear;
@@ -906,7 +908,7 @@ bool ofMatrix4x4::getPerspective(double& fovy,double& aspectRatio,
     double bottom =  0.0;
     if (getFrustum(left,right,bottom,top,zNear,zFar))
     {
-        fovy = (atan(top/zNear)-atan(bottom/zNear))*RAD_TO_DEG;
+        fovy = ofRadToDeg(atan(top/zNear)-atan(bottom/zNear));
         aspectRatio = (right-left)/(top-bottom);
         return true;
     }
@@ -1538,3 +1540,55 @@ void ofMatrix4x4::decompose( ofVec3f& t,
 }
 
 #undef SET_ROW
+
+std::ostream& operator<<(std::ostream& os, const ofMatrix4x4& M) {
+	int w = 8;
+	os	<< std::setw(w)
+		<< M._mat[0][0] << ", " << std::setw(w)
+		<< M._mat[0][1] << ", " << std::setw(w)
+		<< M._mat[0][2] << ", " << std::setw(w)
+		<< M._mat[0][3] << std::endl;
+
+	os	<< std::setw(w)
+		<< M._mat[1][0] << ", " << std::setw(w)
+		<< M._mat[1][1] << ", " << std::setw(w)
+		<< M._mat[1][2] << ", " << std::setw(w)
+		<< M._mat[1][3] << std::endl;
+
+	os	<< std::setw(w)
+		<< M._mat[2][0] << ", " << std::setw(w)
+		<< M._mat[2][1] << ", " << std::setw(w)
+		<< M._mat[2][2] << ", " << std::setw(w)
+		<< M._mat[2][3] << std::endl;
+
+	os	<< std::setw(w)
+		<< M._mat[3][0] << ", " << std::setw(w)
+		<< M._mat[3][1] << ", " << std::setw(w)
+		<< M._mat[3][2] << ", " << std::setw(w)
+		<< M._mat[3][3];
+
+	return os;
+}
+
+std::istream& operator>>(std::istream& is, ofMatrix4x4& M) {
+	is >> M._mat[0][0]; is.ignore(2);
+	is >> M._mat[0][1]; is.ignore(2);
+	is >> M._mat[0][2]; is.ignore(2);
+	is >> M._mat[0][3]; is.ignore(1);
+
+	is >> M._mat[1][0]; is.ignore(2);
+	is >> M._mat[1][1]; is.ignore(2);
+	is >> M._mat[1][2]; is.ignore(2);
+	is >> M._mat[1][3]; is.ignore(1);
+
+	is >> M._mat[2][0]; is.ignore(2);
+	is >> M._mat[2][1]; is.ignore(2);
+	is >> M._mat[2][2]; is.ignore(2);
+	is >> M._mat[2][3]; is.ignore(1);
+
+	is >> M._mat[3][0]; is.ignore(2);
+	is >> M._mat[3][1]; is.ignore(2);
+	is >> M._mat[3][2]; is.ignore(2);
+	is >> M._mat[3][3];
+	return is;
+}

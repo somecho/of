@@ -1,8 +1,6 @@
 //
 // DOMObject.cpp
 //
-// $Id: //poco/1.4/XML/src/DOMObject.cpp#1 $
-//
 // Library: XML
 // Package: DOM
 // Module:  DOM
@@ -25,7 +23,7 @@ DOMObject::DOMObject(): _rc(1)
 {
 }
 
-	
+
 DOMObject::~DOMObject()
 {
 }

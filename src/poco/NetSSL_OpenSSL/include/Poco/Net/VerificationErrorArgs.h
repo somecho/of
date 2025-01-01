@@ -1,8 +1,6 @@
 //
 // VerificationErrorArgs.h
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/include/Poco/Net/VerificationErrorArgs.h#1 $
-//
 // Library: NetSSL_OpenSSL
 // Package: SSLCore
 // Module:  VerificationErrorArgs
@@ -22,6 +20,7 @@
 
 #include "Poco/Net/NetSSL.h"
 #include "Poco/Net/X509Certificate.h"
+#include "Poco/Net/Context.h"
 
 
 namespace Poco {
@@ -32,11 +31,14 @@ class NetSSL_API VerificationErrorArgs
 	/// A utility class for certificate error handling.
 {
 public:
-	VerificationErrorArgs(const X509Certificate& cert, int errDepth, int errNum, const std::string& errMsg);
+	VerificationErrorArgs(Poco::Net::Context::Ptr pContext, const X509Certificate& cert, int errDepth, int errNum, const std::string& errMsg);
 		/// Creates the VerificationErrorArgs. _ignoreError is per default set to false.
 
 	~VerificationErrorArgs();
 		/// Destroys the VerificationErrorArgs.
+
+	Poco::Net::Context::Ptr context() const;
+		/// Returns the Context of the underlying connection causing the error.
 
 	const X509Certificate& certificate() const;
 		/// Returns the certificate that caused the error.
@@ -57,6 +59,7 @@ public:
 		/// returns the value of _ignoreError
 
 private:
+	Poco::Net::Context::Ptr _pContext;
 	X509Certificate	_cert;
 	int             _errorDepth;
 	int             _errorNumber;
@@ -68,6 +71,12 @@ private:
 //
 // inlines
 //
+inline Poco::Net::Context::Ptr VerificationErrorArgs::context() const
+{
+	return _pContext;
+}
+
+
 inline const X509Certificate& VerificationErrorArgs::certificate() const
 {
 	return _cert;

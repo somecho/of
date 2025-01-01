@@ -1,17 +1,17 @@
 #include "ofAppGlutWindow.h"
 #include "ofBaseApp.h"
-#include "ofConstants.h"
 #include "ofPixels.h"
 #include "ofGLRenderer.h"
 
 #ifdef TARGET_WIN32
-	#if (_MSC_VER) 
+	#if (_MSC_VER)
 		#define GLUT_BUILDING_LIB
 		#include "glut.h"
 	#else
 		#include <GL/glut.h>
 		#include <GL/freeglut_ext.h>
 	#endif
+	#include <Shellapi.h>
 #endif
 #ifdef TARGET_OSX
     #include <OpenGL/OpenGL.h>
@@ -24,8 +24,8 @@
 	#include "ofImage.h"
 	#include <X11/Xatom.h>
 	#include <GL/freeglut_ext.h>
+	#include <GL/glx.h>
 #endif
-
 
 // glut works with static callbacks UGH, so we need static variables here:
 
@@ -33,7 +33,7 @@ static ofWindowMode windowMode;
 static bool			bNewScreenMode;
 static int			buttonInUse;
 static bool			bEnableSetupScreen;
-static bool			bDoubleBuffered; 
+static bool			bDoubleBuffered;
 
 static int			requestedWidth;
 static int			requestedHeight;
@@ -98,7 +98,7 @@ void HandleFiles(WPARAM wParam)
 		while( *s != L'\0' ) {
 			stm << std::use_facet< std::ctype<wchar_t> >( loc ).narrow( *s++, dfault );
 		}
-		info.files.push_back(string(stm.str()));
+		info.files.push_back(std::string(stm.str()));
 
 			//toUTF8(udispName, dispName);
 
@@ -186,12 +186,12 @@ ofAppGlutWindow::ofAppGlutWindow(){
 // "rgba double samples>=4 depth" ( mac )
 // "rgb double depth alpha samples>=4" ( some pcs )
 //------------------------------------------------------------
- void ofAppGlutWindow::setGlutDisplayString(string displayStr){
+ void ofAppGlutWindow::setGlutDisplayString(std::string displayStr){
 	displayString = displayStr;
  }
 
  //------------------------------------------------------------
-void ofAppGlutWindow::setDoubleBuffering(bool _bDoubleBuffered){ 
+void ofAppGlutWindow::setDoubleBuffering(bool _bDoubleBuffered){
 	bDoubleBuffered = _bDoubleBuffered;
 }
 
@@ -206,7 +206,7 @@ void ofAppGlutWindow::setup(const ofGLWindowSettings & settings){
 	if( displayString != ""){
 		glutInitDisplayString( displayString.c_str() );
 	}else{
-		if(bDoubleBuffered){  
+		if(bDoubleBuffered){
 			glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH | GLUT_ALPHA );
 		}else{
 			glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE | GLUT_DEPTH | GLUT_ALPHA );
@@ -219,11 +219,11 @@ void ofAppGlutWindow::setup(const ofGLWindowSettings & settings){
 	if (windowMode == OF_FULLSCREEN){
 		glutInitWindowSize(glutGet(GLUT_SCREEN_WIDTH), glutGet(GLUT_SCREEN_HEIGHT));
 		windowId = glutCreateWindow("");
-		
-		requestedWidth  = settings.width;
-		requestedHeight = settings.height;
+
+		requestedWidth  = settings.getWidth();
+		requestedHeight = settings.getHeight();
 	} else if (windowMode != OF_GAME_MODE){
-		glutInitWindowSize(settings.width, settings.height);
+		glutInitWindowSize(settings.getWidth(), settings.getHeight());
 		glutCreateWindow("");
 
 		/*
@@ -247,7 +247,7 @@ void ofAppGlutWindow::setup(const ofGLWindowSettings & settings){
 
     	// w x h, 32bit pixel depth, 60Hz refresh rate
 		char gameStr[64];
-		sprintf( gameStr, "%dx%d:%d@%d", settings.width, settings.height, 32, 60 );
+		sprintf( gameStr, "%dx%d:%d@%d", settings.getWidth(), settings.getHeight(), 32, 60 );
 
     	glutGameModeString(gameStr);
 
@@ -260,7 +260,7 @@ void ofAppGlutWindow::setup(const ofGLWindowSettings & settings){
 	windowW = glutGet(GLUT_WINDOW_WIDTH);
 	windowH = glutGet(GLUT_WINDOW_HEIGHT);
 
-	currentRenderer = shared_ptr<ofBaseRenderer>(new ofGLRenderer(this));
+	currentRenderer = std::shared_ptr<ofBaseRenderer>(new ofGLRenderer(this));
 
 
 #ifndef TARGET_OPENGLES
@@ -335,7 +335,7 @@ void ofAppGlutWindow::setup(const ofGLWindowSettings & settings){
 
 #ifdef TARGET_LINUX
 //------------------------------------------------------------
-void ofAppGlutWindow::setWindowIcon(const string & path){
+void ofAppGlutWindow::setWindowIcon(const std::string & path){
     ofPixels iconPixels;
 	ofLoadImage(iconPixels,path);
 	setWindowIcon(iconPixels);
@@ -394,34 +394,34 @@ void ofAppGlutWindow::loop(){
 }
 
 //------------------------------------------------------------
-void ofAppGlutWindow::setWindowTitle(string title){
+void ofAppGlutWindow::setWindowTitle(std::string title){
 	glutSetWindowTitle(title.c_str());
 }
 
 //------------------------------------------------------------
-ofPoint ofAppGlutWindow::getWindowSize(){
-	return ofPoint(windowW, windowH,0);
+glm::vec2 ofAppGlutWindow::getWindowSize(){
+	return {windowW, windowH};
 }
 
 //------------------------------------------------------------
-ofPoint ofAppGlutWindow::getWindowPosition(){
+glm::vec2 ofAppGlutWindow::getWindowPosition(){
 	int x = glutGet(GLUT_WINDOW_X);
 	int y = glutGet(GLUT_WINDOW_Y);
 	if( orientation == OF_ORIENTATION_DEFAULT || orientation == OF_ORIENTATION_180 ){
-		return ofPoint(x,y,0);
+		return {x,y};
 	}else{
-		return ofPoint(y,x,0);
+		return {y,x};
 	}
 }
 
 //------------------------------------------------------------
-ofPoint ofAppGlutWindow::getScreenSize(){
+glm::vec2 ofAppGlutWindow::getScreenSize(){
 	int width = glutGet(GLUT_SCREEN_WIDTH);
 	int height = glutGet(GLUT_SCREEN_HEIGHT);
 	if( orientation == OF_ORIENTATION_DEFAULT || orientation == OF_ORIENTATION_180 ){
-		return ofPoint(width, height,0);
+		return {width, height};
 	}else{
-		return ofPoint(height, width,0);
+		return {height, width};
 	}
 }
 
@@ -580,7 +580,7 @@ ofCoreEvents & ofAppGlutWindow::events(){
 }
 
 //------------------------------------------------------------
-shared_ptr<ofBaseRenderer> & ofAppGlutWindow::renderer(){
+std::shared_ptr<ofBaseRenderer> & ofAppGlutWindow::renderer(){
 	return currentRenderer;
 }
 
@@ -680,6 +680,21 @@ void ofAppGlutWindow::display(void){
 }
 
 //------------------------------------------------------------
+void ofAppGlutWindow::swapBuffers() {
+	glutSwapBuffers();
+}
+
+//--------------------------------------------
+void ofAppGlutWindow::startRender() {
+	renderer()->startRender();
+}
+
+//--------------------------------------------
+void ofAppGlutWindow::finishRender() {
+	renderer()->finishRender();
+}
+
+//------------------------------------------------------------
 static void rotateMouseXY(ofOrientation orientation, int w, int h, int &x, int &y) {
 	int savedY;
 	switch(orientation) {
@@ -709,7 +724,7 @@ static void rotateMouseXY(ofOrientation orientation, int w, int h, int &x, int &
 //------------------------------------------------------------
 void ofAppGlutWindow::mouse_cb(int button, int state, int x, int y) {
 	rotateMouseXY(orientation, instance->getWidth(), instance->getHeight(), x, y);
-    
+
 
 	switch(button){
 	case GLUT_LEFT_BUTTON:
@@ -722,7 +737,7 @@ void ofAppGlutWindow::mouse_cb(int button, int state, int x, int y) {
 		button = OF_MOUSE_BUTTON_MIDDLE;
 		break;
 	}
-    
+
 	if (instance->events().getFrameNum() > 0){
 		if (state == GLUT_DOWN) {
 			instance->events().notifyMousePressed(x, y, button);
@@ -762,7 +777,7 @@ void ofAppGlutWindow::dragEvent(char ** names, int howManyFiles, int dragX, int 
 	info.position.y = instance->getHeight()-dragY;
 
 	for (int i = 0; i < howManyFiles; i++){
-		string temp = string(names[i]);
+		std::string temp = std::string(names[i]);
 		info.files.push_back(temp);
 	}
 
@@ -790,12 +805,83 @@ void ofAppGlutWindow::keyboard_up_cb(unsigned char key, int x, int y){
 
 //------------------------------------------------------
 void ofAppGlutWindow::special_key_cb(int key, int x, int y) {
-	instance->events().notifyKeyPressed(key | OF_KEY_MODIFIER);
+	instance->events().notifyKeyPressed(special_key_to_of(key));
 }
 
 //------------------------------------------------------------
 void ofAppGlutWindow::special_key_up_cb(int key, int x, int y) {
-	instance->events().notifyKeyReleased(key | OF_KEY_MODIFIER);
+	instance->events().notifyKeyReleased(special_key_to_of(key));
+}
+
+//------------------------------------------------------------
+int ofAppGlutWindow::special_key_to_of(int key) {
+	switch (key) {
+	case GLUT_KEY_F1:
+		return OF_KEY_F1;
+
+	case GLUT_KEY_F2:
+		return OF_KEY_F2;
+
+	case GLUT_KEY_F3:
+		return OF_KEY_F3;
+
+	case GLUT_KEY_F4:
+		return OF_KEY_F4;
+
+	case GLUT_KEY_F5:
+		return OF_KEY_F5;
+
+	case GLUT_KEY_F6:
+		return OF_KEY_F6;
+
+	case GLUT_KEY_F7:
+		return OF_KEY_F7;
+
+	case GLUT_KEY_F8:
+		return OF_KEY_F8;
+
+	case GLUT_KEY_F9:
+		return OF_KEY_F9;
+
+	case GLUT_KEY_F10:
+		return OF_KEY_F10;
+
+	case GLUT_KEY_F11:
+		return OF_KEY_F11;
+
+	case GLUT_KEY_F12:
+		return OF_KEY_F12;
+
+	case GLUT_KEY_LEFT:
+		return OF_KEY_LEFT;
+
+	case GLUT_KEY_UP:
+		return OF_KEY_UP;
+
+	case GLUT_KEY_RIGHT:
+		return OF_KEY_RIGHT;
+
+	case GLUT_KEY_DOWN:
+		return OF_KEY_DOWN;
+
+	case GLUT_KEY_PAGE_UP:
+		return OF_KEY_PAGE_UP;
+
+	case GLUT_KEY_PAGE_DOWN:
+		return OF_KEY_PAGE_DOWN;
+
+	case GLUT_KEY_HOME:
+		return OF_KEY_HOME;
+
+	case GLUT_KEY_END:
+		return OF_KEY_END;
+
+	case GLUT_KEY_INSERT:
+		return OF_KEY_INSERT;
+
+	default:
+		return 0;
+	}
 }
 
 //------------------------------------------------------------

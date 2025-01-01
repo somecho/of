@@ -1,8 +1,6 @@
 //
 // HTTPRequestTest.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/HTTPRequestTest.h#3 $
-//
 // Definition of the HTTPRequestTest class.
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
@@ -38,7 +36,7 @@ public:
 	void testInvalid2();
 	void testInvalid3();
 	void testCookies();
-	
+
 	void setUp();
 	void tearDown();
 

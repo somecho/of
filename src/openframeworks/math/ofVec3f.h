@@ -2,12 +2,13 @@
 
 #include "ofVec2f.h"
 #include "ofVec4f.h"
+#include "ofMathConstants.h"
 #include "ofConstants.h"
-
+#include "glm/vec3.hpp"
 #include <cmath>
 #include <iostream>
 
-/// \brief  ofVec3f is a class for storing a three dimensional vector.
+/// \brief  ofVec3f is a class for storing a three dimensional vector.
 /// 
 /// Moving through space requires knowledge of where things are and where they are
 /// going. Vector Maths is the class of mathematics that gives us control over
@@ -124,7 +125,12 @@ public:
 	/// ofVec3f v(mom); // v is (40, 20, 10)
 	/// ~~~~
     ofVec3f( const ofVec4f& vec );
-	
+
+	ofVec3f( const glm::vec2 & vec );
+	ofVec3f( const glm::vec3 & vec );
+	ofVec3f( const glm::vec4 & vec );
+	operator glm::vec3() const;
+
 	/// \}
 
 	//---------------------
@@ -286,7 +292,7 @@ public:
 	/// ofVec3f v2 = ofVec3f(25, 50, 10);
 	/// ofVec3f v3 = v1 + v2; // v3 is (65, 70, 20)
 	/// ~~~~
-    ofVec3f  operator+( const ofVec3f& pnt ) const;
+	ofVec3f  operator+( const ofVec3f& pnt ) const;
 
 	/// Returns a new vector with a float value 'f' added to 'x', 'y' and 'z'
 	/// members.
@@ -324,7 +330,7 @@ public:
 	/// ofVec3f v2 = ofVec3f(25, 50, 10);
 	/// ofVec3f v3 = v1 - v2; // v3 is (15, -30, 0)
 	/// ~~~~
-    ofVec3f  operator-( const ofVec3f& vec ) const;
+	ofVec3f  operator-( const ofVec3f& vec ) const;
 
 
 
@@ -355,7 +361,7 @@ public:
 	/// ofVec3f v2 = ofVec3f(25, 50, 10);
 	/// v1 -= v2; // v1 is (15, -30, 0)
 	/// ~~~~    
-    ofVec3f& operator-=( const ofVec3f& vec );
+	ofVec3f& operator-=( const ofVec3f& vec );
 
 	/// Subtract a float value 'f' from 'x', 'y', and 'z' members.
 	/// 
@@ -368,7 +374,7 @@ public:
 	/// Returns a new vector ('x'*'vec.x','y'*'vec.y','z'*'vec.z').
 	/// 
 	/// ~~~~{.cpp}
-	/// ofVec3f v1 = ofVec3f(40, 20, 10); 
+	/// ofVec3f v1 = ofVec3f(40, 20, 10); inline
 	/// ofVec3f v2 = ofVec3f(2, 4, 10);
 	/// ofVec3f v3 = v1 * v2; // (80, 80, 100)
 	/// ~~~~
@@ -446,8 +452,8 @@ public:
     ofVec3f& operator/=( const float f );
 	
     /// \cond INTERNAL
-	friend ostream& operator<<(ostream& os, const ofVec3f& vec);
-	friend istream& operator>>(istream& is, ofVec3f& vec);
+	friend std::ostream& operator<<(std::ostream& os, const ofVec3f& vec);
+	friend std::istream& operator>>(std::istream& is, ofVec3f& vec);
 	/// \endcond
 
     /// \}
@@ -476,131 +482,123 @@ public:
     ofVec3f& scale( const float length );
     
 	
-	/// \brief Return a new 'ofVec3f' that is the result of rotating this vector by 'angle'
-	/// degrees around the given axis.
-	/// 
+	/// \brief Returns a new vector that is the result of rotating this vector
+	/// by 'angle' degrees about the given axis.
+	///
 	/// ~~~~{.cpp}
 	/// ofVec3f v1(1, 0, 0);
-	/// // rotate v1 around the z axis
-	/// ofVec3f v2 = v1.getRotated(45, ofVec3f(0, 0, 1)); // v2 is (√2, √2, 0)
-	/// // rotate v1 around the y axis
-	/// ofVec3f v3 = v1.getRotated(45, ofVec3f(0, 1, 0)); // v3 is (√2, 0, √2)
+	/// ofVec3f v2 = v1.getRotated(45, ofVec3f(0, 0, 1)); // v2 is (0.707, 0.707, 0)
+	/// ofVec3f v3 = v1.getRotated(45, ofVec3f(0, 1, 0)); // v3 is (0.707, 0, -0.707)
 	/// ~~~~
-	/// 
+	///
     ofVec3f  getRotated( float angle, const ofVec3f& axis ) const;
-    
-	/// \brief Make a copy of this vector and perform an Euler rotation of the copy around
-	/// three axes: 'ax' degrees about the x axis, 'ay' about the y axis and 'az'
-	/// about the z axis. Return the copy.
-	/// 
-	/// ~~~~~{.cpp}
-	/// ofVec3f v1( 1, 0, 0 );
-	/// ofVec3f v2 = v1.getRotated( 0, 0, 90 ); // v is now (0, 1, 0)
-	/// ofVec3f v3 = v1.getRotated( 45, 0, 0 ); // v is now (0, √2, √2)
-	/// ~~~~~
-	/// 
-	/// Watch out for gimbal lock when specifying multiple rotations in the same call.
-	/// 
-    ofVec3f  getRotated(float ax, float ay, float az) const;
-    
-	/// \brief Return a new 'ofVec3f' that is the result of rotating this vector by
-	/// 'angle' degrees around the axis specified by 'axis', using 'pivot' as
-	/// the origin of rotation.
-    ofVec3f  getRotated( float angle, const ofVec3f& pivot, const ofVec3f& axis ) const;
-    
-    
-    /// \brief Return a new 'ofVec3f' that is the result of rotating this 
-    /// vector by 'angle' radians around the given axis.
-    ///
-    /// ~~~~{.cpp}
-    /// ofVec3f v1(1, 0, 0);
-    /// // rotate v1 around the z axis
-    /// ofVec3f v2 = v1.getRotated(PI/4, ofVec3f(0, 0, 1)); // v2 is (√2, √2, 0)
-    /// // rotate v1 around the y axis
-    /// ofVec3f v3 = v1.getRotated(PI/4, ofVec3f(0, 1, 0)); // v3 is (√2, 0, √2)
-    /// ~~~~
-    ofVec3f  getRotatedRad( float angle, const ofVec3f& axis ) const;
 
-	/// \brief Make a copy of this vector and perform an Euler rotation of the copy around
-	/// three axes: 'ax' radians about the x axis, 'ay' about the y axis and 'az'
-	/// about the z axis. Return the copy.
+	/// \brief Returns a new vector that is the result of performing an Euler
+	/// rotation of this vector by 'ax' degrees about the x axis, 'ay' degrees
+	/// about the y axis, and 'az' degrees about the z axis.
 	///
 	/// ~~~~~{.cpp}
-	/// ofVec3f v1( 1, 0, 0 );
-	/// ofVec3f v2 = v1.getRotatedRad( 0, 0, HALF_PI ); // v is now (0, 1, 0)
-	/// ofVec3f v3 = v1.getRotatedRad( PI/4, 0, 0 ); // v is now (0, √2, √2)
+	/// ofVec3f v1(1, 0, 0);
+	/// ofVec3f v2 = v1.getRotated(0, 0, 45); // v2 is (0.707, 0.707, 0)
+	/// ofVec3f v3 = v1.getRotated(0, 45, 0); // v3 is (0.707, 0, -0.707)
 	/// ~~~~~
-	/// 
+	///
 	/// Watch out for gimbal lock when specifying multiple rotations in the same call.
-    /// 
-	ofVec3f  getRotatedRad(float ax, float ay, float az) const;
-  	
-  	/// \brief Return a new 'ofVec3f' that is the result of rotating this vector by 'angle' radians
-    /// around the axis specified by 'axis', using 'pivot' as the origin of rotation.
-    ofVec3f   getRotatedRad( float angle, const ofVec3f& pivot, const ofVec3f& axis ) const;
-    	
- 	/// \brief Return a new 'ofVec3f' that is the result of rotating this vector by
-	/// 'angle' degrees around the given axis.
-	/// 
+	///
+    ofVec3f  getRotated(float ax, float ay, float az) const;
+
+	/// \brief Returns a new vector that is the result of rotating this vector by
+	/// 'angle' degrees about the axis specified by 'axis', using 'pivot' as the
+	/// origin of rotation.
+    ofVec3f  getRotated( float angle, const ofVec3f& pivot, const ofVec3f& axis ) const;
+
+
+	/// \brief Returns a new vector that is the result of rotating this vector by
+	/// 'angle' radians about the given axis.
+	///
 	/// ~~~~{.cpp}
 	/// ofVec3f v1(1, 0, 0);
-	/// // rotate v1 around the z axis
-	/// v1.rotate(45, ofVec3f(0, 0, 1)); // v2 is (√2, √2, 0)
-	/// 
-	/// v1.set(1, 0, 0);
-	/// // then rotate around the y axis
-	/// v1.rotate(45, ofVec3f(0, 1, 0)); // v3 is (√2, 0, √2)
+	/// ofVec3f v2 = v1.getRotated(PI / 4, ofVec3f(0, 0, 1)); // v2 is (0.707, 0.707, 0)
+	/// ofVec3f v3 = v1.getRotated(PI / 4, ofVec3f(0, 1, 0)); // v3 is (0.707, 0, -0.707)
+	/// ~~~~
+    ofVec3f  getRotatedRad( float angle, const ofVec3f& axis ) const;
+
+	/// \brief Returns a new vector that is the result of performing an Euler
+	/// rotation of this vector by 'ax' radians about the x axis, 'ay' radians
+	/// about the y axis, and 'az' radians about the z axis.
+	///
+	/// ~~~~~{.cpp}
+	/// ofVec3f v1(1, 0, 0);
+	/// ofVec3f v2 = v1.getRotatedRad(0, 0, PI / 4); // v2 is (0.707, 0.707, 0)
+	/// ofVec3f v3 = v1.getRotatedRad(0, PI / 4, 0); // v3 is (0.707, 0, -0.707)
+	/// ~~~~~
+	///
+	/// Watch out for gimbal lock when specifying multiple rotations in the same call.
+	///
+	ofVec3f  getRotatedRad(float ax, float ay, float az) const;
+
+	/// \brief Returns a new vector that is the result of rotating this vector by
+	/// 'angle' radians about the axis specified by 'axis', using 'pivot' as the
+	/// origin of rotation.
+    ofVec3f   getRotatedRad( float angle, const ofVec3f& pivot, const ofVec3f& axis ) const;
+
+	/// \brief Rotates this vector by 'angle' degrees around the given axis.
+	///
+	/// ~~~~{.cpp}
+	/// ofVec3f v1(1, 0, 0);
+	/// ofVec3f v2(1, 0, 0);
+	/// v1.rotate(45, ofVec3f(0, 0, 1)); // v1 is now (0.707, 0.707, 0)
+	/// v2.rotate(45, ofVec3f(0, 1, 0)); // v2 is now (0.707, 0, -0.707)
 	/// ~~~~
 	ofVec3f& rotate( float angle, const ofVec3f& axis );
 
-	/// \brief Perform an Euler rotation of this vector around three axes: 'ax' degrees about
-	/// the x axis, 'ay' about the y axis and 'az' about the z axis.
-	/// 
+	/// \brief Performs an Euler rotation of this vector by 'ax' degrees about the
+	/// x axis, 'ay' degrees about the y axis, and 'az' degrees about the z axis.
+	///
 	/// ~~~~~{.cpp}
-	/// ofVec3f v( 1, 0, 0 );
-	/// v.rotate( 0, 0, 90 ); // v is now (0, 1, 0)
-	/// v.rotate( 45, 0, 0 ); // v is now (0, √2, √2)
+	/// ofVec3f v1(1, 0, 0);
+	/// ofVec3f v2(1, 0, 0);
+	/// v1.rotate(0, 0, 45); // v1 is now (0.707, 0.707, 0)
+	/// v2.rotate(0, 45, 0); // v2 is now (0.707, 0, -0.707)
 	/// ~~~~~
-	/// 
+	///
 	/// Watch out for gimbal lock when specifying multiple rotations in the same call.
-	/// 
+	///
     ofVec3f& rotate(float ax, float ay, float az);
 
-	/// \brief Rotate this vector by 'angle' degrees around the axis specified by 'axis',
+	/// \brief Rotates this vector by 'angle' degrees about the axis specified by 'axis',
 	/// using 'pivot' as the origin of rotation.
 	ofVec3f& rotate( float angle, const ofVec3f& pivot, const ofVec3f& axis );
-    
 
-	/// \brief Return a new 'ofVec3f' that is the result of rotating this vector by 'angle'
-	/// degrees around the given axis.
-	/// 
+
+	/// \brief Rotates this vector by 'angle' radians about the given axis.
+	///
 	/// ~~~~{.cpp}
 	/// ofVec3f v1(1, 0, 0);
-	/// // rotate v1 around the z axis
-	/// v1.rotate(45, ofVec3f(0, 0, 1)); // v2 is (√2, √2, 0)
-	/// 
-	/// v1.set(1, 0, 0);
-	/// // then rotate around the y axis
-	/// v1.rotate(45, ofVec3f(0, 1, 0)); // v3 is (√2, 0, √2)
+	/// ofVec3f v2(1, 0, 0)
+	/// v1.rotateRad(PI / 4, ofVec3f(0, 0, 1)); // v1 is now (0.707, 0.707, 0)
+	/// v2.rotateRad(PI / 4, ofVec3f(0, 1, 0)); // v2 is now (0.707, 0, -0.707)
 	/// ~~~~
     ofVec3f& rotateRad( float angle, const ofVec3f& axis );
-    
-	/// \brief Perform an Euler rotation of this vector around three axes: 'ax' radians about
-	/// the x axis, 'ay' about the y axis and 'az' about the z axis.
-	/// 
+
+	/// \brief Performs an Euler rotation of this vector by 'ax' radians about
+	/// the x axis, 'ay' radians about the y axis, and 'az' radians about the z axis.
+	///
 	/// ~~~~~{.cpp}
-	/// ofVec3f v( 1, 0, 0 );
-	/// v.rotateRad( 0, 0, HALF_PI ); // v is now (0, 1, 0)
-	/// v.rotateRad( PI/4, 0, 0 ); // v is now (0, √2, √2)
+	/// ofVec3f v1(1, 0, 0);
+	/// ofVec3f v2(1, 0, 0);
+	/// v1.rotateRad(0, 0, PI / 4); // v1 is now (0.707, 0.707, 0)
+	/// v2.rotateRad(0, PI / 4, 0); // v2 is now (0.707, 0, -0.707)
 	/// ~~~~~
-	/// 
+	///
 	/// Watch out for gimbal lock when specifying multiple rotations in the same call.
     ofVec3f& rotateRad(float ax, float ay, float az);
-    
-	/// \brief Rotate this vector by 'angle' radians around the axis specified by 'axis',
+
+	/// \brief Rotates this vector by 'angle' radians around the axis specified by 'axis',
 	/// using 'pivot' as the origin of rotation.
-    ofVec3f& rotateRad( float angle, const ofVec3f& pivot, const ofVec3f& axis );    
-    
+    ofVec3f& rotateRad( float angle, const ofVec3f& pivot, const ofVec3f& axis );
+
+
     	
 	
 	/// \brief Return a new 'ofVec3f' calculated by copying this vector and then mapping from
@@ -952,31 +950,36 @@ public:
     ofVec3f& cross( const ofVec3f& vec );
 
 	
-	/// \brief Calculate and return the dot product of this vector with 'vec'.
-	/// 
-	/// *Dot product* (less commonly known as *Euclidean inner product*)
-	/// expresses the angular relationship between two vectors. In other
-	/// words it is a measure of how *parallel* two vectors are. If they are
-	/// completely perpendicular the dot product is 0; if they are completely
-	/// parallel their dot product is either 1 if they are pointing in the
-	/// same direction, or -1 if they are pointing in opposite directions.	
-	/// 
-	/// ![DOT](math/dotproduct.png)
-	/// Image courtesy of Wikipedia
-	/// 
+	
+	
+	/// \brief Returns the dot product of this vector with 'vec'.
+	///
+	/// The *dot product* of two vectors, also known as the *scalar product*, is
+	/// the product of the magnitude of the two vectors and the cosine of the
+	/// angle between them.
+	///
+	/// One interpretation of the dot product is as a measure of how closely two
+	/// vectors align with each other. If they point in exactly the same
+	/// direction, their dot product will simply be the product of their
+	/// magnitudes, if they are perpendicular, their dot product will be 0, and
+	/// if they point in opposite directions, their dot product will be
+	/// negative.
+	///
+	/// The dot product is in contrast to the *cross product*, which returns a
+	/// vector rather than a scalar.
+	///
 	/// ~~~~{.cpp}
-	/// ofVec3f a1(1, 0, 0);
-	/// ofVec3f b1(0, 0, 1); // 90 degree angle to a1
-	/// dot = a1.dot(b1); // dot is 0, ie cos(90)
-	/// 
-	/// ofVec3f a2(1, 0, 0); 
-	/// ofVec3f b2(1, 1, 0); // 45 degree angle to a2
-	/// b2.normalize(); // vectors should to be unit vectors (normalized)
-	/// float dot = a2.dot(b2); // dot is 0.707, ie cos(45)
-	/// 
-	/// ofVec3f a3(0, 1, 0);
-	/// ofVec3f b3(0, -1, 0); // 180 degree angle to a3
-	/// dot = a3.dot(b3); // dot is -1, ie cos(180)
+	/// ofVec3f a1(2, 0, 0); // magnitude 2, parallel to x-axis
+	/// ofVec3f b1(3, 4, 0); // magnitude 5, 53.13 degree angle to a1
+	/// float dot = a1.dot(b1); // dot is 2 * 5 * cos(53.13) = 6.0
+	///
+	/// ofVec3f a2(1, 0, 0); // magnitude 1, parallel to x-axis
+	/// ofVec3f b2(0, 0, 1); // magnitude 1, 90 degree angle to a2
+	/// dot = a2.dot(b2); // dot is 1 * 1 * cos(90) = 0.0
+	///
+	/// ofVec3f a3(0, 1, 0); // magnitude 1, parallel to y-axis
+	/// ofVec3f b3(0, -1, 0); // magnitude 1, 180 degree angle to a3
+	/// dot = a3.dot(b3); // dot is 1 * 1 * cos(180) = -1.0
 	/// ~~~~
 	/// 
     float dot( const ofVec3f& vec ) const;
@@ -1067,6 +1070,14 @@ inline ofVec3f::ofVec3f(): x(0), y(0), z(0) {}
 inline ofVec3f::ofVec3f( float _all ): x(_all), y(_all), z(_all) {}
 inline ofVec3f::ofVec3f( float _x, float _y, float _z ):x(_x), y(_y), z(_z) {}
 
+inline ofVec3f::ofVec3f( const glm::vec2 & vec ):x(vec.x), y(vec.y), z(0.f){}
+inline ofVec3f::ofVec3f( const glm::vec3 & vec ):x(vec.x), y(vec.y), z(vec.z){}
+inline ofVec3f::ofVec3f( const glm::vec4 & vec ):x(vec.x), y(vec.y), z(vec.z){}
+
+inline ofVec3f::operator glm::vec3() const{
+	return glm::vec3(x,y,z);
+}
+
 
 // Getters and Setters.
 //
@@ -1131,12 +1142,12 @@ inline bool ofVec3f::alignRad( const ofVec3f& vec, float tolerance ) const {
 //
 //
 
-inline ostream& operator<<(ostream& os, const ofVec3f& vec) {
+inline std::ostream& operator<<(std::ostream& os, const ofVec3f& vec) {
 	os << vec.x << ", " << vec.y << ", " << vec.z;
 	return os;
 }
 
-inline istream& operator>>(istream& is, ofVec3f& vec) {
+inline std::istream& operator>>(std::istream& is, ofVec3f& vec) {
 	is >> vec.x;
 	is.ignore(2);
 	is >> vec.y;
@@ -1288,7 +1299,7 @@ inline ofVec3f ofVec3f::rotated( float angle, const ofVec3f& axis ) const {
 }
 inline ofVec3f ofVec3f::getRotated( float angle, const ofVec3f& axis ) const {
 	ofVec3f ax = axis.getNormalized();
-	float a = (float)(angle*DEG_TO_RAD);
+	float a = (float)(ofDegToRad(angle));
 	float sina = sin( a );
 	float cosa = cos( a );
 	float cosb = 1.0f - cosa;
@@ -1324,7 +1335,7 @@ inline ofVec3f ofVec3f::getRotatedRad( float angle, const ofVec3f& axis ) const 
 
 inline ofVec3f& ofVec3f::rotate( float angle, const ofVec3f& axis ) {
 	ofVec3f ax = axis.getNormalized();
-	float a = (float)(angle*DEG_TO_RAD);
+	float a = (float)(ofDegToRad(angle));
 	float sina = sin( a );
 	float cosa = cos( a );
 	float cosb = 1.0f - cosa;
@@ -1369,12 +1380,12 @@ inline ofVec3f ofVec3f::rotated(float ax, float ay, float az) {
 }
 
 inline ofVec3f ofVec3f::getRotated(float ax, float ay, float az) const {
-	float a = (float)cos(DEG_TO_RAD*(ax));
-	float b = (float)sin(DEG_TO_RAD*(ax));
-	float c = (float)cos(DEG_TO_RAD*(ay));
-	float d = (float)sin(DEG_TO_RAD*(ay));
-	float e = (float)cos(DEG_TO_RAD*(az));
-	float f = (float)sin(DEG_TO_RAD*(az));
+	float a = (float)cos(ofDegToRad(ax));
+	float b = (float)sin(ofDegToRad(ax));
+	float c = (float)cos(ofDegToRad(ay));
+	float d = (float)sin(ofDegToRad(ay));
+	float e = (float)cos(ofDegToRad(az));
+	float f = (float)sin(ofDegToRad(az));
 	
 	float nx = c * e * x - c * f * y + d * z;
 	float ny = (a * f + b * d * e) * x + (a * e - b * d * f) * y - b * c * z;
@@ -1400,12 +1411,12 @@ inline ofVec3f ofVec3f::getRotatedRad(float ax, float ay, float az) const {
 
 
 inline ofVec3f& ofVec3f::rotate(float ax, float ay, float az) {
-	float a = (float)cos(DEG_TO_RAD*(ax));
-	float b = (float)sin(DEG_TO_RAD*(ax));
-	float c = (float)cos(DEG_TO_RAD*(ay));
-	float d = (float)sin(DEG_TO_RAD*(ay));
-	float e = (float)cos(DEG_TO_RAD*(az));
-	float f = (float)sin(DEG_TO_RAD*(az));
+	float a = (float)cos(ofDegToRad(ax));
+	float b = (float)sin(ofDegToRad(ax));
+	float c = (float)cos(ofDegToRad(ay));
+	float d = (float)sin(ofDegToRad(ay));
+	float e = (float)cos(ofDegToRad(az));
+	float f = (float)sin(ofDegToRad(az));
 	
 	float nx = c * e * x - c * f * y + d * z;
 	float ny = (a * f + b * d * e) * x + (a * e - b * d * f) * y - b * c * z;
@@ -1451,7 +1462,7 @@ inline ofVec3f ofVec3f::getRotated( float angle,
 	float ty = y - pivot.y;
 	float tz = z - pivot.z;
 	
-	float a = (float)(angle*DEG_TO_RAD);
+	float a = ofDegToRad(angle);
 	float sina = sin( a );
 	float cosa = cos( a );
 	float cosb = 1.0f - cosa;
@@ -1509,7 +1520,7 @@ inline ofVec3f& ofVec3f::rotate( float angle,
 	y -= pivot.y;
 	z -= pivot.z;
 	
-	float a = (float)(angle*DEG_TO_RAD);
+	float a = ofDegToRad(angle);
 	float sina = sin( a );
 	float cosa = cos( a );
 	float cosb = 1.0f - cosa;
@@ -1833,7 +1844,7 @@ inline float ofVec3f::lengthSquared() const {
 inline float ofVec3f::angle( const ofVec3f& vec ) const {
 	ofVec3f n1 = this->getNormalized();
 	ofVec3f n2 = vec.getNormalized();
-	return (float)(acos( n1.dot(n2) )*RAD_TO_DEG);
+	return ofRadToDeg(acos( n1.dot(n2) ));
 }
 
 inline float ofVec3f::angleRad( const ofVec3f& vec ) const {

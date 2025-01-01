@@ -1,8 +1,6 @@
 //
 // HTTPSessionInstantiator.cpp
 //
-// $Id: //poco/1.4/Net/src/HTTPSessionInstantiator.cpp#1 $
-//
 // Library: Net
 // Package: HTTPClient
 // Module:  HTTPSessionInstantiator
@@ -26,8 +24,7 @@ namespace Poco {
 namespace Net {
 
 
-HTTPSessionInstantiator::HTTPSessionInstantiator():
-	_proxyPort(0)
+HTTPSessionInstantiator::HTTPSessionInstantiator()
 {
 }
 
@@ -41,8 +38,10 @@ HTTPClientSession* HTTPSessionInstantiator::createClientSession(const Poco::URI&
 {
 	poco_assert (uri.getScheme() == "http");
 	HTTPClientSession* pSession = new HTTPClientSession(uri.getHost(), uri.getPort());
-	pSession->setProxy(proxyHost(), proxyPort());
-	pSession->setProxyCredentials(proxyUsername(), proxyPassword());
+	if (!getProxyConfig().host.empty())
+	{
+		pSession->setProxyConfig(getProxyConfig());
+	}
 	return pSession;
 }
 
@@ -59,18 +58,11 @@ void HTTPSessionInstantiator::unregisterInstantiator()
 }
 
 
-void HTTPSessionInstantiator::setProxy(const std::string& host, Poco::UInt16 port)
+void HTTPSessionInstantiator::setProxyConfig(const HTTPClientSession::ProxyConfig& proxyConfig)
 {
-	_proxyHost = host;
-	_proxyPort = port;
+	_proxyConfig = proxyConfig;
 }
 
-
-void HTTPSessionInstantiator::setProxyCredentials(const std::string& username, const std::string& password)
-{
-	_proxyUsername = username;
-	_proxyPassword = password;
-}
 
 
 } } // namespace Poco::Net

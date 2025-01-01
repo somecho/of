@@ -1,8 +1,6 @@
 //
 // LocalDateTimeTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/LocalDateTimeTest.h#1 $
-//
 // Definition of the LocalDateTimeTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -37,6 +35,7 @@ public:
 	void testArithmetics2();
 	void testSwap();
 	void testTimezone();
+	void testTimezone2();
 
 	void setUp();
 	void tearDown();

@@ -1,8 +1,6 @@
 //
 // WhitespaceFilter.h
 //
-// $Id: //poco/1.4/XML/include/Poco/SAX/WhitespaceFilter.h#1 $
-//
 // Library: XML
 // Package: SAX
 // Module:  WhitespaceFilter
@@ -37,7 +35,7 @@ class XML_API WhitespaceFilter: public XMLFilterImpl, public LexicalHandler
 public:
 	WhitespaceFilter();
 		/// Creates the WhitespaceFilter, with no parent.
-		
+
 	WhitespaceFilter(XMLReader* pReader);
 		/// Creates the WhitespaceFilter with the specified parent.
 

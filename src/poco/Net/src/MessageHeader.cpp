@@ -1,8 +1,6 @@
 //
 // MessageHeader.cpp
 //
-// $Id: //poco/1.4/Net/src/MessageHeader.cpp#4 $
-//
 // Library: Net
 // Package: Messages
 // Module:  MessageHeader
@@ -18,6 +16,11 @@
 #include "Poco/Net/NetException.h"
 #include "Poco/String.h"
 #include "Poco/Ascii.h"
+#include "Poco/TextConverter.h"
+#include "Poco/StringTokenizer.h"
+#include "Poco/Base64Decoder.h"
+#include "Poco/UTF8Encoding.h"
+#include <sstream>
 
 
 namespace Poco {
@@ -25,14 +28,20 @@ namespace Net {
 
 
 MessageHeader::MessageHeader():
-	_fieldLimit(DFL_FIELD_LIMIT)
+	_fieldLimit(DFL_FIELD_LIMIT),
+	_nameLengthLimit(DFL_NAME_LENGTH_LIMIT),
+	_valueLengthLimit(DFL_VALUE_LENGTH_LIMIT),
+	_autoDecode(true),
+	_decodedOnRead(false)
 {
 }
 
 
 MessageHeader::MessageHeader(const MessageHeader& messageHeader):
 	NameValueCollection(messageHeader),
-	_fieldLimit(DFL_FIELD_LIMIT)
+	_fieldLimit(DFL_FIELD_LIMIT),
+	_nameLengthLimit(DFL_NAME_LENGTH_LIMIT),
+	_valueLengthLimit(DFL_VALUE_LENGTH_LIMIT)
 {
 }
 
@@ -77,12 +86,12 @@ void MessageHeader::read(std::istream& istr)
 			throw MessageException("Too many header fields");
 		name.clear();
 		value.clear();
-		while (ch != eof && ch != ':' && ch != '\n' && name.length() < MAX_NAME_LENGTH) { name += ch; ch = buf.sbumpc(); }
+		while (ch != eof && ch != ':' && ch != '\n' && name.length() < _nameLengthLimit) { name += ch; ch = buf.sbumpc(); }
 		if (ch == '\n') { ch = buf.sbumpc(); continue; } // ignore invalid header lines
 		if (ch != ':') throw MessageException("Field name too long/no colon found");
 		if (ch != eof) ch = buf.sbumpc(); // ':'
 		while (ch != eof && Poco::Ascii::isSpace(ch) && ch != '\r' && ch != '\n') ch = buf.sbumpc();
-		while (ch != eof && ch != '\r' && ch != '\n' && value.length() < MAX_VALUE_LENGTH) { value += ch; ch = buf.sbumpc(); }
+		while (ch != eof && ch != '\r' && ch != '\n' && value.length() < _valueLengthLimit) { value += ch; ch = buf.sbumpc(); }
 		if (ch == '\r') ch = buf.sbumpc();
 		if (ch == '\n')
 			ch = buf.sbumpc();
@@ -90,18 +99,62 @@ void MessageHeader::read(std::istream& istr)
 			throw MessageException("Field value too long/no CRLF found");
 		while (ch == ' ' || ch == '\t') // folding
 		{
-			while (ch != eof && ch != '\r' && ch != '\n' && value.length() < MAX_VALUE_LENGTH) { value += ch; ch = buf.sbumpc(); }
+			while (ch != eof && ch != '\r' && ch != '\n' && value.length() < _valueLengthLimit) { value += ch; ch = buf.sbumpc(); }
 			if (ch == '\r') ch = buf.sbumpc();
 			if (ch == '\n')
 				ch = buf.sbumpc();
 			else if (ch != eof)
 				throw MessageException("Folded field value too long/no CRLF found");
 		}
+
+		// TODO: Add to the if below?
 		Poco::trimRightInPlace(value);
-		add(name, value);
+
+		if (_autoDecode)
+			add(name, decodeWord(value));
+		else
+			add(name, value);
+
 		++fields;
 	}
-	istr.putback(ch);
+	// Save the state of the auto decode at the time of reading.
+	_decodedOnRead = _autoDecode;
+	if (istr.good() && ch != eof)
+		istr.putback(ch);
+}
+
+
+void MessageHeader::setAutoDecode(bool decode)
+{
+	_autoDecode = decode;
+}
+
+
+bool MessageHeader::getAutoDecode() const
+{
+	return _autoDecode;
+}
+
+
+std::string MessageHeader::getDecoded(const std::string& name) const
+{
+	const auto& value { get(name) };
+	if (_decodedOnRead)
+	{
+		// Already decoded, just return the value
+		return value;
+	}
+	return decodeWord(value);
+}
+
+
+std::string MessageHeader::getDecoded(const std::string& name, const std::string& defaultValue) const
+{
+	if (!has(name))
+	{
+		return defaultValue;
+	}
+	return getDecoded(name);
 }
 
 
@@ -110,12 +163,38 @@ int MessageHeader::getFieldLimit() const
 	return _fieldLimit;
 }
 
-	
+
 void MessageHeader::setFieldLimit(int limit)
 {
 	poco_assert (limit >= 0);
-	
+
 	_fieldLimit = limit;
+}
+
+
+int MessageHeader::getNameLengthLimit() const
+{
+	return _nameLengthLimit;
+}
+
+void MessageHeader::setNameLengthLimit(int limit)
+{
+	poco_assert(limit >= 0);
+
+	_nameLengthLimit = limit;
+}
+
+
+int MessageHeader::getValueLengthLimit() const
+{
+	return _valueLengthLimit;
+}
+
+void MessageHeader::setValueLengthLimit(int limit)
+{
+	poco_assert(limit >= 0);
+
+	_valueLengthLimit = limit;
 }
 
 
@@ -124,9 +203,9 @@ bool MessageHeader::hasToken(const std::string& fieldName, const std::string& to
 	std::string field = get(fieldName, "");
 	std::vector<std::string> tokens;
 	splitElements(field, tokens, true);
-	for (std::vector<std::string>::const_iterator it = tokens.begin(); it != tokens.end(); ++it)
+	for (const auto& t: tokens)
 	{
-		if (Poco::icompare(*it, token) == 0)
+		if (Poco::icompare(t, token) == 0)
 			return true;
 	}
 	return false;
@@ -251,6 +330,150 @@ void MessageHeader::quote(const std::string& value, std::string& result, bool al
 	if (mustQuote) result += '"';
 	result.append(value);
 	if (mustQuote) result += '"';
+}
+
+
+void MessageHeader::decodeRFC2047(const std::string& ins, std::string& outs, const std::string& charset_to)
+{
+	std::string tempout;
+	StringTokenizer tokens(ins, "?");
+
+	std::string charset = toUpper(tokens[0]);
+	std::string encoding = toUpper(tokens[1]);
+	std::string text = tokens[2];
+
+	std::istringstream istr(text);
+
+	if (encoding == "B")
+	{
+		// Base64 encoding.
+		Base64Decoder decoder(istr);
+		for (char c; decoder.get(c); tempout += c) {}
+	}
+	else if (encoding == "Q")
+	{
+		// Quoted encoding.
+		for (char c; istr.get(c);)
+		{
+			if (c == '_')
+			{
+				//RFC 2047  _ is a space.
+				tempout += " ";
+				continue;
+			}
+
+			// FIXME: check that we have enought chars-
+			if (c == '=')
+			{
+				// The next two chars are hex representation of the complete byte.
+				std::string hex;
+				for (int i = 0; i < 2; i++)
+				{
+					istr.get(c);
+					hex += c;
+				}
+				hex = toUpper(hex);
+				tempout += (char)(int)strtol(hex.c_str(), 0, 16);
+				continue;
+			}
+			tempout += c;
+		}
+	}
+	else
+	{
+		// Wrong encoding
+		outs = ins;
+		return;
+	}
+
+	// convert to the right charset.
+	if (charset != charset_to)
+	{
+		try
+		{
+			TextEncoding& enc = TextEncoding::byName(charset);
+			TextEncoding& dec = TextEncoding::byName(charset_to);
+			TextConverter converter(enc, dec);
+			converter.convert(tempout, outs);
+		}
+		catch (...)
+		{
+			// FIXME: Unsuported encoding...
+			outs = tempout;
+		}
+	}
+	else
+	{
+		// Not conversion necesary.
+		outs = tempout;
+	}
+}
+
+
+std::string MessageHeader::decodeWord(const std::string& text, const std::string& charset)
+{
+	std::string outs, tmp = text;
+	size_t pos = tmp.find("=?");
+	do {
+		std::string tmp2;
+		// find the begining of the next rfc2047 chunk
+		if (pos == std::string::npos) {
+			// No more found, return
+			outs += tmp;
+			break;
+		}
+
+		// check if there are standar text before the rfc2047 chunk, and if so, copy it.
+		if (pos > 0) {
+			outs += tmp.substr(0, pos);
+		}
+
+		// remove text already copied.
+		tmp = tmp.substr(pos + 2);
+
+		// find the first separator
+		size_t pos1 = tmp.find("?");
+		if (pos1 == std::string::npos) {
+			// not found.
+			outs += tmp;
+			break;
+		}
+
+		// find the second separator
+		size_t pos2 = tmp.find("?", pos1 + 1);
+		if (pos2 == std::string::npos) {
+			// not found
+			outs += tmp;
+			break;
+		}
+
+		// find the end of the actual rfc2047 chunk
+		size_t pos3 = tmp.find("?=", pos2 + 1);
+		if (pos3 == std::string::npos) {
+			// not found.
+			outs += tmp;
+			break;
+		}
+
+		// At this place, there are a valid rfc2047 chunk, so decode and copy the result.
+		decodeRFC2047(tmp.substr(0, pos3), tmp2, charset);
+		outs += tmp2;
+
+		// Jump at the rest of the string and repeat the whole process.
+		tmp = tmp.substr(pos3 + 2);
+		pos = tmp.find("=?");
+		if (pos != std::string::npos)
+		{
+			std::string betweenChunks = tmp.substr(0, pos);
+			if (betweenChunks.find_first_not_of(" \t\v\n") == std::string::npos)
+			{
+				tmp = tmp.substr(pos);
+				pos = 0;
+			}
+		}
+	} while (true);
+
+	return outs;
 }
 
 

@@ -1,8 +1,6 @@
 //
 // ClassLoaderTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/ClassLoaderTest.h#1 $
-//
 // Definition of the ClassLoaderTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -36,6 +34,7 @@ public:
 	static CppUnit::Test* suite();
 
 private:
+	static std::string getFullName(const std::string& libName);
 };
 
 

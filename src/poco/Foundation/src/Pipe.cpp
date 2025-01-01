@@ -1,8 +1,6 @@
 //
 // Pipe.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Pipe.cpp#1 $
-//
 // Library: Foundation
 // Package: Processes
 // Module:  Pipe
@@ -25,7 +23,7 @@ Pipe::Pipe():
 {
 }
 
-	
+
 Pipe::Pipe(const Pipe& pipe):
 	_pImpl(pipe._pImpl)
 {

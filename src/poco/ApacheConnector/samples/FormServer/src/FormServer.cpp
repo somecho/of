@@ -1,8 +1,6 @@
 //
 // FormServer.cpp
 //
-// $Id: //poco/1.4/ApacheConnector/samples/FormServer/src/FormServer.cpp#2 $
-//
 // Copyright (c) 2006-2011, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -42,7 +40,7 @@ public:
 		_length(0)
 	{
 	}
-	
+
 	void handlePart(const MessageHeader& header, std::istream& stream)
 	{
 		_type = header.get("Content-Type", "(unspecified)");
@@ -54,18 +52,18 @@ public:
 			_name = params.get("name", "(unnamed)");
 			_fileName = params.get("filename", "(unnamed)");
 		}
-		
+
 		CountingInputStream istr(stream);
 		NullOutputStream ostr;
 		StreamCopier::copyStream(istr, ostr);
 		_length = istr.chars();
 	}
-	
+
 	int length() const
 	{
 		return _length;
 	}
-	
+
 	const std::string& name() const
 	{
 		return _name;
@@ -75,12 +73,12 @@ public:
 	{
 		return _fileName;
 	}
-	
+
 	const std::string& contentType() const
 	{
 		return _type;
 	}
-	
+
 private:
 	int _length;
 	std::string _type;
@@ -93,10 +91,10 @@ class FormRequestHandler: public HTTPRequestHandler
 	/// Return a HTML document with the current date and time.
 {
 public:
-	FormRequestHandler() 
+	FormRequestHandler()
 	{
 	}
-	
+
 	void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
 		MyPartHandler partHandler;
@@ -106,7 +104,7 @@ public:
 		response.setContentType("text/html");
 
 		std::ostream& ostr = response.send();
-		
+
 		ostr <<
 			"<html>\n"
 			"<head>\n"
@@ -129,7 +127,7 @@ public:
 			"<input type=\"file\" name=\"file\" size=\"31\"> \n"
 			"<input type=\"submit\" value=\"Upload\">\n"
 			"</form>\n";
-			
+
 		ostr << "<h2>Request</h2><p>\n";
 		ostr << "Method: " << request.getMethod() << "<br>\n";
 		ostr << "URI: " << request.getURI() << "<br>\n";
@@ -152,7 +150,7 @@ public:
 			}
 			ostr << "</p>";
 		}
-		
+
 		if (!partHandler.name().empty())
 		{
 			ostr << "<h2>Upload</h2><p>\n";

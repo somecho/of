@@ -1,8 +1,6 @@
 //
 // PocoDoc.cpp
 //
-// $Id: //poco/1.4/PocoDoc/src/PocoDoc.cpp#2 $
-//
 // Copyright (c) 2005-2014, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -78,12 +76,12 @@ public:
 		_file(file)
 	{
 	}
-	
+
 	std::istream& stream()
 	{
 		return *_pStream;
 	}
-	
+
 	~Preprocessor()
 	{
 		int c = _pStream->get();
@@ -102,7 +100,7 @@ public:
 			}
 		}
 	}
-	
+
 private:
 	ProcessHandle _proc;
 	std::istream* _pStream;
@@ -113,9 +111,10 @@ private:
 class PocoDocApp: public Application
 {
 public:
-	PocoDocApp(): 
+	PocoDocApp():
 		_helpRequested(false),
-		_writeEclipseTOC(false)
+		_writeEclipseTOC(false),
+		_searchIndexEnabled(false)
 	{
 		std::setlocale(LC_ALL, "");
 	}
@@ -124,73 +123,110 @@ public:
 	{
 	}
 
-protected:	
+protected:
 	void initialize(Application& self)
 	{
 		loadConfiguration(); // load default configuration files, if present
 		Application::initialize(self);
 	}
-	
+
 	void uninitialize()
 	{
 		Application::uninitialize();
 	}
-	
+
 	void reinitialize(Application& self)
 	{
 		Application::reinitialize(self);
 	}
-	
+
 	void defineOptions(OptionSet& options)
 	{
 		Application::defineOptions(options);
 
 		options.addOption(
-			Option("help", "h", "display help information on command line arguments")
+			Option("help", "h", "Display help information on command line arguments.")
 				.required(false)
 				.repeatable(false)
 				.callback(OptionCallback<PocoDocApp>(this, &PocoDocApp::handleHelp)));
 
 		options.addOption(
-			Option("config-file", "f", "load configuration data from a file")
+			Option("config", "f", "Load configuration data from a file.")
 				.required(false)
 				.repeatable(true)
 				.argument("file")
 				.callback(OptionCallback<PocoDocApp>(this, &PocoDocApp::handleConfig)));
 
 		options.addOption(
-			Option("eclipse", "e", "write Eclipse TOC file")
+			Option("define", "D", "Define a configuration property.")
+				.required(false)
+				.repeatable(true)
+				.argument("name=value")
+				.callback(OptionCallback<PocoDocApp>(this, &PocoDocApp::handleDefine)));
+
+		options.addOption(
+			Option("eclipse", "e", "Write Eclipse TOC file.")
 				.required(false)
 				.repeatable(false)
 				.callback(OptionCallback<PocoDocApp>(this, &PocoDocApp::handleEclipse)));
+
+		options.addOption(
+			Option("search-index", "s", "Enable search index (requires FTS5 support).")
+				.required(false)
+				.repeatable(false)
+				.callback(OptionCallback<PocoDocApp>(this, &PocoDocApp::handleSearchIndex)));
 	}
-	
+
 	void handleHelp(const std::string& name, const std::string& value)
 	{
 		_helpRequested = true;
 		displayHelp();
 		stopOptionsProcessing();
 	}
-	
+
+	void handleDefine(const std::string& name, const std::string& value)
+	{
+		defineProperty(value);
+	}
+
+	void defineProperty(const std::string& def)
+	{
+		std::string name;
+		std::string value;
+		std::string::size_type pos = def.find('=');
+		if (pos != std::string::npos)
+		{
+			name.assign(def, 0, pos);
+			value.assign(def, pos + 1, def.length() - pos);
+		}
+		else name = def;
+		config().setString(name, value);
+	}
+
 	void handleEclipse(const std::string& name, const std::string& value)
 	{
 		_writeEclipseTOC = true;
+	}
+
+	void handleSearchIndex(const std::string& name, const std::string& value)
+	{
+		_searchIndexEnabled = true;
 	}
 
 	void handleConfig(const std::string& name, const std::string& value)
 	{
 		loadConfiguration(value, -200);
 	}
-	
+
 	void displayHelp()
 	{
 		HelpFormatter helpFormatter(options());
 		helpFormatter.setCommand(commandName());
 		helpFormatter.setUsage("OPTIONS");
-		helpFormatter.setHeader("Applied Informatics' super duper documentation builder.");
+		helpFormatter.setHeader("POCO C++ Libraries documentation builder.");
 		helpFormatter.format(std::cout);
 	}
-	
+
 	void buildFileList(std::set<std::string>& files)
 	{
 		std::set<std::string> temp;
@@ -209,23 +245,31 @@ protected:
 			for (StringTokenizer::Iterator itg = excTokenizer.begin(); itg != excTokenizer.end(); ++itg)
 			{
 				Glob glob(*itg);
-				if (glob.match(p.getFileName()))
+				if (glob.match(p.getFileName()) || glob.match(p.toString()))
 					include = false;
 			}
 			if (include)
 				files.insert(*it);
 		}
 	}
-	
+
 	Preprocessor* preprocess(const std::string& file)
 	{
 		Path pp(file);
 		pp.setExtension("i");
+		std::string comp = "PocoDoc.compiler";
+		std::string platformComp(comp);
 
-		std::string exec = config().getString("PocoDoc.compiler.exec");
-		std::string opts = config().getString("PocoDoc.compiler.options");
-		std::string path = config().getString("PocoDoc.compiler.path", "");
-		bool usePipe = config().getBool("PocoDoc.compiler.usePipe", false);
+		if (Environment::isWindows())
+			platformComp += ".windows";
+		else
+			platformComp += ".unix";
+
+		std::string exec = config().getString(platformComp + ".exec", config().getString(comp + ".exec", ""));
+		std::string opts = config().getString(platformComp + ".options", config().getString(comp + ".options", ""));
+		std::string path = config().getString(platformComp + ".path", config().getString(comp + ".path", ""));
+		bool usePipe = config().getBool(platformComp + ".usePipe", config().getBool(comp + ".usePipe", false));
+
 		std::string popts;
 		for (std::string::const_iterator it = opts.begin(); it != opts.end(); ++it)
 		{
@@ -237,7 +281,7 @@ protected:
 		StringTokenizer tokenizer(popts, ",\n", StringTokenizer::TOK_IGNORE_EMPTY | StringTokenizer::TOK_TRIM);
 		std::vector<std::string> args(tokenizer.begin(), tokenizer.end());
 		args.push_back(file);
-		
+
 		if (!path.empty())
 		{
 			std::string newPath(Environment::get("PATH"));
@@ -245,26 +289,25 @@ protected:
 			newPath += path;
 			Environment::set("PATH", path);
 		}
-		
+
 		if (usePipe)
 		{
 			Poco::Pipe inPipe;
-			ProcessHandle proc = Process::launch(exec, args, 0, &inPipe, 0);		
+			ProcessHandle proc = Process::launch(exec, args, 0, &inPipe, 0);
 			return new Preprocessor(proc, new Poco::PipeInputStream(inPipe));
 		}
 		else
 		{
-			ProcessHandle proc = Process::launch(exec, args);	
+			ProcessHandle proc = Process::launch(exec, args);
 			proc.wait();
 			return new Preprocessor(proc, new std::ifstream(pp.getFileName().c_str()), pp.getFileName());
 		}
 	}
-	
+
 	void parse(const std::string& file)
 	{
 		logger().information("Preprocessing " + file);
-		std::auto_ptr<Preprocessor> pPreProc(preprocess(file));
-		
+		std::unique_ptr<Preprocessor> pPreProc(preprocess(file));
 		logger().information("Parsing " + file);
 		if (pPreProc->stream().good())
 		{
@@ -273,7 +316,7 @@ protected:
 		}
 		else throw Poco::OpenFileException("cannot read from preprocessor");
 	}
-		
+
 	int parseAll()
 	{
 		int errors = 0;
@@ -293,7 +336,7 @@ protected:
 		}
 		return errors;
 	}
-	
+
 	void fixup()
 	{
 		logger().information("Fixing-up class hierarchies");
@@ -306,7 +349,7 @@ protected:
 			}
 		}
 	}
-	
+
 	void writeDoc()
 	{
 		logger().information("Generating documentation");
@@ -314,9 +357,23 @@ protected:
 		path.makeDirectory();
 		File file(path);
 		file.createDirectories();
-		
-		DocWriter writer(_gst, path.toString(), config().getBool("PocoDoc.prettifyCode", false), _writeEclipseTOC);
-		
+
+		if (_searchIndexEnabled || config().getBool("PocoDoc.searchIndex", false))
+		{
+#if defined(POCO_ENABLE_SQLITE_FTS5)
+			std::string dbDirectory = path.toString() + DocWriter::DATABASE_DIR;
+			Path dbPath(dbDirectory);
+			dbPath.makeDirectory();
+			File dbFile(dbPath);
+			dbFile.createDirectories();
+			_searchIndexEnabled = true;
+#else
+			logger().error("FTS5 is not enabled, search is not supported");
+#endif
+		}
+
+		DocWriter writer(_gst, path.toString(), config().getBool("PocoDoc.prettifyCode", false), _writeEclipseTOC, _searchIndexEnabled);
+
 		if (config().hasProperty("PocoDoc.pages"))
 		{
 			std::string pages = config().getString("PocoDoc.pages");
@@ -332,13 +389,13 @@ protected:
 			}
 		}
 		writer.write();
-		
+
 		if (_writeEclipseTOC)
 		{
 			writer.writeEclipseTOC();
 		}
 	}
-	
+
 	void copyResources()
 	{
 		logger().information("Copying resources");
@@ -366,7 +423,7 @@ protected:
 			}
 		}
 	}
-	
+
 	void copyResource(const Path& source, const Path& dest)
 	{
 		logger().information(std::string("Copying resource ") + source.toString() + " to " + dest.toString());
@@ -376,7 +433,7 @@ protected:
 		else
 			copyFile(source, dest);
 	}
-	
+
 	void copyFile(const Path& source, const Path& dest)
 	{
 		Path dd(dest);
@@ -402,7 +459,7 @@ protected:
 			sf.copyTo(dd.toString());
 		}
 	}
-	
+
 	void copyDirectory(const Path& source, const Path& dest)
 	{
 		Path src(source);
@@ -426,6 +483,9 @@ protected:
 			config().setString("PocoDoc.date", Poco::DateTimeFormatter::format(now, "%Y-%m-%d"));
 			config().setString("PocoDoc.year", Poco::DateTimeFormatter::format(now, "%Y"));
 			config().setString("PocoDoc.googleAnalyticsCode", generateGoogleAnalyticsCode());
+			config().setString("PocoDoc.hubSpotCode", generateHubSpotCode());
+			if (!config().has("PocoDoc.customHeadHTML")) config().setString("PocoDoc.customHeadHTML", "");
+			if (!config().has("PocoDoc.customBodyHTML")) config().setString("PocoDoc.customBodyHTML", "");
 			Poco::Stopwatch sw;
 			int errors = 0;
 			try
@@ -446,31 +506,42 @@ protected:
 		}
 		return Application::EXIT_OK;
 	}
-	
+
 	std::string generateGoogleAnalyticsCode()
 	{
 		std::stringstream ostr;
 		std::string googleAnalyticsId(config().getString("PocoDoc.googleAnalyticsId", ""));
 		if (!googleAnalyticsId.empty())
 		{
-			ostr << "<!-- Begin Google Analytics -->\n";
-			ostr << "<script type=\"text/javascript\">\n";
-			ostr << "var gaJsHost = ((\"https:\" == document.location.protocol) ? \"https://ssl.\" : \"http://www.\");\n";
-			ostr << "document.write(unescape(\"%3Cscript src='\" + gaJsHost + \"google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E\"));\n";
+			ostr << "<script>\n";
+			ostr << "  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){\n";
+			ostr << "  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),\n";
+			ostr << "  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)\n";
+			ostr << "  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');\n";
+			ostr << "\n";
+			ostr << "  ga('create', '" << googleAnalyticsId << "', 'auto');\n";
+			ostr << "  ga('set', 'anonymizeIp', true);\n";
+			ostr << "  ga('send', 'pageview');\n";
 			ostr << "</script>\n";
-			ostr << "<script type=\"text/javascript\">\n";
-			ostr << "try {\n";
-			ostr << "var pageTracker = _gat._getTracker(\"" << googleAnalyticsId << "\");\n";
-			ostr << "pageTracker._trackPageview();\n";
-			ostr << "} catch(err) {}</script>\n";
-			ostr << "<!-- End Google Analytics -->\n";
 		}
 		return ostr.str();
 	}
-	
+
+	std::string generateHubSpotCode()
+	{
+		std::stringstream ostr;
+		std::string hubSpotId(config().getString("PocoDoc.hubSpotId", ""));
+		if (!hubSpotId.empty())
+		{
+			ostr << "<script type=\"text/javascript\" id=\"hs-script-loader\" async defer src=\"//js.hs-scripts.com/" << hubSpotId << ".js\"></script>\n";
+		}
+		return ostr.str();
+	}
+
 private:
 	bool _helpRequested;
 	bool _writeEclipseTOC;
+	bool _searchIndexEnabled;
 	Poco::CppParser::NameSpace::SymbolTable _gst;
 };
 

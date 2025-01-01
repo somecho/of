@@ -1,8 +1,6 @@
 //
 // HTTPSStreamFactory.h
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/include/Poco/Net/HTTPSStreamFactory.h#1 $
-//
 // Library: NetSSL_OpenSSL
 // Package: HTTPSClient
 // Module:  HTTPSStreamFactory
@@ -51,27 +49,27 @@ public:
 
 	~HTTPSStreamFactory();
 		/// Destroys the HTTPSStreamFactory.
-		
+
 	std::istream* open(const Poco::URI& uri);
 		/// Creates and opens a HTTPS stream for the given URI.
 		/// The URI must be a https://... URI.
 		///
 		/// Throws a NetException if anything goes wrong.
-		
+
 	static void registerFactory();
 		/// Registers the HTTPSStreamFactory with the
-		/// default URIStreamOpener instance.	
+		/// default URIStreamOpener instance.
 
 	static void unregisterFactory();
 		/// Unregisters the HTTPSStreamFactory with the
-		/// default URIStreamOpener instance.	
-		
+		/// default URIStreamOpener instance.
+
 private:
 	enum
 	{
 		MAX_REDIRECTS = 10
 	};
-	
+
 	std::string  _proxyHost;
 	Poco::UInt16 _proxyPort;
 	std::string  _proxyUsername;

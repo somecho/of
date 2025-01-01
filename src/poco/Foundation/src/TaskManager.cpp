@@ -1,8 +1,6 @@
 //
 // TaskManager.cpp
 //
-// $Id: //poco/1.4/Foundation/src/TaskManager.cpp#1 $
-//
 // Library: Foundation
 // Package: Tasks
 // Module:  Tasks
@@ -16,6 +14,8 @@
 
 #include "Poco/TaskManager.h"
 #include "Poco/TaskNotification.h"
+#include "Poco/ThreadPool.h"
+#include "Poco/Timespan.h"
 
 
 namespace Poco {
@@ -24,53 +24,73 @@ namespace Poco {
 const int TaskManager::MIN_PROGRESS_NOTIFICATION_INTERVAL = 100000; // 100 milliseconds
 
 
-TaskManager::TaskManager(ThreadPool::ThreadAffinityPolicy affinityPolicy):
-	_threadPool(ThreadPool::defaultPool(affinityPolicy))
+TaskManager::TaskManager(const std::string& name,
+		int minCapacity,
+		int maxCapacity,
+		int idleTime,
+		int stackSize):
+	_threadPool(*new ThreadPool(name, minCapacity, maxCapacity, idleTime, stackSize)),
+	_ownPool(true)
 {
+	// prevent skipping the first progress update
+	_lastProgressNotification -= Timespan(MIN_PROGRESS_NOTIFICATION_INTERVAL*2);
 }
 
 
 TaskManager::TaskManager(ThreadPool& pool):
-	_threadPool(pool)
+	_threadPool(pool),
+	_ownPool(false)
 {
+	// prevent skipping the first progress update
+	_lastProgressNotification -= Timespan(MIN_PROGRESS_NOTIFICATION_INTERVAL*2);
 }
 
 
 TaskManager::~TaskManager()
 {
+	for (auto& pTask: _taskList)
+		pTask->setOwner(nullptr);
+
+	if (_ownPool) delete &_threadPool;
 }
 
 
-void TaskManager::start(Task* pTask, int cpu)
+bool TaskManager::start(Task* pTask)
 {
 	TaskPtr pAutoTask(pTask); // take ownership immediately
-	FastMutex::ScopedLock lock(_mutex);
+	if (pTask->getOwner())
+		throw IllegalStateException("Task already owned by another TaskManager");
 
-	pAutoTask->setOwner(this);
-	pAutoTask->setState(Task::TASK_STARTING);
-	_taskList.push_back(pAutoTask);
-	try
+	if (pTask->state() == Task::TASK_IDLE)
 	{
-		_threadPool.start(*pAutoTask, pAutoTask->name(), cpu);
+		pTask->setOwner(this);
+		pTask->setState(Task::TASK_STARTING);
+		try
+		{
+			_threadPool.start(*pTask, pTask->name());
+			ScopedLockT lock(_mutex);
+			_taskList.push_back(pAutoTask);
+			return true;
+		}
+		catch (...)
+		{
+			pTask->setOwner(nullptr);
+			throw;
+		}
 	}
-	catch (...)
-	{
-		// Make sure that we don't act like we own the task since
-		// we never started it.  If we leave the task on our task
-		// list, the size of the list is incorrect.
-		_taskList.pop_back();
-		throw;
-	}
+
+	pTask->setOwner(nullptr);
+	return false;
 }
 
 
 void TaskManager::cancelAll()
 {
-	FastMutex::ScopedLock lock(_mutex);
+	ScopedLockT lock(_mutex);
 
-	for (TaskList::iterator it = _taskList.begin(); it != _taskList.end(); ++it)
+	for (auto& pTask: _taskList)
 	{
-		(*it)->cancel();
+		pTask->cancel();
 	}
 }
 
@@ -83,8 +103,8 @@ void TaskManager::joinAll()
 
 TaskManager::TaskList TaskManager::taskList() const
 {
-	FastMutex::ScopedLock lock(_mutex);
-	
+	ScopedLockT lock(_mutex);
+
 	return _taskList;
 }
 
@@ -115,11 +135,12 @@ void TaskManager::taskStarted(Task* pTask)
 
 void TaskManager::taskProgress(Task* pTask, float progress)
 {
-	FastMutex::ScopedLock lock(_mutex);
+	ScopedLockWithUnlock<MutexT> lock(_mutex);
 
 	if (_lastProgressNotification.isElapsed(MIN_PROGRESS_NOTIFICATION_INTERVAL))
 	{
 		_lastProgressNotification.update();
+		lock.unlock();
 		_nc.postNotification(new TaskProgressNotification(pTask, progress));
 	}
 }
@@ -134,12 +155,13 @@ void TaskManager::taskCancelled(Task* pTask)
 void TaskManager::taskFinished(Task* pTask)
 {
 	_nc.postNotification(new TaskFinishedNotification(pTask));
-	
-	FastMutex::ScopedLock lock(_mutex);
+
+	ScopedLockT lock(_mutex);
 	for (TaskList::iterator it = _taskList.begin(); it != _taskList.end(); ++it)
 	{
 		if (*it == pTask)
 		{
+			pTask->setOwner(nullptr);
 			_taskList.erase(it);
 			break;
 		}

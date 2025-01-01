@@ -1,8 +1,6 @@
 //
 // TextIteratorTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/TextIteratorTest.h#1 $
-//
 // Definition of the TextIteratorTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -35,6 +33,8 @@ public:
 	void testUTF8Supplementary();
 	void testUTF16Supplementary();
 	void testSwap();
+	void testUTF32Invalid1();
+	void testUTF32Invalid2();
 
 	void setUp();
 	void tearDown();

@@ -1,14 +1,12 @@
 #
 # Makefile
 #
-# $Id$
-#
 # Makefile for Poco MongoDB testsuite
 #
 
 include $(POCO_BASE)/build/rules/global
 
-objects = Driver MongoDBTest MongoDBTestSuite
+objects = Driver MongoDBTest MongoDBTestOpMsg MongoDBTestSuite
 
 target         = testrunner
 target_version = 1

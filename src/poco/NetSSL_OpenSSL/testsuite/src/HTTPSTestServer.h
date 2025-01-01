@@ -1,8 +1,6 @@
 //
 // HTTPSTestServer.h
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/testsuite/src/HTTPSTestServer.h#1 $
-//
 // Definition of the HTTPSTestServer class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -38,15 +36,15 @@ public:
 	Poco::UInt16 port() const;
 		/// Returns the port the echo server is
 		/// listening on.
-		
+
 	void run();
 		/// Does the work.
-		
+
 	const std::string& lastRequest() const;
 		/// Returns the last request.
 
 	static const std::string SMALL_BODY;
-	static const std::string LARGE_BODY;	
+	static const std::string LARGE_BODY;
 
 protected:
 	bool requestComplete() const;
@@ -56,7 +54,7 @@ private:
 	Poco::Net::SecureServerSocket _socket;
 	Poco::Thread _thread;
 	Poco::Event  _ready;
-	bool         _stop;
+	std::atomic<bool> _stop;
 	std::string  _lastRequest;
 };
 

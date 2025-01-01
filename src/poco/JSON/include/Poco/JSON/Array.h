@@ -1,8 +1,6 @@
 //
 // Array.h
 //
-// $Id$
-//
 // Library: JSON
 // Package: JSON
 // Module:  Array
@@ -28,18 +26,33 @@
 
 
 namespace Poco {
+
 namespace JSON {
 
+class JSON_API Array;
+
+}
+
+
+#if defined(POCO_OS_FAMILY_WINDOWS)
+// Explicitly instantiated shared pointer in JSON library
+extern template class Poco::SharedPtr<Poco::JSON::Array>;
+#else
+// Explicitly instantiated shared pointer in JSON library
+extern template class JSON_API Poco::SharedPtr<Poco::JSON::Array>;
+#endif
+
+namespace JSON {
 
 class Object;
 
 
 class JSON_API Array
-	/// Represents a JSON array. JSON array provides a representation
-	/// based on shared pointers and optimized for performance. It is possible to 
-	/// convert object to Poco::Dynamic::Array. Conversion requires copying and therefore
+	/// Represents a JSON array. Array provides a representation
+	/// based on shared pointers and optimized for performance. It is possible to
+	/// convert Array to Poco::Dynamic::Array. Conversion requires copying and therefore
 	/// has performance penalty; the benefit is in improved syntax, eg:
-	/// 
+	///
 	///    // use pointers to avoid copying
 	///    using namespace Poco::JSON;
 	///    std::string json = "[ {\"test\" : 0}, { \"test1\" : [1, 2, 3], \"test2\" : 4 } ]";
@@ -47,46 +60,71 @@ class JSON_API Array
 	///    Var result = parser.parse(json);
 	///    Array::Ptr arr = result.extract<Array::Ptr>();
 	///    Object::Ptr object = arr->getObject(0); // object == {\"test\" : 0}
-	///    int i = object->getValue<int>("test"); // i == 0;
-	///    Object::Ptr subObject = *arr->getObject(1); // subObject == {\"test\" : 0}
+	///    int i = object->getElement<int>("test"); // i == 0;
+	///    Object::Ptr subObject = arr->getObject(1); // subObject == {\"test\" : 0}
 	///    Array subArr::Ptr = subObject->getArray("test1"); // subArr == [1, 2, 3]
 	///    i = result = subArr->get(0); // i == 1;
-	/// 
+	///
 	///    // copy/convert to Poco::Dynamic::Array
 	///    Poco::Dynamic::Array da = *arr;
 	///    i = da[0]["test"];     // i == 0
 	///    i = da[1]["test1"][1]; // i == 2
 	///    i = da[1]["test2"];    // i == 4
-	/// 
+	/// ----
 {
 public:
-	typedef std::vector<Dynamic::Var>                 ValueVec;
-	typedef std::vector<Dynamic::Var>::iterator       Iterator;
-	typedef std::vector<Dynamic::Var>::const_iterator ConstIterator;
-	typedef SharedPtr<Array> Ptr;
+	using ValueVec = std::vector<Dynamic::Var>;
+	using Iterator = std::vector<Dynamic::Var>::iterator;
+	using ConstIterator = std::vector<Dynamic::Var>::const_iterator;
+	using Ptr = SharedPtr<Array>;
 
-	Array();
-		/// Default constructor
+	Array(int options = 0);
+		/// Creates an empty Array.
+		///
+		/// If JSON_ESCAPE_UNICODE is specified, when the object is
+		/// stringified, all unicode characters will be escaped in the
+		/// resulting string.
 
 	Array(const Array& copy);
-		/// Copy Constructor
+		/// Creates an Array by copying another one.
 
-	virtual ~Array();
-		/// Destructor
+	Array(Array&& other) noexcept;
+		/// Move constructor
+
+	Array& operator = (const Array& other);
+		/// Assignment operator.
+
+	Array& operator = (Array&& other) noexcept;
+		/// Move assignment operator.
+
+	~Array();
+		/// Destroys the Array.
+
+	void setEscapeUnicode(bool escape = true);
+		/// Sets the flag for escaping unicode.
+
+	bool getEscapeUnicode() const;
+		/// Returns the flag for escaping unicode.
+	
+	void setLowercaseHex(bool lowercaseHex);
+		/// Sets the flag for using lowercase hex numbers
+
+	bool getLowercaseHex() const;
+		/// Returns the flag for using lowercase hex numbers
 
 	ValueVec::const_iterator begin() const;
-		/// Returns iterator
+		/// Returns the begin iterator for values.
 
 	ValueVec::const_iterator end() const;
-		/// Returns iterator
+		/// Returns the end iterator for values.
 
 	Dynamic::Var get(unsigned int index) const;
-		/// Retrieves an element. Will return an empty value
-		/// when the element doesn't exist.
+		/// Retrieves the element at the given index.
+		/// Will return an empty value when the element doesn't exist.
 
 	Array::Ptr getArray(unsigned int index) const;
 		/// Retrieves an array. When the element is not
-		/// an array or doesn't exist, an empty SharedPtr is returned.
+		/// an Array or doesn't exist, an empty SharedPtr is returned.
 
 	template<typename T>
 	T getElement(unsigned int index) const
@@ -104,30 +142,33 @@ public:
 		/// Retrieves an object. When the element is not
 		/// an object or doesn't exist, an empty SharedPtr is returned.
 
-	std::size_t  size() const;
-		/// Returns the size of the array
+	std::size_t size() const;
+		/// Returns the size of the array.
+
+	bool empty() const;
+ 		/// Returns true if the array is empty, false otherwise.
 
 	bool isArray(unsigned int index) const;
-		/// Returns true when the element is an array
+		/// Returns true when the element is an array.
 
 	bool isArray(const Dynamic::Var& value) const;
-		/// Returns true when the element is an array
+		/// Returns true when the element is an array.
 
 	bool isArray(ConstIterator& value) const;
-		/// Returns true when the element is an array
+		/// Returns true when the element is an array.
 
 	bool isNull(unsigned int index) const;
 		/// Returns true when the element is null or
 		/// when the element doesn't exist.
 
 	bool isObject(unsigned int index) const;
-		/// Returns true when the element is an object
+		/// Returns true when the element is an object.
 
 	bool isObject(const Dynamic::Var& value) const;
-		/// Returns true when the element is an object
+		/// Returns true when the element is an object.
 
 	bool isObject(ConstIterator& value) const;
-		/// Returns true when the element is an object
+		/// Returns true when the element is an object.
 
 	template<typename T>
 	T optElement(unsigned int index, const T& def) const
@@ -137,13 +178,13 @@ public:
 		/// value will be returned
 	{
 		T value = def;
-		if ( index < _values.size() )
+		if (index < _values.size())
 		{
 			try
 			{
 				value = _values[index].convert<T>();
 			}
-			catch(...)
+			catch (...)
 			{
 				// Default value is returned.
 			}
@@ -151,10 +192,10 @@ public:
 		return value;
 	}
 
-	void add(const Dynamic::Var& value);
+	Array& add(const Dynamic::Var& value);
 		/// Add the given value to the array
 
-	void set(unsigned int index, const Dynamic::Var& value);
+	Array& set(unsigned int index, const Dynamic::Var& value);
 		/// Update the element on the given index to specified value
 
 	void stringify(std::ostream& out, unsigned int indent = 0, int step = -1) const;
@@ -165,6 +206,7 @@ public:
 		/// Removes the element on the given index.
 
 	operator const Poco::Dynamic::Array& () const;
+		/// Conversion operator to Dynamic::Array.
 
 	static Poco::Dynamic::Array makeArray(const JSON::Array::Ptr& arr);
 		/// Utility function for creation of array.
@@ -173,11 +215,47 @@ public:
 		/// Clears the contents of the array.
 
 private:
-	typedef SharedPtr<Poco::Dynamic::Array> ArrayPtr;
+	void resetDynArray() const;
+
+	using ArrayPtr = SharedPtr<Poco::Dynamic::Array>;
 
 	ValueVec         _values;
 	mutable ArrayPtr _pArray;
+	mutable bool     _modified;
+	// Note:
+	//  The reason we have this flag here (rather than as argument to stringify())
+	//  is because Array can be returned stringified from a Dynamic::Var:toString(),
+	//  so it must know whether to escape unicode or not.
+	bool             _escapeUnicode;
+	bool             _lowercaseHex;
 };
+
+
+//
+// inlines
+//
+
+inline void Array::setEscapeUnicode(bool escape)
+{
+	_escapeUnicode = escape;
+}
+
+
+inline bool Array::getEscapeUnicode() const
+{
+	return _escapeUnicode;
+}
+
+inline void Array::setLowercaseHex(bool lowercaseHex)
+{
+	_lowercaseHex = lowercaseHex;
+}
+
+
+inline bool Array::getLowercaseHex() const
+{
+	return _lowercaseHex;
+}
 
 
 inline Array::ValueVec::const_iterator Array::begin() const
@@ -196,6 +274,12 @@ inline Array::ValueVec::const_iterator Array::end() const
 inline std::size_t Array::size() const
 {
 	return static_cast<std::size_t>(_values.size());
+}
+
+
+inline bool Array::empty() const
+{
+	return _values.empty();
 }
 
 
@@ -218,16 +302,20 @@ inline bool Array::isArray(ConstIterator& it) const
 }
 
 
-inline void Array::add(const Dynamic::Var& value)
+inline Array& Array::add(const Dynamic::Var& value)
 {
 	_values.push_back(value);
+	_modified = true;
+	return *this;
 }
 
 
-inline void Array::set(unsigned int index, const Dynamic::Var& value)
+inline Array& Array::set(unsigned int index, const Dynamic::Var& value)
 {
 	if (index >= _values.size()) _values.resize(index + 1);
 	_values[index] = value;
+	_modified = true;
+	return *this;
 }
 
 
@@ -236,7 +324,8 @@ inline void Array::remove(unsigned int index)
 	_values.erase(_values.begin() + index);
 }
 
-}} // Namespace Poco::JSON
+
+} } // namespace Poco::JSON
 
 
 namespace Poco {
@@ -251,98 +340,96 @@ public:
 	{
 	}
 
-	~VarHolderImpl()
-	{
-	}
+	~VarHolderImpl() override = default;
 
-	const std::type_info& type() const
+	const std::type_info& type() const override
 	{
 		return typeid(JSON::Array::Ptr);
 	}
 
-	void convert(Int8&) const
+	void convert(Int8&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(Int16&) const
+	void convert(Int16&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(Int32&) const
+	void convert(Int32&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(Int64&) const
+	void convert(Int64&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(UInt8&) const
+	void convert(UInt8&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(UInt16&) const
+	void convert(UInt16&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(UInt32&) const
+	void convert(UInt32&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(UInt64&) const
+	void convert(UInt64&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(bool& value) const
+	void convert(bool& value) const override
 	{
 		value = !_val.isNull() && _val->size() > 0;
 	}
 
-	void convert(float&) const
+	void convert(float&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(double&) const
+	void convert(double&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(char&) const
+	void convert(char&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(std::string& s) const
+	void convert(std::string& s) const override
 	{
 		std::ostringstream oss;
-		_val->stringify(oss, 2);
+		_val->stringify(oss);
 		s = oss.str();
 	}
 
-	void convert(DateTime& /*val*/) const
+	void convert(DateTime& /*val*/) const override
 	{
 		throw BadCastException("Cannot convert Array to DateTime");
 	}
 
-	void convert(LocalDateTime& /*ldt*/) const
+	void convert(LocalDateTime& /*ldt*/) const override
 	{
 		throw BadCastException("Cannot convert Array to LocalDateTime");
 	}
 
-	void convert(Timestamp& /*ts*/) const
+	void convert(Timestamp& /*ts*/) const override
 	{
 		throw BadCastException("Cannot convert Array to Timestamp");
 	}
 
-	VarHolder* clone(Placeholder<VarHolder>* pVarHolder = 0) const
+	VarHolder* clone(Placeholder<VarHolder>* pVarHolder = nullptr) const override
 	{
 		return cloneHolder(pVarHolder, _val);
 	}
@@ -352,27 +439,22 @@ public:
 		return _val;
 	}
 
-	bool isArray() const
+	bool isInteger() const override
 	{
 		return false;
 	}
 
-	bool isInteger() const
+	bool isSigned() const override
 	{
 		return false;
 	}
 
-	bool isSigned() const
+	bool isNumeric() const override
 	{
 		return false;
 	}
 
-	bool isNumeric() const
-	{
-		return false;
-	}
-
-	bool isString() const
+	bool isString() const override
 	{
 		return false;
 	}
@@ -390,98 +472,96 @@ public:
 	{
 	}
 
-	~VarHolderImpl()
-	{
-	}
+	~VarHolderImpl() override = default;
 
-	const std::type_info& type() const
+	const std::type_info& type() const override
 	{
 		return typeid(JSON::Array);
 	}
 
-	void convert(Int8&) const
+	void convert(Int8&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(Int16&) const
+	void convert(Int16&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(Int32&) const
+	void convert(Int32&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(Int64&) const
+	void convert(Int64&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(UInt8&) const
+	void convert(UInt8&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(UInt16&) const
+	void convert(UInt16&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(UInt32&) const
+	void convert(UInt32&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(UInt64&) const
+	void convert(UInt64&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(bool& value) const
+	void convert(bool& value) const override
 	{
 		value = _val.size() > 0;
 	}
 
-	void convert(float&) const
+	void convert(float&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(double&) const
+	void convert(double&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(char&) const
+	void convert(char&) const override
 	{
 		throw BadCastException();
 	}
 
-	void convert(std::string& s) const
+	void convert(std::string& s) const override
 	{
 		std::ostringstream oss;
-		_val.stringify(oss, 2);
+		_val.stringify(oss);
 		s = oss.str();
 	}
 
-	void convert(DateTime& /*val*/) const
+	void convert(DateTime& /*val*/) const override
 	{
 		throw BadCastException("Cannot convert Array to DateTime");
 	}
 
-	void convert(LocalDateTime& /*ldt*/) const
+	void convert(LocalDateTime& /*ldt*/) const override
 	{
 		throw BadCastException("Cannot convert Array to LocalDateTime");
 	}
 
-	void convert(Timestamp& /*ts*/) const
+	void convert(Timestamp& /*ts*/) const override
 	{
 		throw BadCastException("Cannot convert Array to Timestamp");
 	}
 
-	VarHolder* clone(Placeholder<VarHolder>* pVarHolder = 0) const
+	VarHolder* clone(Placeholder<VarHolder>* pVarHolder = nullptr) const override
 	{
 		return cloneHolder(pVarHolder, _val);
 	}
@@ -491,27 +571,22 @@ public:
 		return _val;
 	}
 
-	bool isArray() const
+	bool isInteger() const override
 	{
 		return false;
 	}
 
-	bool isInteger() const
+	bool isSigned() const override
 	{
 		return false;
 	}
 
-	bool isSigned() const
+	bool isNumeric() const override
 	{
 		return false;
 	}
 
-	bool isNumeric() const
-	{
-		return false;
-	}
-
-	bool isString() const
+	bool isString() const override
 	{
 		return false;
 	}
@@ -521,7 +596,7 @@ private:
 };
 
 
-}} // namespace Poco::JSON
+} } // namespace Poco::Dynamic
 
 
 #endif // JSON_Array_INCLUDED

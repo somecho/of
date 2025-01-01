@@ -1,8 +1,6 @@
 //
 // ODBCMySQLTest.h
 //
-// $Id: //poco/1.4/Data/MySQL/testsuite/src/ODBCMySQLTest.h#1 $
-//
 // Definition of the MySQLTest class.
 //
 // Copyright (c) 2008, Applied Informatics Software Engineering GmbH.
@@ -26,7 +24,7 @@
 class MySQLTest: public CppUnit::TestCase
 	/// MySQL test class
 	/// Tested:
-	/// 
+	///
 	/// Driver          |            DB             | OS
 	/// ----------------+---------------------------+------------------------------------------
 	/// 03.51.12.00     | MySQL 5.0.27-community-nt	| MS Windows XP Professional x64 v.2003/SP1
@@ -81,10 +79,17 @@ public:
 	void testDateTime();
 	void testBLOB();
 	void testBLOBStmt();
+	void testLongBLOB();
+	void testLongTEXT();
+#ifdef POCO_MYSQL_JSON
+	void testJSON();
+#endif
 
 	void testUnsignedInts();
 	void testFloat();
 	void testDouble();
+
+	void testUUID();
 
 	void testTuple();
 	void testTupleVector();
@@ -102,6 +107,7 @@ public:
 	void testTransaction();
 
 	void testReconnect();
+	void testSessionPoolAndUnicode();
 
 	void setUp();
 	void tearDown();
@@ -117,10 +123,16 @@ private:
 	void recreatePersonDateTimeTable();
 	void recreatePersonDateTable();
 	void recreatePersonTimeTable();
+	void recreatePersonTimestampTable();
+	void recreatePersonLongBLOBTable();
+#ifdef POCO_MYSQL_JSON
+	void recreatePersonJSONTable();
+#endif
 	void recreateStringsTable();
 	void recreateIntsTable();
 	void recreateUnsignedIntsTable();
 	void recreateFloatsTable();
+	void recreateUUIDsTable();
 	void recreateTuplesTable();
 	void recreateVectorsTable();
 	void recreateNullableIntTable();

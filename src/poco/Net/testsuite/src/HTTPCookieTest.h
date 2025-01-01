@@ -1,8 +1,6 @@
 //
 // HTTPCookieTest.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/HTTPCookieTest.h#2 $
-//
 // Definition of the HTTPCookieTest class.
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
@@ -33,6 +31,7 @@ public:
 	void testExpiryFuture();
 	void testExpiryPast();
 	void testCookieExpiry(Poco::DateTime expiryTime);
+	void testIgnoreExtraAttributes();
 
 	void setUp();
 	void tearDown();

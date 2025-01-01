@@ -1,8 +1,6 @@
 //
 // SimpleHashTableTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/SimpleHashTableTest.h#1 $
-//
 // Definition of the SimpleHashTableTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -14,6 +12,8 @@
 
 #ifndef SimpleHashTableTest_INCLUDED
 #define SimpleHashTableTest_INCLUDED
+
+#if defined(POCO_TEST_DEPRECATED)
 
 
 #include "Poco/Foundation.h"
@@ -41,5 +41,6 @@ public:
 private:
 };
 
+#endif
 
 #endif // SimpleHashTableTest_INCLUDED

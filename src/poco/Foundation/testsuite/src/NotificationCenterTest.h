@@ -1,8 +1,6 @@
 //
 // NotificationCenterTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/NotificationCenterTest.h#1 $
-//
 // Definition of the NotificationCenterTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -20,6 +18,7 @@
 #include "CppUnit/TestCase.h"
 #include "Poco/Notification.h"
 #include "Poco/AutoPtr.h"
+#include "Poco/Mutex.h"
 #include <set>
 
 
@@ -32,13 +31,16 @@ public:
 	NotificationCenterTest(const std::string& name);
 	~NotificationCenterTest();
 
-	void test1();
-	void test2();
-	void test3();
-	void test4();
-	void test5();
-	void testAuto();
-	void testDefaultCenter();
+	void testNotificationCenter1();
+	void testNotificationCenter2();
+	void testNotificationCenter3();
+	void testNotificationCenter4();
+	void testNotificationCenter5();
+	void testNotificationCenterAuto();
+	void testAsyncObserver();
+	void testAsyncNotificationCenter();
+	void testDefaultNotificationCenter();
+	void testMixedObservers();
 
 	void setUp();
 	void tearDown();
@@ -51,9 +53,17 @@ protected:
 	void handle3(Poco::Notification* pNf);
 	void handleTest(TestNotification* pNf);
 	void handleAuto(const Poco::AutoPtr<Poco::Notification>& pNf);
-	
+	void handleAsync1(const Poco::AutoPtr<TestNotification>& pNf);
+	void handleAsync2(const Poco::AutoPtr<TestNotification>& pNf);
+	bool matchAsync(const std::string& name) const;
+
 private:
 	std::set<std::string> _set;
+	std::atomic<bool> _handle1Done;
+	std::atomic<bool> _handleAuto1Done;
+	std::atomic<bool> _handleAsync1Done;
+	std::atomic<bool> _handleAsync2Done;
+	Poco::Mutex _mutex;
 };
 
 

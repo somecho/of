@@ -1,8 +1,6 @@
 //
 // Event_VX.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/Event_VX.h#1 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  Event
@@ -30,21 +28,14 @@ namespace Poco {
 
 class Foundation_API EventImpl
 {
-public:
-	enum EventTypeImpl
-	{
-		EVENT_MANUALRESET_IMPL,
-		EVENT_AUTORESET_IMPL,
-	};
-
 protected:
-	EventImpl(EventTypeImpl type);
+	EventImpl(bool autoReset);
 	~EventImpl();
 	void setImpl();
 	void waitImpl();
 	bool waitImpl(long milliseconds);
 	void resetImpl();
-	
+
 private:
 	bool          _auto;
 	volatile bool _state;

@@ -1,8 +1,6 @@
 //
 // Event_POSIX.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/Event_POSIX.h#1 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  Event
@@ -24,6 +22,7 @@
 #include "Poco/Exception.h"
 #include <pthread.h>
 #include <errno.h>
+#include <atomic>
 
 
 namespace Poco {
@@ -31,24 +30,17 @@ namespace Poco {
 
 class Foundation_API EventImpl
 {
-public:
-	enum EventTypeImpl
-	{
-		EVENT_MANUALRESET_IMPL,
-		EVENT_AUTORESET_IMPL
-	};
-
 protected:
-	EventImpl(EventTypeImpl type);
+	EventImpl(bool autoReset);
 	~EventImpl();
 	void setImpl();
 	void waitImpl();
 	bool waitImpl(long milliseconds);
 	void resetImpl();
-	
+
 private:
-	bool            _auto;
-	volatile bool   _state;
+	std::atomic<bool> _auto;
+	std::atomic<bool> _state;
 	pthread_mutex_t _mutex;
 	pthread_cond_t  _cond;
 };
@@ -59,7 +51,7 @@ private:
 //
 inline void EventImpl::setImpl()
 {
-	if (pthread_mutex_lock(&_mutex))	
+	if (pthread_mutex_lock(&_mutex))
 		throw SystemException("cannot signal event (lock)");
 	_state = true;
 	if (pthread_cond_broadcast(&_cond))
@@ -73,7 +65,7 @@ inline void EventImpl::setImpl()
 
 inline void EventImpl::resetImpl()
 {
-	if (pthread_mutex_lock(&_mutex))	
+	if (pthread_mutex_lock(&_mutex))
 		throw SystemException("cannot reset event");
 	_state = false;
 	pthread_mutex_unlock(&_mutex);

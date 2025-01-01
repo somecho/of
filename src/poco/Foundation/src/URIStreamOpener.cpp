@@ -1,8 +1,6 @@
 //
 // URIStreamOpener.cpp
 //
-// $Id: //poco/1.4/Foundation/src/URIStreamOpener.cpp#1 $
-//
 // Library: Foundation
 // Package: URI
 // Module:  URIStreamOpener
@@ -19,7 +17,6 @@
 #include "Poco/FileStreamFactory.h"
 #include "Poco/URI.h"
 #include "Poco/Path.h"
-#include "Poco/SingletonHolder.h"
 #include "Poco/Exception.h"
 
 
@@ -34,8 +31,7 @@ URIStreamOpener::URIStreamOpener()
 
 URIStreamOpener::~URIStreamOpener()
 {
-	for (FactoryMap::iterator it = _map.begin(); it != _map.end(); ++it)
-		delete it->second;
+	for (auto& p: _map) delete p.second;
 }
 
 
@@ -59,16 +55,30 @@ std::istream* URIStreamOpener::open(const std::string& pathOrURI) const
 	try
 	{
 		URI uri(pathOrURI);
-		std::string scheme(uri.getScheme());
+		const std::string& scheme(uri.getScheme());
 		FactoryMap::const_iterator it = _map.find(scheme);
 		if (it != _map.end())
+		{
 			return openURI(scheme, uri);
+		}
+		else if (scheme.length() <= 1) // could be Windows path
+		{
+			Path path;
+			if (path.tryParse(pathOrURI, Path::PATH_GUESS))
+			{
+				return openFile(path);
+			}
+		}
+		throw UnknownURISchemeException(pathOrURI);
 	}
-	catch (Exception&)
+	catch (URISyntaxException&)
 	{
+		Path path;
+		if (path.tryParse(pathOrURI, Path::PATH_GUESS))
+			return openFile(path);
+		else
+			throw;
 	}
-	Path path(pathOrURI, Path::PATH_GUESS);
-	return openFile(path);
 }
 
 
@@ -84,19 +94,35 @@ std::istream* URIStreamOpener::open(const std::string& basePathOrURI, const std:
 		if (it != _map.end())
 		{
 			uri.resolve(pathOrURI);
+			scheme = uri.getScheme();
 			return openURI(scheme, uri);
 		}
+		else if (scheme.length() <= 1) // could be Windows path
+		{
+			Path base;
+			Path path;
+			if (base.tryParse(basePathOrURI, Path::PATH_GUESS) && path.tryParse(pathOrURI, Path::PATH_GUESS))
+			{
+				base.resolve(path);
+				return openFile(base);
+			}
+		}
+		throw UnknownURISchemeException(basePathOrURI);
 	}
-	catch (Exception&)
+	catch (URISyntaxException&)
 	{
+		Path base;
+		Path path;
+		if (base.tryParse(basePathOrURI, Path::PATH_GUESS) && path.tryParse(pathOrURI, Path::PATH_GUESS))
+		{
+			base.resolve(path);
+			return openFile(base);
+		}
+		else throw;
 	}
-	Path base(basePathOrURI, Path::PATH_GUESS);
-	Path path(pathOrURI, Path::PATH_GUESS);
-	base.resolve(path);
-	return openFile(base);
 }
 
-	
+
 void URIStreamOpener::registerStreamFactory(const std::string& scheme, URIStreamFactory* pFactory)
 {
 	poco_check_ptr (pFactory);
@@ -113,7 +139,7 @@ void URIStreamOpener::registerStreamFactory(const std::string& scheme, URIStream
 void URIStreamOpener::unregisterStreamFactory(const std::string& scheme)
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	FactoryMap::iterator it = _map.find(scheme);
 	if (it != _map.end())
 	{
@@ -132,15 +158,10 @@ bool URIStreamOpener::supportsScheme(const std::string& scheme)
 }
 
 
-namespace
-{
-	static SingletonHolder<URIStreamOpener> sh;
-}
-
-
 URIStreamOpener& URIStreamOpener::defaultOpener()
 {
-	return *sh.get();
+	static URIStreamOpener so;
+	return so;
 }
 
 
@@ -156,7 +177,7 @@ std::istream* URIStreamOpener::openURI(const std::string& scheme, const URI& uri
 	std::string actualScheme(scheme);
 	URI actualURI(uri);
 	int redirects = 0;
-	
+
 	while (redirects < MAX_REDIRECTS)
 	{
 		try
@@ -176,7 +197,7 @@ std::istream* URIStreamOpener::openURI(const std::string& scheme, const URI& uri
 			++redirects;
 		}
 	}
-	throw IOException("Too many redirects while opening URI", uri.toString());
+	throw TooManyURIRedirectsException(uri.toString());
 }
 
 

@@ -1,8 +1,6 @@
 //
 // FormatTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/FormatTest.h#1 $
-//
 // Definition of the FormatTest class.
 //
 // SPDX-License-Identifier:	BSL-1.0
@@ -30,8 +28,11 @@ public:
 	void testFloatFix();
 	void testFloatSci();
 	void testString();
+	void testStringView();
+	void testShortestRepr();
 	void testMultiple();
 	void testIndex();
+	void testAny();
 
 	void setUp();
 	void tearDown();

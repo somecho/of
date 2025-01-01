@@ -1,8 +1,6 @@
 //
 // WinDriver.cpp
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/testsuite/src/WinDriver.cpp#1 $
-//
 // Windows test driver for Poco NetSSL.
 //
 // Copyright (c) 2006-2014, Applied Informatics Software Engineering GmbH.
@@ -41,14 +39,14 @@ public:
 		runner.run();
 		return 0;
 	}
-	
+
 protected:
 	void initialize(Poco::Util::Application& self)
 	{
 		loadConfiguration(); // load default configuration files, if present
 		Poco::Util::Application::initialize(self);
 	}
-	
+
 private:
 	std::vector<std::string> _targs;
 };

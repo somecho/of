@@ -1,8 +1,6 @@
 //
 // MongoDBTest.h
 //
-// $Id$
-//
 // Definition of the MongoDBTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -18,7 +16,6 @@
 
 #include "Poco/MongoDB/MongoDB.h"
 #include "Poco/MongoDB/Connection.h"
-
 #include "CppUnit/TestCase.h"
 
 
@@ -27,9 +24,18 @@ class MongoDBTest: public CppUnit::TestCase
 public:
 	MongoDBTest(const std::string& name);
 
-
 	virtual ~MongoDBTest();
+	
+	void setUp();
+	void tearDown();
 
+	void testObjectID();
+	void testArray();
+	void testBuildInfo();
+	void testHello();
+	void testConnectURI();
+
+	// Old wire protocol
 	void testInsertRequest();
 	void testQueryRequest();
 	void testDBQueryRequest();
@@ -37,23 +43,33 @@ public:
 	void testDBCountCommand();
 	void testDBCount2Command();
 	void testDeleteRequest();
-	void testBuildInfo();
+
 	void testConnectionPool();
 	void testCursorRequest();
-	void testObjectID();
 	void testCommand();
-	void setUp();
-	void tearDown();
+	void testUUID();
+
+	// New wire protocol using OP_CMD
+	void testOpCmdUUID();
+	void testOpCmdHello();
+	void testOpCmdWriteRead();
+	void testOpCmdInsert();
+	void testOpCmdFind();
+	void testOpCmdCursor();
+	void testOpCmdCursorAggregate();
+	void testOpCmdCursorEmptyFirstBatch();
+	void testOpCmdKillCursor();
+	void testOpCmdCount();
+	void testOpCmdDelete();
+	void testOpCmdUnaknowledgedInsert();
+	void testOpCmdConnectionPool();
+	void testOpCmdDropDatabase();
 
 	static CppUnit::Test* suite();
 
 private:
-
-	std::string _host;
-	unsigned    _port;
-	static bool _connected;
-	static Poco::MongoDB::Connection _mongo;
-
+	static Poco::MongoDB::Connection::Ptr	_mongo;
+	static Poco::Int64						_wireVersion;
 };
 
 

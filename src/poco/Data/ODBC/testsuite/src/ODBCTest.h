@@ -1,8 +1,6 @@
 //
 // ODBCTest.h
 //
-// $Id: //poco/Main/Data/ODBC/testsuite/src/ODBCTest.h#4 $
-//
 // Definition of the ODBCTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -31,8 +29,8 @@
 class ODBCTest: public CppUnit::TestCase
 {
 public:
-	typedef Poco::SharedPtr<Poco::Data::Session> SessionPtr;
-	typedef Poco::SharedPtr<SQLExecutor>         ExecPtr;
+	using SessionPtr = Poco::SharedPtr<Poco::Data::Session>;
+	using ExecPtr = Poco::SharedPtr<SQLExecutor>;
 
 	ODBCTest(const std::string& name,
 		SessionPtr pSession,
@@ -42,12 +40,16 @@ public:
 		std::string& rPwd,
 		std::string& rConnectString);
 
-	~ODBCTest();
+	~ODBCTest() override;
 
-	virtual void setUp();
-	virtual void tearDown();
+	void setUp() override;
+	void tearDown() override;
 
 	virtual void testBareboneODBC() = 0;
+
+	virtual void testConnection();
+	virtual void testSession();
+	virtual void testSessionPool();
 
 	virtual void testZeroRows();
 	virtual void testSimpleAccess();
@@ -81,6 +83,7 @@ public:
 	virtual void testLimitPrepare();
 	virtual void testLimitZero();
 	virtual void testPrepare();
+	virtual void testNullBulk();
 	virtual void testBulk();
 	virtual void testBulkPerformance();
 
@@ -103,10 +106,13 @@ public:
 	virtual void testIllegalRange();
 	virtual void testSingleSelect();
 	virtual void testEmptyDB();
+	virtual void testTempTable();
 
 	virtual void testBLOB();
 	virtual void testBLOBContainer();
 	virtual void testBLOBStmt();
+
+	virtual void testRecordSet();
 
 	virtual void testDateTime();
 	virtual void testDate();
@@ -114,6 +120,8 @@ public:
 
 	virtual void testFloat();
 	virtual void testDouble();
+
+	virtual void testUUID();
 
 	virtual void testTuple();
 	virtual void testTupleVector();
@@ -125,7 +133,7 @@ public:
 
 	virtual void testStoredProcedure();
 	virtual void testStoredProcedureAny();
-	virtual void testStoredProcedureDynamicAny();
+	virtual void testStoredProcedureDynamicVar();
 
 	virtual void testStoredFunction();
 	virtual void testStoredFunctionAny();
@@ -145,17 +153,21 @@ public:
 	virtual void testSQLChannel();
 	virtual void testSQLLogger();
 
+	virtual void testAutoCommit();
+	virtual void testTransactionIsolation();
 	virtual void testSessionTransaction();
+	virtual void testSessionTransactionNoAutoCommit();
 	virtual void testTransaction();
 	virtual void testTransactor();
 	virtual void testNullable();
 
 	virtual void testUnicode();
+	virtual void testEncoding();
 
 	virtual void testReconnect();
 
 protected:
-	typedef Poco::Data::ODBC::Utility::DriverMap Drivers;
+	using Drivers = Poco::Data::ODBC::Utility::DriverMap;
 
 	virtual void dropObject(const std::string& type, const std::string& name);
 	virtual void recreateNullableTable();
@@ -168,6 +180,7 @@ protected:
 	virtual void recreateStringsTable();
 	virtual void recreateIntsTable();
 	virtual void recreateFloatsTable();
+	virtual void recreateUUIDsTable();
 	virtual void recreateTuplesTable();
 	virtual void recreateVectorsTable();
 	virtual void recreateAnysTable();
@@ -176,13 +189,15 @@ protected:
 	virtual void recreateMiscTable();
 	virtual void recreateLogTable();
 	virtual void recreateUnicodeTable();
+	virtual void recreateEncodingTables();
 
 	static SessionPtr init(const std::string& driver,
 		std::string& dsn,
 		std::string& uid,
 		std::string& pwd,
 		std::string& dbConnString,
-		const std::string& db = "");
+		const std::string& db = "",
+		const std::string& dbEncoding = "");
 
 	static bool canConnect(const std::string& driver,
 		std::string& dsn,
@@ -195,6 +210,8 @@ protected:
 
 	Poco::Data::Session& session();
 	SQLExecutor& executor();
+
+	void setReadUncommitted(bool val);
 
 	const std::string& dsn();
 	const std::string& uid();
@@ -210,6 +227,7 @@ private:
 	std::string&      _rUID;
 	std::string&      _rPwd;
 	std::string&      _rConnectString;
+	bool              _readUncommitted = true;
 };
 
 
@@ -217,38 +235,43 @@ private:
 // inlines
 //
 
-inline void ODBCTest::testStoredProcedure() 
-{ 
+inline void ODBCTest::testTempTable()
+{
+	throw Poco::NotImplementedException("ODBCTest::testTempTable()");
+}
+
+inline void ODBCTest::testStoredProcedure()
+{
 	throw Poco::NotImplementedException("ODBCTest::testStoredProcedure()");
 }
 
 
-inline void ODBCTest::testStoredProcedureAny() 
-{ 
+inline void ODBCTest::testStoredProcedureAny()
+{
 	throw Poco::NotImplementedException("ODBCTest::testStoredProcedureAny()");
 }
 
 
-inline void ODBCTest::testStoredProcedureDynamicAny() 
-{ 
-	throw Poco::NotImplementedException("ODBCTest::testStoredProcedureDynamicAny()");
+inline void ODBCTest::testStoredProcedureDynamicVar()
+{
+	throw Poco::NotImplementedException("ODBCTest::testStoredProcedureDynamicVar()");
 }
 
 
-inline void ODBCTest::testStoredFunction() 
-{ 
+inline void ODBCTest::testStoredFunction()
+{
 	throw Poco::NotImplementedException("ODBCTest::testStoredFunction()");
 }
 
 
-inline void ODBCTest::testStoredFunctionAny() 
-{ 
+inline void ODBCTest::testStoredFunctionAny()
+{
 	throw Poco::NotImplementedException("ODBCTest::testStoredFunctionAny()");
 }
 
 
-inline void ODBCTest::testStoredFunctionDynamicAny() 
-{ 
+inline void ODBCTest::testStoredFunctionDynamicAny()
+{
 	throw Poco::NotImplementedException("ODBCTest::testStoredFunctionDynamicAny()");
 }
 
@@ -260,103 +283,109 @@ inline void ODBCTest::dropObject(const std::string& type, const std::string& nam
 
 
 inline void ODBCTest::recreateNullableTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateNullableTable()");
 }
 
 
 inline void ODBCTest::recreatePersonTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreatePersonTable()");
 }
 
 
 inline void ODBCTest::recreatePersonTupleTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreatePersonTupleTable()");
 }
 
 
 inline void ODBCTest::recreatePersonBLOBTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreatePersonBLOBTable()");
 }
 
 
 inline void ODBCTest::recreatePersonDateTimeTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreatePersonDateTimeTable()");
 }
 
 
 inline void ODBCTest::recreatePersonDateTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreatePersonDateTable()");
 }
 
 
 inline void ODBCTest::recreatePersonTimeTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreatePersonTimeTable()");
 }
 
 
 inline void ODBCTest::recreateStringsTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateStringsTable()");
 }
 
 
 inline void ODBCTest::recreateIntsTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateIntsTable()");
 }
 
 
 inline void ODBCTest::recreateFloatsTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateFloatsTable()");
 }
 
 
+inline void ODBCTest::recreateUUIDsTable()
+{
+	throw Poco::NotImplementedException("ODBCTest::recreateUUIDsTable()");
+}
+
+
 inline void ODBCTest::recreateTuplesTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateTuplesTable()");
 }
 
 
 inline void ODBCTest::recreateVectorsTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateVectorsTable()");
 }
 
 
 inline void ODBCTest::recreateAnysTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateAnysTable()");
 }
 
 
 inline void ODBCTest::recreateNullsTable(const std::string&)
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateNullsTable()");
 }
 
 
 inline void ODBCTest::recreateBoolTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateBoolTable()");
 }
 
 
 inline void ODBCTest::recreateMiscTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateMiscTable()");
 }
 
 
 inline void ODBCTest::recreateLogTable()
-{ 
+{
 	throw Poco::NotImplementedException("ODBCTest::recreateLogTable()");
 }
 
@@ -367,48 +396,60 @@ inline void ODBCTest::recreateUnicodeTable()
 }
 
 
-inline bool ODBCTest::bindValue(int i) 
-{ 
+inline void ODBCTest::recreateEncodingTables()
+{
+	throw Poco::NotImplementedException("ODBCTest::recreateUnicodeTables()");
+}
+
+
+inline bool ODBCTest::bindValue(int i)
+{
 	poco_assert (i < 8);
-	return _bindValues[i]; 
+	return _bindValues[i];
 }
 
 
-inline Poco::Data::Session& ODBCTest::session() 
-{ 
+inline Poco::Data::Session& ODBCTest::session()
+{
 	poco_check_ptr (_pSession);
-	return *_pSession; 
+	return *_pSession;
 }
 
 
-inline SQLExecutor& ODBCTest::executor() 
-{ 
+inline SQLExecutor& ODBCTest::executor()
+{
 	poco_check_ptr (_pExecutor);
-	return *_pExecutor; 
+	return *_pExecutor;
 }
 
 
-inline const std::string& ODBCTest::dsn() 
-{ 
-	return _rDSN; 
+inline const std::string& ODBCTest::dsn()
+{
+	return _rDSN;
 }
 
 
-inline const std::string& ODBCTest::uid() 
-{ 
-	return _rUID; 
+inline const std::string& ODBCTest::uid()
+{
+	return _rUID;
 }
 
 
-inline const std::string& ODBCTest::pwd() 
-{ 
-	return _rPwd; 
+inline const std::string& ODBCTest::pwd()
+{
+	return _rPwd;
 }
 
 
-inline const std::string& ODBCTest::dbConnString() 
-{ 
-	return _rConnectString; 
+inline const std::string& ODBCTest::dbConnString()
+{
+	return _rConnectString;
+}
+
+
+inline void ODBCTest::setReadUncommitted(bool val)
+{
+	_readUncommitted = val;
 }
 
 

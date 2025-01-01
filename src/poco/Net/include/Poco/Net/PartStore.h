@@ -1,8 +1,6 @@
 //
 // PartStore.h
 //
-// $Id: //poco/1.4/Net/include/Poco/Net/PartStore.h#1 $
-//
 // Library: Net
 // Package: Messages
 // Module:  PartStore
@@ -89,6 +87,8 @@ class PartStoreFactory
 {
 public:
 	virtual PartSource* createPartStore(const std::string& content, const std::string& mediaType, const std::string& filename = "") = 0;
+
+	virtual ~PartStoreFactory() = default;
 };
 
 

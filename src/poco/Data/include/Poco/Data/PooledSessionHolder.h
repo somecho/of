@@ -1,8 +1,6 @@
 //
 // PooledSessionHolder.h
 //
-// $Id: //poco/Main/Data/include/Poco/Data/PooledSessionHolder.h#1 $
-//
 // Library: Data
 // Package: SessionPooling
 // Module:  PooledSessionHolder
@@ -82,7 +80,7 @@ inline SessionPool& PooledSessionHolder::owner()
 inline void PooledSessionHolder::access()
 {
 	Poco::FastMutex::ScopedLock lock(_mutex);
-	
+
 	_lastUsed.update();
 }
 

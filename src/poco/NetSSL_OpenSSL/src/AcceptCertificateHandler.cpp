@@ -1,8 +1,6 @@
 //
 // AcceptCertificateHandler.cpp
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/src/AcceptCertificateHandler.cpp#1 $
-//
 // Library: NetSSL_OpenSSL
 // Package: SSLCore
 // Module:  AcceptCertificateHandler
@@ -15,6 +13,7 @@
 
 
 #include "Poco/Net/AcceptCertificateHandler.h"
+#include "Poco/Net/VerificationErrorArgs.h"
 
 
 namespace Poco {

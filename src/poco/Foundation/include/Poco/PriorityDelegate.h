@@ -1,8 +1,6 @@
 //
 // PriorityDelegate.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/PriorityDelegate.h#5 $
-//
 // Library: Foundation
 // Package: Events
 // Module:  PriorityDelegate
@@ -30,7 +28,7 @@
 namespace Poco {
 
 
-template <class TObj, class TArgs, bool useSender = true> 
+template <class TObj, class TArgs, bool useSender = true>
 class PriorityDelegate: public AbstractPriorityDelegate<TArgs>
 {
 public:
@@ -42,19 +40,18 @@ public:
 		_receiverMethod(method)
 	{
 	}
-	
+
 	PriorityDelegate(const PriorityDelegate& delegate):
 		AbstractPriorityDelegate<TArgs>(delegate),
 		_receiverObject(delegate._receiverObject),
 		_receiverMethod(delegate._receiverMethod)
 	{
 	}
-	
+
 	PriorityDelegate& operator = (const PriorityDelegate& delegate)
 	{
 		if (&delegate != this)
 		{
-			this->_pTarget        = delegate._pTarget;
 			this->_receiverObject = delegate._receiverObject;
 			this->_receiverMethod = delegate._receiverMethod;
 			this->_priority       = delegate._priority;
@@ -72,7 +69,7 @@ public:
 		if (_receiverObject)
 		{
 			(_receiverObject->*_receiverMethod)(sender, arguments);
-			return true; 
+			return true;
 		}
 		else return false;
 	}
@@ -93,7 +90,7 @@ public:
 		Mutex::ScopedLock lock(_mutex);
 		_receiverObject = 0;
 	}
-	
+
 protected:
 	TObj*        _receiverObject;
 	NotifyMethod _receiverMethod;
@@ -104,7 +101,7 @@ private:
 };
 
 
-template <class TObj, class TArgs> 
+template <class TObj, class TArgs>
 class PriorityDelegate<TObj, TArgs, false>: public AbstractPriorityDelegate<TArgs>
 {
 public:
@@ -116,19 +113,18 @@ public:
 		_receiverMethod(method)
 	{
 	}
-	
+
 	PriorityDelegate(const PriorityDelegate& delegate):
 		AbstractPriorityDelegate<TArgs>(delegate),
 		_receiverObject(delegate._receiverObject),
 		_receiverMethod(delegate._receiverMethod)
 	{
 	}
-	
+
 	PriorityDelegate& operator = (const PriorityDelegate& delegate)
 	{
 		if (&delegate != this)
 		{
-			this->_pTarget        = delegate._pTarget;
 			this->_receiverObject = delegate._receiverObject;
 			this->_receiverMethod = delegate._receiverMethod;
 			this->_priority       = delegate._priority;
@@ -202,7 +198,6 @@ public:
 	{
 		if (&delegate != this)
 		{
-			this->_pTarget        = delegate._pTarget;
 			this->_receiverObject = delegate._receiverObject;
 			this->_receiverMethod = delegate._receiverMethod;
 			this->_priority       = delegate._priority;
@@ -276,7 +271,6 @@ public:
 	{
 		if (&delegate != this)
 		{
-			this->_pTarget        = delegate._pTarget;
 			this->_receiverObject = delegate._receiverObject;
 			this->_receiverMethod = delegate._receiverMethod;
 			this->_priority       = delegate._priority;

@@ -1,8 +1,6 @@
 //
 // ActiveDispatcherTest.cpp
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/ActiveDispatcherTest.cpp#1 $
-//
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
 // All rights reserved.
 //
@@ -18,6 +16,8 @@
 #include "Poco/Thread.h"
 #include "Poco/Event.h"
 #include "Poco/Exception.h"
+#include "Poco/Environment.h"
+#include <iostream>
 
 
 using Poco::ActiveDispatcher;
@@ -27,6 +27,7 @@ using Poco::ActiveStarter;
 using Poco::Thread;
 using Poco::Event;
 using Poco::Exception;
+using Poco::Environment;
 
 
 namespace
@@ -41,11 +42,11 @@ namespace
 			testVoidIn(this, &ActiveObject::testVoidInImpl)
 		{
 		}
-		
+
 		~ActiveObject()
 		{
 		}
-		
+
 		ActiveMethod<int, int, ActiveObject, ActiveStarter<ActiveDispatcher> > testMethod;
 
 		ActiveMethod<void, int, ActiveObject, ActiveStarter<ActiveDispatcher> > testVoid;
@@ -53,12 +54,12 @@ namespace
 		ActiveMethod<void, void, ActiveObject, ActiveStarter<ActiveDispatcher> > testVoidInOut;
 
 		ActiveMethod<int, void, ActiveObject, ActiveStarter<ActiveDispatcher> > testVoidIn;
-		
+
 		void cont()
 		{
 			_continue.set();
 		}
-		
+
 	protected:
 		int testMethodImpl(const int& n)
 		{
@@ -83,7 +84,7 @@ namespace
 			_continue.wait();
 			return 123;
 		}
-		
+
 	private:
 		Event _continue;
 	};
@@ -104,12 +105,12 @@ void ActiveDispatcherTest::testWait()
 {
 	ActiveObject activeObj;
 	ActiveResult<int> result = activeObj.testMethod(123);
-	assert (!result.available());
+	assertTrue (!result.available());
 	activeObj.cont();
 	result.wait();
-	assert (result.available());
-	assert (result.data() == 123);
-	assert (!result.failed());
+	assertTrue (result.available());
+	assertTrue (result.data() == 123);
+	assertTrue (!result.failed());
 }
 
 
@@ -117,7 +118,7 @@ void ActiveDispatcherTest::testWaitInterval()
 {
 	ActiveObject activeObj;
 	ActiveResult<int> result = activeObj.testMethod(123);
-	assert (!result.available());
+	assertTrue (!result.available());
 	try
 	{
 		result.wait(100);
@@ -128,9 +129,9 @@ void ActiveDispatcherTest::testWaitInterval()
 	}
 	activeObj.cont();
 	result.wait(10000);
-	assert (result.available());
-	assert (result.data() == 123);
-	assert (!result.failed());
+	assertTrue (result.available());
+	assertTrue (result.data() == 123);
+	assertTrue (!result.failed());
 }
 
 
@@ -138,13 +139,13 @@ void ActiveDispatcherTest::testTryWait()
 {
 	ActiveObject activeObj;
 	ActiveResult<int> result = activeObj.testMethod(123);
-	assert (!result.available());
-	assert (!result.tryWait(200));
+	assertTrue (!result.available());
+	assertTrue (!result.tryWait(200));
 	activeObj.cont();
-	assert (result.tryWait(10000));
-	assert (result.available());
-	assert (result.data() == 123);
-	assert (!result.failed());
+	assertTrue (result.tryWait(10000));
+	assertTrue (result.available());
+	assertTrue (result.data() == 123);
+	assertTrue (!result.failed());
 }
 
 
@@ -153,10 +154,12 @@ void ActiveDispatcherTest::testFailure()
 	ActiveObject activeObj;
 	ActiveResult<int> result = activeObj.testMethod(100);
 	result.wait();
-	assert (result.available());
-	assert (result.failed());
+	assertTrue (result.available());
+	assertTrue (result.failed());
+#ifndef POCO_ENABLE_TRACE
 	std::string msg = result.error();
-	assert (msg == "n == 100");
+	assertEqual ("n == 100", msg);
+#endif
 }
 
 
@@ -164,11 +167,11 @@ void ActiveDispatcherTest::testVoid()
 {
 	ActiveObject activeObj;
 	ActiveResult<void> result = activeObj.testVoid(123);
-	assert (!result.available());
+	assertTrue (!result.available());
 	activeObj.cont();
 	result.wait();
-	assert (result.available());
-	assert (!result.failed());
+	assertTrue (result.available());
+	assertTrue (!result.failed());
 }
 
 
@@ -176,11 +179,11 @@ void ActiveDispatcherTest::testVoidInOut()
 {
 	ActiveObject activeObj;
 	ActiveResult<void> result = activeObj.testVoidInOut();
-	assert (!result.available());
+	assertTrue (!result.available());
 	activeObj.cont();
 	result.wait();
-	assert (result.available());
-	assert (!result.failed());
+	assertTrue (result.available());
+	assertTrue (!result.failed());
 }
 
 
@@ -188,12 +191,18 @@ void ActiveDispatcherTest::testVoidIn()
 {
 	ActiveObject activeObj;
 	ActiveResult<int> result = activeObj.testVoidIn();
-	assert (!result.available());
+	assertTrue (!result.available());
 	activeObj.cont();
 	result.wait();
-	assert (result.available());
-	assert (!result.failed());
-	assert (result.data() == 123);
+	assertTrue (result.available());
+	assertTrue (!result.failed());
+	assertTrue (result.data() == 123);
+}
+
+
+void ActiveDispatcherTest::testActiveDispatcher()
+{
+	std::cout << "(disabled on TSAN runs)";
 }
 
 
@@ -211,13 +220,19 @@ CppUnit::Test* ActiveDispatcherTest::suite()
 {
 	CppUnit::TestSuite* pSuite = new CppUnit::TestSuite("ActiveDispatcherTest");
 
-	CppUnit_addTest(pSuite, ActiveDispatcherTest, testWait);
-	CppUnit_addTest(pSuite, ActiveDispatcherTest, testWaitInterval);
-	CppUnit_addTest(pSuite, ActiveDispatcherTest, testTryWait);
-	CppUnit_addTest(pSuite, ActiveDispatcherTest, testFailure);
-	CppUnit_addTest(pSuite, ActiveDispatcherTest, testVoid);
-	CppUnit_addTest(pSuite, ActiveDispatcherTest, testVoidIn);
-	CppUnit_addTest(pSuite, ActiveDispatcherTest, testVoidInOut);
+	// see https://github.com/pocoproject/poco/pull/3617
+	if (!Environment::has("TSAN_OPTIONS"))
+	{
+		CppUnit_addTest(pSuite, ActiveDispatcherTest, testWait);
+		CppUnit_addTest(pSuite, ActiveDispatcherTest, testWaitInterval);
+		CppUnit_addTest(pSuite, ActiveDispatcherTest, testTryWait);
+		CppUnit_addTest(pSuite, ActiveDispatcherTest, testFailure);
+		CppUnit_addTest(pSuite, ActiveDispatcherTest, testVoid);
+		CppUnit_addTest(pSuite, ActiveDispatcherTest, testVoidIn);
+		CppUnit_addTest(pSuite, ActiveDispatcherTest, testVoidInOut);
+	}
+	else
+		CppUnit_addTest(pSuite, ActiveDispatcherTest, testActiveDispatcher);
 
 	return pSuite;
 }

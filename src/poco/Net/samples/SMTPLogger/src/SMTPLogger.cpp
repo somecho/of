@@ -1,8 +1,6 @@
 //
 // Mail.cpp
 //
-// $Id: //poco/svn/Net/samples/SMTPLogger/src/SMTPLogger.cpp#1 $
-//
 // This sample demonstrates the SMTPChannel class.
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
@@ -45,7 +43,7 @@ int main(int argc, char** argv)
 		std::cerr << "       the SMTP server at <mailhost>." << std::endl;
 		return 1;
 	}
-	
+
 	std::string mailhost(argv[1]);
 	std::string sender(argv[2]);
 	std::string recipient(argv[3]);

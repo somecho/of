@@ -1,13 +1,11 @@
 #
 # Makefile
 #
-# $Id: //poco/1.4/XML/samples/Makefile#1 $
-#
 # Makefile for Poco XML Samples
 #
 
 .PHONY: projects
-clean all: projects
+clean distclean all: projects
 projects:
 	$(MAKE) -C DOMParser $(MAKECMDGOALS)
 	$(MAKE) -C DOMWriter $(MAKECMDGOALS)

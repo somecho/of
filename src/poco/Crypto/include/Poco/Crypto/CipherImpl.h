@@ -1,8 +1,6 @@
 //
 // CipherImpl.h
 //
-// $Id: //poco/1.4/Crypto/include/Poco/Crypto/CipherImpl.h#2 $
-//
 // Library: Crypto
 // Package: Cipher
 // Module:  CipherImpl
@@ -44,10 +42,10 @@ public:
 	const std::string& name() const;
 		/// Returns the name of the cipher.
 
-	CryptoTransform* createEncryptor();
+	CryptoTransform::Ptr createEncryptor();
 		/// Creates an encryptor object.
 
-	CryptoTransform* createDecryptor();
+	CryptoTransform::Ptr createDecryptor();
 		/// Creates a decryptor object.
 
 private:

@@ -1,23 +1,32 @@
 #include "ofUtils.h"
+// FIXME: split ofUtils in two files, one which uses urlparser / ofImage, other without for smaller apps.
 #include "ofImage.h"
-#include "ofFileUtils.h"
+#include "ofLog.h"
+#include "ofAppBaseWindow.h"
+#include "ofMainLoop.h"
+#include "ofAppRunner.h"
+#include "ofEvents.h"
+#include "ofGLUtils.h"
+#include "ofMath.h"
+#include "ofPixels.h"
 
 #include <chrono>
 #include <numeric>
 #include <locale>
+#include "uriparser/Uri.h"
 
-#if !defined(TARGET_EMSCRIPTEN)
-#include "Poco/URI.h"
-#endif
-
-
-#ifdef TARGET_WIN32
+#ifdef TARGET_WIN32	 // For ofLaunchBrowser.
+	#include <shellapi.h>
     #ifndef _MSC_VER
         #include <unistd.h> // this if for MINGW / _getcwd
-	#include <sys/param.h> // for MAXPATHLEN
+		#include <sys/param.h> // for MAXPATHLEN
+	// FIXME: else
     #endif
+	#ifdef _MSC_VER
+		#include <direct.h>
+	#endif
+	#include <mmsystem.h>
 #endif
-
 
 #if defined(TARGET_OF_IOS) || defined(TARGET_OSX ) || defined(TARGET_LINUX) || defined(TARGET_EMSCRIPTEN)
 	#include <sys/time.h>
@@ -32,14 +41,6 @@
 	#include <mach/mach.h>
 #endif
 
-#ifdef TARGET_WIN32
-    #include <mmsystem.h>
-	#ifdef _MSC_VER
-		#include <direct.h>
-	#endif
-
-#endif
-
 #ifdef TARGET_OF_IOS
 #include "ofxiOSExtras.h"
 #endif
@@ -52,146 +53,294 @@
 	#define MAXPATHLEN 1024
 #endif
 
-namespace{
-    bool enableDataPath = true;
-    uint64_t startTimeSeconds;   //  better at the first frame ?? (currently, there is some delay from static init, to running.
-    uint64_t startTimeNanos;
-#ifdef TARGET_OSX
-    clock_serv_t cs;
-#endif
-
-    //--------------------------------------------------
-    string defaultDataPath(){
-    #if defined TARGET_OSX
-        try{
-            return std::filesystem::canonical(ofFilePath::join(ofFilePath::getCurrentExeDir(),  "../../../data/")).string();
-        }catch(...){
-            return ofFilePath::join(ofFilePath::getCurrentExeDir(),  "../../../data/");
-        }
-    #elif defined TARGET_ANDROID
-            return string("sdcard/");
-    #else
-            try{
-                return std::filesystem::canonical(ofFilePath::join(ofFilePath::getCurrentExeDir(),  "data/")).string();
-            }catch(...){
-                return ofFilePath::join(ofFilePath::getCurrentExeDir(),  "data/");
-            }
-    #endif
-    }
-
-    //--------------------------------------------------
-    std::filesystem::path & defaultWorkingDirectory(){
-            static auto * defaultWorkingDirectory = new std::filesystem::path();
-            return * defaultWorkingDirectory;
-    }
-
-    //--------------------------------------------------
-    std::filesystem::path & dataPathRoot(){
-            static auto * dataPathRoot = new std::filesystem::path(defaultDataPath());
-            return *dataPathRoot;
-    }
-}
+using std::vector;
+using std::string;
+using std::setfill;
 
 namespace of{
 namespace priv{
-    void initutils(){
-#ifdef TARGET_OSX
-        host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cs);
-#endif
-        defaultWorkingDirectory() = std::filesystem::absolute(std::filesystem::current_path());
+	void initutils(){
         ofResetElapsedTimeCounter();
-        ofSeedRandom();
+        of::random::Engine::construct();
     }
 
-    void endutils(){
-#ifdef TARGET_OSX
-        mach_port_deallocate(mach_task_self(), cs);
-#endif
+	void endutils(){
+//#ifdef TARGET_OSX
+//        mach_port_deallocate(mach_task_self(), cs);
+//#endif
     }
+
+	class Clock{
+	public:
+		Clock(){
+		#ifdef TARGET_OSX
+			host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cs);
+		#endif
+		}
+
+		//--------------------------------------
+		void setTimeModeSystem(){
+			mode = ofTime::System;
+			loopListener.unsubscribe();
+		}
+
+		//--------------------------------------
+		void setTimeModeFixedRate(uint64_t stepNanos, ofMainLoop & mainLoop){
+			fixedRateTime = getMonotonicTimeForMode(ofTime::System);
+			mode = ofTime::FixedRate;
+			fixedRateStep = stepNanos;
+			loopListener = mainLoop.loopEvent.newListener([this]{
+				fixedRateTime.nanoseconds += fixedRateStep;
+				while(fixedRateTime.nanoseconds>1000000000){
+					fixedRateTime.nanoseconds -= 1000000000;
+					fixedRateTime.seconds += 1;
+				}
+			});
+		}
+
+		//--------------------------------------
+		ofTime getCurrentTime(){
+			return getMonotonicTimeForMode(mode);
+		}
+
+		//--------------------------------------
+		std::chrono::nanoseconds getElapsedTime(){
+			return getCurrentTime() - startTime;
+		}
+
+		//--------------------------------------
+		void resetElapsedTimeCounter(){
+			startTime = getMonotonicTimeForMode(ofTime::System);
+		}
+
+	private:
+
+		//--------------------------------------
+		ofTime getMonotonicTimeForMode(ofTime::Mode mode){
+			ofTime t;
+			t.mode = mode;
+			if(mode == ofTime::System){
+			#if (defined(TARGET_LINUX) && !defined(TARGET_RASPBERRY_PI_LEGACY)) || defined(TARGET_EMSCRIPTEN)
+				struct timespec now;
+				clock_gettime(CLOCK_MONOTONIC, &now);
+				t.seconds = now.tv_sec;
+				t.nanoseconds = now.tv_nsec;
+			#elif defined(TARGET_OSX)
+				mach_timespec_t now;
+				clock_get_time(cs, &now);
+				t.seconds = now.tv_sec;
+				t.nanoseconds = now.tv_nsec;
+			#elif defined( TARGET_WIN32 )
+				LARGE_INTEGER freq;
+				LARGE_INTEGER counter;
+				QueryPerformanceFrequency(&freq);
+				QueryPerformanceCounter(&counter);
+				t.seconds = counter.QuadPart/freq.QuadPart;
+				t.nanoseconds = (counter.QuadPart % freq.QuadPart)*1000000000/freq.QuadPart;
+			#else
+				struct timeval now;
+				gettimeofday( &now, nullptr );
+				t.seconds = now.tv_sec;
+				t.nanoseconds = now.tv_usec * 1000;
+			#endif
+			}else{
+				t = fixedRateTime;
+			}
+			return t;
+		}
+		uint64_t fixedRateStep = 1666667;
+		ofTime fixedRateTime;
+		ofTime startTime;
+		ofTime::Mode mode = ofTime::System;
+		ofEventListener loopListener;
+	#ifdef TARGET_OSX
+		clock_serv_t cs;
+	#endif
+	};
+
+	Clock & getClock(){
+		static Clock * clock = new Clock;
+		return *clock;
+	}
 }
+}
+
+
+//--------------------------------------
+uint64_t ofTime::getAsMilliseconds() const{
+	auto seconds = std::chrono::seconds(this->seconds);
+	auto nanoseconds = std::chrono::nanoseconds(this->nanoseconds);
+	return (std::chrono::duration_cast<std::chrono::milliseconds>(seconds) +
+			std::chrono::duration_cast<std::chrono::milliseconds>(nanoseconds)).count();
 }
 
 //--------------------------------------
-void ofGetMonotonicTime(uint64_t & seconds, uint64_t & nanoseconds){
-#if (defined(TARGET_LINUX) && !defined(TARGET_RASPBERRY_PI)) || defined(TARGET_EMSCRIPTEN)
-	struct timespec now;
-	clock_gettime(CLOCK_MONOTONIC, &now);
-	seconds = now.tv_sec;
-	nanoseconds = now.tv_nsec;
-#elif defined(TARGET_OSX)
-        mach_timespec_t now;
-        clock_get_time(cs, &now);
-	seconds = now.tv_sec;
-	nanoseconds = now.tv_nsec;
-#elif defined( TARGET_WIN32 )
-	LARGE_INTEGER freq;
-	LARGE_INTEGER counter;
-	QueryPerformanceFrequency(&freq);
-	QueryPerformanceCounter(&counter);
-	seconds = counter.QuadPart/freq.QuadPart;
-	nanoseconds = (counter.QuadPart % freq.QuadPart)*1000000000/freq.QuadPart;
-#else
-	struct timeval now;
-	gettimeofday( &now, nullptr );
-	seconds = now.tv_sec;
-	nanoseconds = now.tv_usec * 1000;
+uint64_t ofTime::getAsMicroseconds() const{
+	auto seconds = std::chrono::seconds(this->seconds);
+	auto nanoseconds = std::chrono::nanoseconds(this->nanoseconds);
+	return (std::chrono::duration_cast<std::chrono::microseconds>(seconds) +
+			std::chrono::duration_cast<std::chrono::microseconds>(nanoseconds)).count();
+}
+
+//--------------------------------------
+uint64_t ofTime::getAsNanoseconds() const{
+	auto seconds = std::chrono::seconds(this->seconds);
+	auto nanoseconds = std::chrono::nanoseconds(this->nanoseconds);
+	return (std::chrono::duration_cast<std::chrono::nanoseconds>(seconds) + nanoseconds).count();
+}
+
+//--------------------------------------
+double ofTime::getAsSeconds() const{
+	return seconds + nanoseconds / 1000000000.;
+}
+
+#ifndef TARGET_WIN32
+timespec ofTime::getAsTimespec() const{
+	timespec ret;
+	ret.tv_sec = seconds;
+	ret.tv_nsec = nanoseconds;
+	return ret;
+}
 #endif
+
+//--------------------------------------
+std::chrono::time_point<std::chrono::nanoseconds> ofTime::getAsTimePoint() const{
+	auto seconds = std::chrono::seconds(this->seconds);
+	auto nanoseconds = std::chrono::nanoseconds(this->nanoseconds);
+	return std::chrono::time_point<std::chrono::nanoseconds>(
+				std::chrono::duration_cast<std::chrono::nanoseconds>(seconds) + nanoseconds);
+}
+
+//--------------------------------------
+std::chrono::nanoseconds ofTime::operator-(const ofTime& other) const{
+	auto seconds = std::chrono::seconds(this->seconds) - std::chrono::seconds(other.seconds);
+	auto nanoseconds = std::chrono::nanoseconds(this->nanoseconds) - std::chrono::nanoseconds(other.nanoseconds);
+	return std::chrono::duration_cast<std::chrono::nanoseconds>(seconds) + nanoseconds;
+}
+
+//--------------------------------------
+bool ofTime::operator<(const ofTime & other) const{
+	return seconds < other.seconds || (seconds == other.seconds && nanoseconds < other.nanoseconds);
+}
+
+//--------------------------------------
+bool ofTime::operator>(const ofTime & other) const{
+	return seconds > other.seconds || (seconds == other.seconds && nanoseconds > other.nanoseconds);
+}
+
+//--------------------------------------
+bool ofTime::operator<=(const ofTime & other) const{
+	return seconds <= other.seconds || (seconds == other.seconds && nanoseconds <= other.nanoseconds);
+}
+
+//--------------------------------------
+bool ofTime::operator>=(const ofTime & other) const{
+	return seconds >= other.seconds || (seconds == other.seconds && nanoseconds >= other.nanoseconds);
+}
+
+//--------------------------------------
+uint64_t ofGetFixedStepForFps(double fps){
+	return 1000000000 / fps;
+}
+
+//--------------------------------------
+void ofSetTimeModeSystem(){
+	auto mainLoop = ofGetMainLoop();
+	if(!mainLoop){
+		ofLogError("ofSetSystemTimeMode") << "ofMainLoop is not initialized yet, can't set time mode";
+		return;
+	}
+	auto window = mainLoop->getCurrentWindow();
+	if(!window){
+		ofLogError("ofSetSystemTimeMode") << "No window setup yet can't set time mode";
+		return;
+	}
+	window->events().setTimeModeSystem();
+	of::priv::getClock().setTimeModeSystem();
+}
+
+//--------------------------------------
+void ofSetTimeModeFixedRate(uint64_t stepNanos){
+	auto mainLoop = ofGetMainLoop();
+	if(!mainLoop){
+		ofLogError("ofSetSystemTimeMode") << "ofMainLoop is not initialized yet, can't set time mode";
+		return;
+	}
+	auto window = mainLoop->getCurrentWindow();
+	if(!window){
+		ofLogError("ofSetSystemTimeMode") << "No window setup yet can't set time mode";
+		return;
+	}
+	window->events().setTimeModeFixedRate(stepNanos);
+	of::priv::getClock().setTimeModeFixedRate(stepNanos, *mainLoop);
+}
+
+//--------------------------------------
+void ofSetTimeModeFiltered(float alpha){
+	auto mainLoop = ofGetMainLoop();
+	if(!mainLoop){
+		ofLogError("ofSetSystemTimeMode") << "ofMainLoop is not initialized yet, can't set time mode";
+		return;
+	}
+	auto window = mainLoop->getCurrentWindow();
+	if(!window){
+		ofLogError("ofSetSystemTimeMode") << "No window setup yet can't set time mode";
+		return;
+	}
+	window->events().setTimeModeFiltered(alpha);
+	of::priv::getClock().setTimeModeSystem();
+}
+
+//--------------------------------------
+ofTime ofGetCurrentTime(){
+	return of::priv::getClock().getCurrentTime();
 }
 
 
 //--------------------------------------
 uint64_t ofGetElapsedTimeMillis(){
-    uint64_t seconds;
-    uint64_t nanos;
-	ofGetMonotonicTime(seconds,nanos);
-	return (seconds - startTimeSeconds)*1000 + ((long long)(nanos - startTimeNanos))/1000000;
+	return std::chrono::duration_cast<std::chrono::milliseconds>(of::priv::getClock().getElapsedTime()).count();
 }
 
 //--------------------------------------
 uint64_t ofGetElapsedTimeMicros(){
-    uint64_t seconds;
-    uint64_t nanos;
-	ofGetMonotonicTime(seconds,nanos);
-	return (seconds - startTimeSeconds)*1000000 + ((long long)(nanos - startTimeNanos))/1000;
+	return std::chrono::duration_cast<std::chrono::microseconds>(of::priv::getClock().getElapsedTime()).count();
 }
 
 //--------------------------------------
 float ofGetElapsedTimef(){
-    uint64_t seconds;
-    uint64_t nanos;
-	ofGetMonotonicTime(seconds,nanos);
-	return (seconds - startTimeSeconds) + ((long long)(nanos - startTimeNanos))/1000000000.;
+	return std::chrono::duration<double>(of::priv::getClock().getElapsedTime()).count();
 }
 
 //--------------------------------------
 void ofResetElapsedTimeCounter(){
-	ofGetMonotonicTime(startTimeSeconds,startTimeNanos);
+	of::priv::getClock().resetElapsedTimeCounter();
 }
 
-//=======================================
-// this is from freeglut, and used internally:
-/* Platform-dependent time in milliseconds, as an unsigned 32-bit integer.
- * This value wraps every 49.7 days, but integer overflows cancel
- * when subtracting an initial start time, unless the total time exceeds
- * 32-bit, where the GLUT API return value is also overflowed.
- */
+//--------------------------------------
 uint64_t ofGetSystemTime( ) {
-	uint64_t seconds, nanoseconds;
-	ofGetMonotonicTime(seconds,nanoseconds);
-	return seconds * 1000 + nanoseconds / 1000000;
+	return of::priv::getClock().getCurrentTime().getAsMilliseconds();
 }
 
+//--------------------------------------
+uint64_t ofGetSystemTimeMillis( ) {
+	return of::priv::getClock().getCurrentTime().getAsMilliseconds();
+}
+
+//--------------------------------------
 uint64_t ofGetSystemTimeMicros( ) {
-    uint64_t seconds, nanoseconds;
-	ofGetMonotonicTime(seconds,nanoseconds);
-	return seconds * 1000000 + nanoseconds / 1000;
+	return of::priv::getClock().getCurrentTime().getAsMicroseconds();
 }
 
 //--------------------------------------------------
-unsigned int ofGetUnixTime(){
-	return (unsigned int)time(nullptr);
+uint64_t ofGetUnixTime(){
+	return static_cast<uint64_t>(time(nullptr));
 }
 
+uint64_t ofGetUnixTimeMillis() {
+    auto elapsed = std::chrono::system_clock::now().time_since_epoch();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+}
 
 //--------------------------------------
 void ofSleepMillis(int millis){
@@ -270,147 +419,41 @@ int ofGetHours(){
 
 //--------------------------------------------------
 int ofGetYear(){
-  time_t    curr;
-  tm       local;
-  time(&curr);
-  local   =*(localtime(&curr));
-  int year = local.tm_year + 1900;
-  return year;
+	time_t    curr;
+	tm       local;
+	time(&curr);
+	local   =*(localtime(&curr));
+	int year = local.tm_year + 1900;
+	return year;
 }
 
 //--------------------------------------------------
 int ofGetMonth(){
-  time_t    curr;
-  tm       local;
-  time(&curr);
-  local   =*(localtime(&curr));
-  int month = local.tm_mon + 1;
-  return month;
+	time_t    curr;
+	tm       local;
+	time(&curr);
+	local   =*(localtime(&curr));
+	int month = local.tm_mon + 1;
+	return month;
 }
 
 //--------------------------------------------------
 int ofGetDay(){
-  time_t    curr;
-  tm       local;
-  time(&curr);
-  local   =*(localtime(&curr));
-  return local.tm_mday;
+	time_t    curr;
+	tm       local;
+	time(&curr);
+	local   =*(localtime(&curr));
+	return local.tm_mday;
 }
 
 //--------------------------------------------------
 int ofGetWeekday(){
-  time_t    curr;
-  tm       local;
-  time(&curr);
-  local   =*(localtime(&curr));
-  return local.tm_wday;
+	time_t    curr;
+	tm       local;
+	time(&curr);
+	local   =*(localtime(&curr));
+	return local.tm_wday;
 }
-
-//--------------------------------------------------
-void ofEnableDataPath(){
-	enableDataPath = true;
-}
-
-//--------------------------------------------------
-void ofDisableDataPath(){
-	enableDataPath = false;
-}
-
-//--------------------------------------------------
-bool ofRestoreWorkingDirectoryToDefault(){
-    try{
-        std::filesystem::current_path(defaultWorkingDirectory());
-        return true;
-    }catch(...){
-        return false;
-    }
-}
-
-//--------------------------------------------------
-void ofSetDataPathRoot(const string& newRoot){
-	dataPathRoot() = newRoot;
-}
-
-//--------------------------------------------------
-string ofToDataPath(const string& path, bool makeAbsolute){
-	if (!enableDataPath)
-		return path;
-
-    bool hasTrailingSlash = !path.empty() && std::filesystem::path(path).generic_string().back()=='/';
-
-	// if our Current Working Directory has changed (e.g. file open dialog)
-#ifdef TARGET_WIN32
-	if (defaultWorkingDirectory() != std::filesystem::current_path()) {
-		// change our cwd back to where it was on app load
-		bool ret = ofRestoreWorkingDirectoryToDefault();
-		if(!ret){
-			ofLogWarning("ofUtils") << "ofToDataPath: error while trying to change back to default working directory " << defaultWorkingDirectory();
-		}
-	}
-#endif
-
-	// this could be performed here, or wherever we might think we accidentally change the cwd, e.g. after file dialogs on windows
-	const auto  & dataPath = dataPathRoot();
-	std::filesystem::path inputPath(path);
-	std::filesystem::path outputPath;
-
-	// if path is already absolute, just return it
-	if (inputPath.is_absolute()) {
-		try {
-            auto outpath = std::filesystem::canonical(inputPath);
-            if(std::filesystem::is_directory(outpath) && hasTrailingSlash){
-                return ofFilePath::addTrailingSlash(outpath.string());
-            }else{
-                return outpath.string();
-            }
-		}
-		catch (...) {
-            return inputPath.string();
-		}
-	}
-
-	// here we check whether path already refers to the data folder by looking for common elements
-	// if the path begins with the full contents of dataPathRoot then the data path has already been added
-	// we compare inputPath.toString() rather that the input var path to ensure common formatting against dataPath.toString()
-    auto dirDataPath = dataPath.string();
-	// also, we strip the trailing slash from dataPath since `path` may be input as a file formatted path even if it is a folder (i.e. missing trailing slash)
-    dirDataPath = ofFilePath::addTrailingSlash(dirDataPath);
-
-    auto relativeDirDataPath = ofFilePath::makeRelative(std::filesystem::current_path().string(),dataPath.string());
-    relativeDirDataPath  = ofFilePath::addTrailingSlash(relativeDirDataPath);
-
-    if (inputPath.string().find(dirDataPath) != 0 && inputPath.string().find(relativeDirDataPath)!=0) {
-		// inputPath doesn't contain data path already, so we build the output path as the inputPath relative to the dataPath
-	    if(makeAbsolute){
-            outputPath = dirDataPath / inputPath;
-	    }else{
-            outputPath = relativeDirDataPath / inputPath;
-	    }
-	} else {
-		// inputPath already contains data path, so no need to change
-		outputPath = inputPath;
-	}
-
-    // finally, if we do want an absolute path and we don't already have one
-	if(makeAbsolute){
-	    // then we return the absolute form of the path
-	    try {
-            auto outpath = std::filesystem::canonical(std::filesystem::absolute(outputPath));
-            if(std::filesystem::is_directory(outpath) && hasTrailingSlash){
-                return ofFilePath::addTrailingSlash(outpath.string());
-            }else{
-                return outpath.string();
-            }
-	    }
-	    catch (std::exception &) {
-            return std::filesystem::absolute(outputPath).string();
-	    }
-	}else{
-		// or output the relative path
-        return outputPath.string();
-	}
-}
-
 
 //----------------------------------------
 template<>
@@ -427,12 +470,12 @@ const char * ofFromString(const string& value){
 //----------------------------------------
 template <>
 string ofToHex(const string& value) {
-	ostringstream out;
+	std::ostringstream out;
 	// how many bytes are in the string
 	std::size_t numBytes = value.size();
 	for(std::size_t i = 0; i < numBytes; i++) {
 		// print each byte as a 2-character wide hex value
-		out << setfill('0') << setw(2) << hex << (unsigned int) ((unsigned char)value[i]);
+		out << setfill('0') << std::setw(2) << std::hex << (unsigned int) ((unsigned char)value[i]);
 	}
 	return out.str();
 }
@@ -446,55 +489,52 @@ string ofToHex(const char* value) {
 
 //----------------------------------------
 int ofToInt(const string& intString) {
-	int x = 0;
-	istringstream cur(intString);
-	cur >> x;
-	return x;
+	return ofTo<int>(intString);
 }
 
 //----------------------------------------
 int ofHexToInt(const string& intHexString) {
 	int x = 0;
-	istringstream cur(intHexString);
-	cur >> hex >> x;
+	std::istringstream cur(intHexString);
+	cur >> std::hex >> x;
 	return x;
 }
 
 //----------------------------------------
 char ofHexToChar(const string& charHexString) {
 	int x = 0;
-	istringstream cur(charHexString);
-	cur >> hex >> x;
+	std::istringstream cur(charHexString);
+	cur >> std::hex >> x;
 	return (char) x;
 }
 
 //----------------------------------------
 float ofHexToFloat(const string& floatHexString) {
 	union intFloatUnion {
-		int x;
+		uint32_t i;
 		float f;
 	} myUnion;
-	myUnion.x = 0;
-	istringstream cur(floatHexString);
-	cur >> hex >> myUnion.x;
+	myUnion.i = 0;
+	std::istringstream cur(floatHexString);
+	cur >> std::hex >> myUnion.i;
 	return myUnion.f;
 }
 
 //----------------------------------------
 string ofHexToString(const string& stringHexString) {
-	stringstream out;
-	stringstream stream(stringHexString);
+	std::stringstream out;
+	std::stringstream stream(stringHexString);
 	// a hex string has two characters per byte
 	std::size_t numBytes = stringHexString.size() / 2;
 	for(std::size_t i = 0; i < numBytes; i++) {
 		string curByte;
 		// grab two characters from the hex string
-		stream >> setw(2) >> curByte;
+		stream >> std::setw(2) >> curByte;
 		// prepare to parse the two characters
-		stringstream curByteStream(curByte);
+		std::stringstream curByteStream(curByte);
 		int cur = 0;
 		// parse the two characters as a hex-encoded int
-		curByteStream >> hex >> cur;
+		curByteStream >> std::hex >> cur;
 		// add the int as a char to our output stream
 		out << (char) cur;
 	}
@@ -503,26 +543,17 @@ string ofHexToString(const string& stringHexString) {
 
 //----------------------------------------
 float ofToFloat(const string& floatString) {
-	float x = 0;
-	istringstream cur(floatString);
-	cur >> x;
-	return x;
+	return ofTo<float>(floatString);
 }
 
 //----------------------------------------
 double ofToDouble(const string& doubleString) {
-	double x = 0;
-	istringstream cur(doubleString);
-	cur >> x;
-	return x;
+	return ofTo<double>(doubleString);
 }
 
 //----------------------------------------
 int64_t ofToInt64(const string& intString) {
-	int64_t x = 0;
-	istringstream cur(intString);
-	cur >> x;
-	return x;
+	return ofTo<int64_t>(intString);
 }
 
 //----------------------------------------
@@ -535,22 +566,19 @@ bool ofToBool(const string& boolString) {
 		return false;
 	}
 	bool x = false;
-	istringstream cur(lower);
+	std::istringstream cur(lower);
 	cur >> x;
 	return x;
 }
 
 //----------------------------------------
 char ofToChar(const string& charString) {
-	char x = '\0';
-	istringstream cur(charString);
-	cur >> x;
-	return x;
+	return ofTo<char>(charString);
 }
 
 //----------------------------------------
 template <> string ofToBinary(const string& value) {
-	stringstream out;
+	std::stringstream out;
 	std::size_t numBytes = value.size();
 	for(std::size_t i = 0; i < numBytes; i++) {
 		std::bitset<8> bitBuffer(value[i]);
@@ -593,8 +621,8 @@ float ofBinaryToFloat(const string& value) {
 }
 //----------------------------------------
 string ofBinaryToString(const string& value) {
-	ostringstream out;
-	stringstream stream(value);
+	std::ostringstream out;
+	std::stringstream stream(value);
 	std::bitset<8> byteString;
 	std::size_t numBytes = value.size() / 8;
 	for(std::size_t i = 0; i < numBytes; i++) {
@@ -732,13 +760,23 @@ utf8::iterator<std::string::const_reverse_iterator> ofUTF8Iterator::rend() const
 //--------------------------------------------------
 // helper method to get locale from name
 static std::locale getLocale(const string & locale) {
-	std::locale loc;
+std::locale loc;
+#if defined(TARGET_WIN32) && !_MSC_VER
+	static bool printonce = true;
+	if( printonce ){
+		std::string current( setlocale(LC_ALL,NULL) );
+		setlocale (LC_ALL,"");
+		ofLogWarning("ofUtils") << "std::locale not supported. Using C locale: " << current ;
+		printonce = false;
+	}
+#else
 	try {
 		loc = std::locale(locale.c_str());
 	}
 	catch (...) {
 		ofLogWarning("ofUtils") << "Couldn't create locale " << locale << " using default, " << loc.name();
 	}
+#endif
 	return loc;
 }
 
@@ -790,96 +828,121 @@ string ofTrim(const string & src, const string& locale){
 }
 
 //--------------------------------------------------
-void ofAppendUTF8(string & str, int utf8){
+void ofAppendUTF8(string & str, uint32_t utf8){
 	try{
 		utf8::append(utf8, back_inserter(str));
 	}catch(...){}
 }
 
 //--------------------------------------------------
-string ofVAArgsToString(const char * format, ...){
-	// variadic args to string:
-	// http://www.codeproject.com/KB/string/string_format.aspx
-	char aux_buffer[10000];
-	string retStr("");
-	if (nullptr != format){
+void ofUTF8Append(string & str, uint32_t utf8){
+	try{
+		utf8::append(utf8, back_inserter(str));
+	}catch(...){}
+}
 
-		va_list marker;
-
-		// initialize variable arguments
-		va_start(marker, format);
-
-		// Get formatted string length adding one for nullptr
-		size_t len = vsprintf(aux_buffer, format, marker) + 1;
-
-		// Reset variable arguments
-		va_end(marker);
-
-		if (len > 0)
-		{
-			va_list args;
-
-			// initialize variable arguments
-			va_start(args, format);
-
-			// Create a char vector to hold the formatted string.
-			vector<char> buffer(len, '\0');
-			vsprintf(&buffer[0], format, args);
-			retStr = &buffer[0];
-			va_end(args);
+//--------------------------------------------------
+void ofUTF8Insert(string & str, size_t pos, uint32_t utf8){
+	std::string newText;
+	size_t i = 0;
+	for(auto c: ofUTF8Iterator(str)){
+		if(i==pos){
+			ofUTF8Append(newText, utf8);
 		}
-
+		ofUTF8Append(newText, c);
+		i+=1;
 	}
-	return retStr;
+	if(i==pos){
+		ofUTF8Append(newText, utf8);
+	}
+	str = newText;
 }
 
-string ofVAArgsToString(const char * format, va_list args){
-	// variadic args to string:
-	// http://www.codeproject.com/KB/string/string_format.aspx
-	char aux_buffer[10000];
-	string retStr("");
-	if (nullptr != format){
-
-		// Get formatted string length adding one for nullptr
-		vsprintf(aux_buffer, format, args);
-		retStr = aux_buffer;
-
+//--------------------------------------------------
+void ofUTF8Erase(string & str, size_t start, size_t len){
+	std::string newText;
+	size_t i = 0;
+	for(auto c: ofUTF8Iterator(str)){
+		if(i<start || i>=start + len){
+			ofUTF8Append(newText, c);
+		}
+		i+=1;
 	}
-	return retStr;
+	str = newText;
 }
 
-#ifndef TARGET_EMSCRIPTEN
+//--------------------------------------------------
+std::string ofUTF8Substring(const string & str, size_t start, size_t len){
+	size_t i=0;
+	std::string newText;
+	for(auto c: ofUTF8Iterator(str)){
+		if(i>=start){
+			ofUTF8Append(newText, c);
+		}
+		i += 1;
+		if(i==start + len){
+			break;
+		}
+	}
+	return newText;
+}
+
+//--------------------------------------------------
+std::string ofUTF8ToString(uint32_t utf8){
+	std::string str;
+	ofUTF8Append(str, utf8);
+	return str;
+}
+
+//--------------------------------------------------
+size_t ofUTF8Length(const std::string & str){
+	try{
+		return utf8::distance(str.begin(), str.end());
+	}catch(...){
+		return 0;
+	}
+}
+
 //--------------------------------------------------
 void ofLaunchBrowser(const string& url, bool uriEncodeQuery){
-	Poco::URI uri;
-	try {
-		uri = Poco::URI(url);
-	} catch(const std::exception & exc) {
-		ofLogError("ofUtils") << "ofLaunchBrowser(): malformed url \"" << url << "\": " << exc.what();
+	UriParserStateA state;
+	UriUriA uri;
+	state.uri = &uri;
+	if(uriParseUriA(&state, url.c_str())!=URI_SUCCESS){
+		ofLogError("ofUtils") << "ofLaunchBrowser(): malformed url \"" << url << "\"";
+		uriFreeUriMembersA(&uri);
 		return;
 	}
-
 	if(uriEncodeQuery) {
-		uri.setQuery(uri.getRawQuery()); // URI encodes during set
+		uriNormalizeSyntaxA(&uri); // URI encodes during set
 	}
+	std::string scheme(uri.scheme.first, uri.scheme.afterLast);
+	int size;
+	uriToStringCharsRequiredA(&uri, &size);
+	std::vector<char> buffer(size+1, 0);
+	int written;
+	uriToStringA(buffer.data(), &uri, url.size()*2, &written);
+	std::string uriStr(buffer.data(), written-1);
+	uriFreeUriMembersA(&uri);
+
 
 	// http://support.microsoft.com/kb/224816
 	// make sure it is a properly formatted url:
 	//   some platforms, like Android, require urls to start with lower-case http/https
 	//   Poco::URI automatically converts the scheme to lower case
-	if(uri.getScheme() != "http" && uri.getScheme() != "https"){
-		ofLogError("ofUtils") << "ofLaunchBrowser(): url does not begin with http:// or https://: \"" << uri.toString() << "\"";
+	if(scheme != "http" && scheme != "https"){
+		ofLogError("ofUtils") << "ofLaunchBrowser(): url does not begin with http:// or https://: \"" << uriStr << "\"";
 		return;
 	}
 
 	#ifdef TARGET_WIN32
-		ShellExecuteA(nullptr, "open", uri.toString().c_str(),
+		ShellExecuteA(nullptr, "open", uriStr.c_str(),
                 nullptr, nullptr, SW_SHOWNORMAL);
 	#endif
 
 	#ifdef TARGET_OSX
         // could also do with LSOpenCFURLRef
-		string commandStr = "open \"" + uri.toString() + "\"";
+		string commandStr = "open \"" + uriStr + "\"";
 		int ret = system(commandStr.c_str());
         if(ret!=0) {
 			ofLogError("ofUtils") << "ofLaunchBrowser(): couldn't open browser, commandStr \"" << commandStr << "\"";
@@ -887,7 +950,7 @@ void ofLaunchBrowser(const string& url, bool uriEncodeQuery){
 	#endif
 
 	#ifdef TARGET_LINUX
-		string commandStr = "xdg-open \"" + uri.toString() + "\"";
+		string commandStr = "xdg-open \"" + uriStr + "\"";
 		int ret = system(commandStr.c_str());
 		if(ret!=0) {
 			ofLogError("ofUtils") << "ofLaunchBrowser(): couldn't open browser, commandStr \"" << commandStr << "\"";
@@ -895,18 +958,21 @@ void ofLaunchBrowser(const string& url, bool uriEncodeQuery){
 	#endif
 
 	#ifdef TARGET_OF_IOS
-		ofxiOSLaunchBrowser(uri.toString());
+		ofxiOSLaunchBrowser(uriStr);
 	#endif
 
 	#ifdef TARGET_ANDROID
-		ofxAndroidLaunchBrowser(uri.toString());
+		ofxAndroidLaunchBrowser(uriStr);
+	#endif
+
+	#ifdef TARGET_EMSCRIPTEN
+		ofLogError("ofUtils") << "ofLaunchBrowser() not implementeed in emscripten";
 	#endif
 }
-#endif
 
 //--------------------------------------------------
 string ofGetVersionInfo(){
-	stringstream sstr;
+	std::stringstream sstr;
 	sstr << OF_VERSION_MAJOR << "." << OF_VERSION_MINOR << "." << OF_VERSION_PATCH;
 
 	if (!std::string(OF_VERSION_PRE_RELEASE).empty())
@@ -914,7 +980,6 @@ string ofGetVersionInfo(){
 		sstr << "-" << OF_VERSION_PRE_RELEASE;
 	}
 
-	sstr << std::endl;
 	return sstr.str();
 }
 
@@ -1015,6 +1080,8 @@ ofTargetPlatform ofGetTargetPlatform(){
         return OF_TARGET_LINUXARMV6L;
     } else if(ofIsStringInString(arch,"armv7l")) {
         return OF_TARGET_LINUXARMV7L;
+	} else if(ofIsStringInString(arch,"aarch64")) {
+		return OF_TARGET_LINUXAARCH64;		
     } else {
         return OF_TARGET_LINUX;
     }
@@ -1035,7 +1102,7 @@ ofTargetPlatform ofGetTargetPlatform(){
 #endif
 }
 
-std::string ofGetEnv(const std::string & var){
+std::string ofGetEnv(const std::string & var, const std::string defaultValue){
 #ifdef TARGET_WIN32
 	const size_t BUFSIZE = 4096;
 	std::vector<char> pszOldVal(BUFSIZE, 0);
@@ -1043,14 +1110,14 @@ std::string ofGetEnv(const std::string & var){
 	if(size>0){
 		return std::string(pszOldVal.begin(), pszOldVal.begin()+size);
 	}else{
-		return "";
+		return defaultValue;
 	}
 #else
 	auto value = getenv(var.c_str());
 	if(value){
 		return value;
 	}else{
-		return "";
+		return defaultValue;
 	}
 #endif
 }

@@ -1,8 +1,6 @@
 #
 # Makefile
 #
-# $Id: //poco/Main/template/sample.make#4 $
-#
 # Makefile for Poco PocoDoc
 #
 
@@ -12,6 +10,10 @@ objects = DocWriter PocoDoc
 
 target         = PocoDoc
 target_version = 1
-target_libs    = PocoCppParser PocoFoundation PocoXML PocoUtil
+target_libs    = PocoCppParser PocoDataSQLite PocoData PocoFoundation PocoXML PocoUtil
+
+ifdef POCO_ENABLE_SQLITE_FTS5
+CXXFLAGS += -DPOCO_ENABLE_SQLITE_FTS5
+endif
 
 include $(POCO_BASE)/build/rules/exec

@@ -1,8 +1,6 @@
 //
 // Notification.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Notification.cpp#1 $
-//
 // Library: Foundation
 // Package: Notifications
 // Module:  Notification
@@ -21,7 +19,8 @@
 namespace Poco {
 
 
-Notification::Notification()
+Notification::Notification(const std::string& name):
+	_pName(name.empty() ? nullptr : new std::string(name))
 {
 }
 
@@ -33,7 +32,7 @@ Notification::~Notification()
 
 std::string Notification::name() const
 {
-	return typeid(*this).name();
+	return _pName ? *_pName : typeid(*this).name();
 }
 
 

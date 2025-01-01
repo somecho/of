@@ -1,8 +1,6 @@
 //
 // RawSocket.cpp
 //
-// $Id: //poco/1.4/Net/src/RawSocket.cpp#1 $
-//
 // Library: Net
 // Package: Sockets
 // Module:  RawSocket
@@ -26,19 +24,19 @@ namespace Poco {
 namespace Net {
 
 
-RawSocket::RawSocket(): 
+RawSocket::RawSocket():
 	Socket(new RawSocketImpl)
 {
 }
 
 
-RawSocket::RawSocket(IPAddress::Family family, int proto): 
+RawSocket::RawSocket(SocketAddress::Family family, int proto):
 	Socket(new RawSocketImpl(family, proto))
 {
 }
 
 
-RawSocket::RawSocket(const SocketAddress& address, bool reuseAddress): 
+RawSocket::RawSocket(const SocketAddress& address, bool reuseAddress):
 	Socket(new RawSocketImpl(address.family()))
 {
 	bind(address, reuseAddress);
@@ -51,6 +49,18 @@ RawSocket::RawSocket(const Socket& socket): Socket(socket)
 		throw InvalidArgumentException("Cannot assign incompatible socket");
 }
 
+
+RawSocket::RawSocket(const RawSocket& socket): Socket(socket)
+{
+}
+
+#ifdef POCO_NEW_STATE_ON_MOVE
+
+RawSocket::RawSocket(RawSocket&& socket): Socket(std::move(socket))
+{
+}
+
+#endif // POCO_NEW_STATE_ON_MOVE
 
 RawSocket::RawSocket(SocketImpl* pImpl): Socket(pImpl)
 {
@@ -74,6 +84,36 @@ RawSocket& RawSocket::operator = (const Socket& socket)
 }
 
 
+#ifdef POCO_NEW_STATE_ON_MOVE
+
+RawSocket& RawSocket::operator = (Socket&& socket)
+{
+	if (dynamic_cast<RawSocketImpl*>(socket.impl()))
+		Socket::operator = (std::move(socket));
+	else
+		throw InvalidArgumentException("Cannot assign incompatible socket");
+	return *this;
+}
+
+#endif // POCO_NEW_STATE_ON_MOVE
+
+RawSocket& RawSocket::operator = (const RawSocket& socket)
+{
+	Socket::operator = (socket);
+	return *this;
+}
+
+
+#ifdef POCO_NEW_STATE_ON_MOVE
+
+RawSocket& RawSocket::operator = (RawSocket&& socket)
+{
+	Socket::operator = (std::move(socket));
+	return *this;
+}
+
+#endif // POCO_NEW_STATE_ON_MOVE
+
 void RawSocket::connect(const SocketAddress& address)
 {
 	impl()->connect(address);
@@ -83,6 +123,12 @@ void RawSocket::connect(const SocketAddress& address)
 void RawSocket::bind(const SocketAddress& address, bool reuseAddress)
 {
 	impl()->bind(address, reuseAddress);
+}
+
+
+void RawSocket::bind(const SocketAddress& address, bool reuseAddress, bool reusePort)
+{
+	impl()->bind(address, reuseAddress, reusePort);
 }
 
 

@@ -1,20 +1,24 @@
 #include "ofGLProgrammableRenderer.h"
 #include "ofMesh.h"
 #include "ofPath.h"
-#include "ofMesh.h"
 #include "ofBitmapFont.h"
 #include "ofGLUtils.h"
 #include "ofImage.h"
 #include "ofFbo.h"
-#include "ofVbo.h"
+#include "ofVboMesh.h"
 #include "of3dPrimitives.h"
 #include "ofLight.h"
-#include "ofMaterial.h"
+#include "ofMaterialBaseTypes.h"
 #include "ofCamera.h"
 #include "ofTrueTypeFont.h"
 #include "ofNode.h"
+#include "ofVideoBaseTypes.h"
 
+using std::vector;
+using std::string;
+using std::swap;
 
+static const string MODEL_MATRIX_UNIFORM="modelMatrix";
 static const string VIEW_MATRIX_UNIFORM="viewMatrix";
 static const string MODELVIEW_MATRIX_UNIFORM="modelViewMatrix";
 static const string PROJECTION_MATRIX_UNIFORM="projectionMatrix";
@@ -66,6 +70,9 @@ ofGLProgrammableRenderer::ofGLProgrammableRenderer(const ofAppBaseWindow * _wind
 	currentTextureTarget = OF_NO_TEXTURE;
 	currentMaterial = nullptr;
 	alphaMaskTextureTarget = OF_NO_TEXTURE;
+	
+	currentShadow = nullptr;
+	bIsShadowDepthPass = false;
 
 	major = 3;
 	minor = 2;
@@ -75,6 +82,7 @@ ofGLProgrammableRenderer::ofGLProgrammableRenderer(const ofAppBaseWindow * _wind
 	defaultFramebufferId = 0;
 	path.setMode(ofPath::POLYLINES);
     path.setUseShapeColor(false);
+	currentEyePos = {0.f,0.f,0.f};
 }
 
 //----------------------------------------------------------
@@ -123,12 +131,12 @@ void ofGLProgrammableRenderer::draw(const ofMesh & vertexData, ofPolyRenderMode 
 
 #if defined(TARGET_OPENGLES) && !defined(TARGET_EMSCRIPTEN)
 	glEnableVertexAttribArray(ofShader::POSITION_ATTRIBUTE);
-	glVertexAttribPointer(ofShader::POSITION_ATTRIBUTE, 3, GL_FLOAT, GL_FALSE, sizeof(ofVec3f), vertexData.getVerticesPointer());
+	glVertexAttribPointer(ofShader::POSITION_ATTRIBUTE, 3, GL_FLOAT, GL_FALSE, sizeof(typename ofMesh::VertexType), vertexData.getVerticesPointer());
 	
 	useNormals &= (vertexData.getNumNormals()>0);
 	if(useNormals){
 		glEnableVertexAttribArray(ofShader::NORMAL_ATTRIBUTE);
-		glVertexAttribPointer(ofShader::NORMAL_ATTRIBUTE, 3, GL_FLOAT, GL_TRUE, sizeof(ofVec3f), vertexData.getNormalsPointer());
+		glVertexAttribPointer(ofShader::NORMAL_ATTRIBUTE, 3, GL_FLOAT, GL_TRUE, sizeof(typename ofMesh::NormalType), vertexData.getNormalsPointer());
 	}else{
 		glDisableVertexAttribArray(ofShader::NORMAL_ATTRIBUTE);
 	}
@@ -144,7 +152,7 @@ void ofGLProgrammableRenderer::draw(const ofMesh & vertexData, ofPolyRenderMode 
 	useTextures &= (vertexData.getNumTexCoords()>0);
 	if(useTextures){
 		glEnableVertexAttribArray(ofShader::TEXCOORD_ATTRIBUTE);
-		glVertexAttribPointer(ofShader::TEXCOORD_ATTRIBUTE,2, GL_FLOAT, GL_FALSE, sizeof(ofVec2f), vertexData.getTexCoordsPointer());
+		glVertexAttribPointer(ofShader::TEXCOORD_ATTRIBUTE,2, GL_FLOAT, GL_FALSE, sizeof(typename ofMesh::TexCoordType), vertexData.getTexCoordsPointer());
 	}else{
 		glDisableVertexAttribArray(ofShader::TEXCOORD_ATTRIBUTE);
 	}
@@ -300,7 +308,7 @@ void ofGLProgrammableRenderer::draw(const ofPolyline & poly) const{
 #if defined( TARGET_OPENGLES ) && !defined(TARGET_EMSCRIPTEN)
 
 	glEnableVertexAttribArray(ofShader::POSITION_ATTRIBUTE);
-	glVertexAttribPointer(ofShader::POSITION_ATTRIBUTE, 3, GL_FLOAT, GL_FALSE, sizeof(ofVec3f), &poly[0]);
+	glVertexAttribPointer(ofShader::POSITION_ATTRIBUTE, 3, GL_FLOAT, GL_FALSE, sizeof(typename ofPolyline::VertexType), &poly[0]);
 
 	const_cast<ofGLProgrammableRenderer*>(this)->setAttributes(true,false,false,false);
 
@@ -594,7 +602,7 @@ void ofGLProgrammableRenderer::setupScreenPerspective(float width, float height,
 
 	float eyeX = viewW / 2;
 	float eyeY = viewH / 2;
-	float halfFov = PI * fov / 360;
+	float halfFov = glm::pi<float>() * fov / 360.0f;
 	float theTan = tanf(halfFov);
 	float dist = eyeY / theTan;
 	float aspect = (float) viewW / viewH;
@@ -604,14 +612,14 @@ void ofGLProgrammableRenderer::setupScreenPerspective(float width, float height,
 
 
 	matrixMode(OF_MATRIX_PROJECTION);
-	ofMatrix4x4 persp;
-	persp.makePerspectiveMatrix(fov, aspect, nearDist, farDist);
+	auto persp = glm::perspective(ofDegToRad(fov), aspect, nearDist, farDist);
 	loadMatrix( persp );
 
 	matrixMode(OF_MATRIX_MODELVIEW);
-	ofMatrix4x4 lookAt;
-	lookAt.makeLookAtViewMatrix( ofVec3f(eyeX, eyeY, dist),  ofVec3f(eyeX, eyeY, 0),  ofVec3f(0, 1, 0) );
+	auto lookAt = glm::lookAt( glm::vec3{eyeX, eyeY, dist},  glm::vec3{eyeX, eyeY, 0.f},  glm::vec3{0.f, 1.f, 0.f} );
 	loadViewMatrix(lookAt);
+	
+	currentEyePos = glm::vec3{eyeX, eyeY, dist};
 	
 }
 
@@ -628,15 +636,15 @@ void ofGLProgrammableRenderer::setupScreenOrtho(float width, float height, float
 		viewH = height;
 	}
 
-	ofMatrix4x4 ortho;
-
-	ortho = ofMatrix4x4::newOrthoMatrix(0, viewW, 0, viewH, nearDist, farDist);
+	auto ortho = glm::ortho(0.f, viewW, 0.f, viewH, nearDist, farDist);
 
 	matrixMode(OF_MATRIX_PROJECTION);
 	loadMatrix(ortho); // make ortho our new projection matrix.
 
 	matrixMode(OF_MATRIX_MODELVIEW);
-	loadViewMatrix(ofMatrix4x4::newIdentityMatrix());
+	loadViewMatrix(glm::mat4(1.0));
+	
+	currentEyePos = glm::vec3{viewW/2.0f, viewH/2.0f, nearDist };
 }
 
 //----------------------------------------------------------
@@ -683,7 +691,7 @@ void ofGLProgrammableRenderer::popMatrix(){
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::translate(const ofVec3f& p){
+void ofGLProgrammableRenderer::translate(const glm::vec3& p){
 	translate(p.x, p.y, p.z);
 }
 
@@ -700,30 +708,30 @@ void ofGLProgrammableRenderer::scale(float xAmnt, float yAmnt, float zAmnt){
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::rotate(float degrees, float vecX, float vecY, float vecZ){
-	matrixStack.rotate(degrees, vecX, vecY, vecZ);
+void ofGLProgrammableRenderer::rotateRad(float radians, float vecX, float vecY, float vecZ){
+	matrixStack.rotateRad(radians, vecX, vecY, vecZ);
 	uploadCurrentMatrix();
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::rotateX(float degrees){
-	rotate(degrees, 1, 0, 0);
+void ofGLProgrammableRenderer::rotateXRad(float radians){
+	rotateRad(radians, 1, 0, 0);
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::rotateY(float degrees){
-	rotate(degrees, 0, 1, 0);
+void ofGLProgrammableRenderer::rotateYRad(float radians){
+	rotateRad(radians, 0, 1, 0);
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::rotateZ(float degrees){
-	rotate(degrees, 0, 0, 1);
+void ofGLProgrammableRenderer::rotateZRad(float radians){
+	rotateRad(radians, 0, 0, 1);
 }
 
 //same as ofRotateZ
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::rotate(float degrees){
-	rotateZ(degrees);
+void ofGLProgrammableRenderer::rotateRad(float radians){
+	rotateZRad(radians);
 }
 
 //----------------------------------------------------------
@@ -738,47 +746,57 @@ void ofGLProgrammableRenderer::loadIdentityMatrix (void){
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::loadMatrix (const ofMatrix4x4 & m){
-	loadMatrix(m.getPtr());
-}
-
-//----------------------------------------------------------
-void ofGLProgrammableRenderer::loadMatrix (const float *m){
+void ofGLProgrammableRenderer::loadMatrix (const glm::mat4 & m){
 	matrixStack.loadMatrix(m);
 	uploadCurrentMatrix();
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::multMatrix (const ofMatrix4x4 & m){
-	multMatrix(m.getPtr());
+void ofGLProgrammableRenderer::loadMatrix (const float *m){
+	loadMatrix(glm::make_mat4(m));
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::multMatrix (const float *m){
+void ofGLProgrammableRenderer::multMatrix (const glm::mat4 & m){
 	matrixStack.multMatrix(m);
 	uploadCurrentMatrix();
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::loadViewMatrix(const ofMatrix4x4 & m){
+void ofGLProgrammableRenderer::multMatrix (const float *m){
+	multMatrix(glm::make_mat4(m));
+}
+
+//----------------------------------------------------------
+void ofGLProgrammableRenderer::loadViewMatrix(const glm::mat4 & m){
 	matrixStack.loadViewMatrix(m);
 	uploadCurrentMatrix();
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::multViewMatrix(const ofMatrix4x4 & m){
+void ofGLProgrammableRenderer::multViewMatrix(const glm::mat4 & m){
 	matrixStack.multViewMatrix(m);
 	uploadCurrentMatrix();
 }
 
 //----------------------------------------------------------
-ofMatrix4x4 ofGLProgrammableRenderer::getCurrentViewMatrix() const{
+glm::mat4 ofGLProgrammableRenderer::getCurrentViewMatrix() const{
 	return matrixStack.getViewMatrix();
 }
 
 //----------------------------------------------------------
-ofMatrix4x4 ofGLProgrammableRenderer::getCurrentNormalMatrix() const{
-	return ofMatrix4x4::getTransposedOf(getCurrentMatrix(OF_MATRIX_MODELVIEW).getInverse());
+glm::mat4 ofGLProgrammableRenderer::getCurrentNormalMatrix() const{
+	return glm::transpose(glm::inverse(getCurrentMatrix(OF_MATRIX_MODELVIEW)));
+}
+
+//----------------------------------------------------------
+glm::mat4 ofGLProgrammableRenderer::getCurrentModelMatrix() const{
+	return matrixStack.getModelMatrix();
+}
+
+//----------------------------------------------------------
+glm::vec3 ofGLProgrammableRenderer::getCurrentEyePosition() const {
+	return currentEyePos;
 }
 
 //----------------------------------------------------------
@@ -787,6 +805,7 @@ void ofGLProgrammableRenderer::uploadCurrentMatrix(){
 	// uploads the current matrix to the current shader.
 	switch(matrixStack.getCurrentMatrixMode()){
 	case OF_MATRIX_MODELVIEW:
+		currentShader->setUniformMatrix4f(MODEL_MATRIX_UNIFORM, matrixStack.getModelMatrix());
 		currentShader->setUniformMatrix4f(VIEW_MATRIX_UNIFORM, matrixStack.getViewMatrix());
 		currentShader->setUniformMatrix4f(MODELVIEW_MATRIX_UNIFORM, matrixStack.getModelViewMatrix());
 		currentShader->setUniformMatrix4f(MODELVIEW_PROJECTION_MATRIX_UNIFORM, matrixStack.getModelViewProjectionMatrix());
@@ -806,7 +825,7 @@ void ofGLProgrammableRenderer::uploadCurrentMatrix(){
 }
 
 //----------------------------------------------------------
-ofMatrix4x4 ofGLProgrammableRenderer::getCurrentMatrix(ofMatrixMode matrixMode_) const {
+glm::mat4 ofGLProgrammableRenderer::getCurrentMatrix(ofMatrixMode matrixMode_) const {
 	switch (matrixMode_) {
 		case OF_MATRIX_MODELVIEW:
 			return matrixStack.getModelViewMatrix();
@@ -819,13 +838,13 @@ ofMatrix4x4 ofGLProgrammableRenderer::getCurrentMatrix(ofMatrixMode matrixMode_)
 			break;
 		default:
 			ofLogWarning() << "Invalid getCurrentMatrix query";
-			return ofMatrix4x4();
+			return glm::mat4(1.0);
 			break;
 	}
 }
 
 //----------------------------------------------------------
-ofMatrix4x4 ofGLProgrammableRenderer::getCurrentOrientationMatrix() const {
+glm::mat4 ofGLProgrammableRenderer::getCurrentOrientationMatrix() const {
 	return matrixStack.getOrientationMatrix();
 }
 //----------------------------------------------------------
@@ -925,7 +944,7 @@ void ofGLProgrammableRenderer::background(const ofColor & c){
 
 //----------------------------------------------------------
 void ofGLProgrammableRenderer::background(float brightness) {
-	background(brightness);
+	background(ofColor(brightness));
 }
 
 //----------------------------------------------------------
@@ -989,7 +1008,7 @@ void ofGLProgrammableRenderer::setLineWidth(float lineWidth){
 	if(!currentStyle.bFill){
 		path.setStrokeWidth(lineWidth);
 	}
-	glLineWidth(lineWidth);
+	//glLineWidth(lineWidth);
 }
 
 //----------------------------------------------------------
@@ -1271,6 +1290,19 @@ void ofGLProgrammableRenderer::bind(const ofShader & shader){
     if(currentShader && *currentShader==shader){
 		return;
     }
+	
+	if(bIsShadowDepthPass) {
+		// if we are not the shadow shader, lets unbind it
+		if(!settingDefaultShader && currentShadow && currentShader ) {
+			// lets assume it's bound?
+			if(!bCustomShadowShader) {
+				glUseProgram(0);
+			}
+			// we are assuming that since it's a custom depth shader, it all will be taken care of ...
+			bCustomShadowShader=true;
+		}
+	}
+	
 	glUseProgram(shader.getProgram());
 
 	currentShader = &shader;
@@ -1285,17 +1317,21 @@ void ofGLProgrammableRenderer::bind(const ofShader & shader){
 void ofGLProgrammableRenderer::unbind(const ofShader & shader){
 	glUseProgram(0);
 	usingCustomShader = false;
+	bCustomShadowShader=false;
 	beginDefaultShader();
 }
 
-
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::begin(const ofFbo & fbo, bool setupPerspective){
+void ofGLProgrammableRenderer::begin(const ofFbo & fbo, ofFboMode mode){
 	pushView();
-	pushStyle();
-	matrixStack.setRenderSurface(fbo);
+    pushStyle();
+    if(mode & OF_FBOMODE_MATRIXFLIP){
+        matrixStack.setRenderSurface(fbo);
+    }else{
+        matrixStack.setRenderSurfaceNoMatrixFlip(fbo);
+    }
 	viewport();
-	if(setupPerspective){
+    if(mode & OF_FBOMODE_PERSPECTIVE){
 		setupScreenPerspective();
 	}else{
 		uploadMatrices();
@@ -1366,17 +1402,59 @@ void ofGLProgrammableRenderer::unbind(const ofFbo & fbo){
 
 //----------------------------------------------------------
 void ofGLProgrammableRenderer::bind(const ofBaseMaterial & material){
-    currentMaterial = &material;
+	if( bIsShadowDepthPass ) {
+//		currentMaterial = nullptr;
+		// we are the shadow depth pass right now, we don't need
+		// textures or lighting, etc.
+		return;
+	}
+	currentMaterial = &material;
     // FIXME: this invalidates the previous shader to avoid that
     // when binding 2 materials one after another, the second won't
     // get the right parameters.
+	currentMaterial->bind(*this);
     currentShader = nullptr;
     beginDefaultShader();
 }
 
 //----------------------------------------------------------
+void ofGLProgrammableRenderer::bind(const ofShadow & shadow) {
+	currentShadow = &shadow;
+	bIsShadowDepthPass = true;
+	beginDefaultShader();
+}
+
+//----------------------------------------------------------
+void ofGLProgrammableRenderer::bind(const ofShadow & shadow, GLenum aCubeFace) {
+	shadowCubeFace = aCubeFace;
+	bind( shadow );
+}
+
+//----------------------------------------------------------
 void ofGLProgrammableRenderer::unbind(const ofBaseMaterial &){
+	if(currentMaterial) {
+		currentMaterial->unbind(*this);
+	}
     currentMaterial = nullptr;
+	if( bIsShadowDepthPass ) {
+		// we are the shadow depth pass right now, we don't need
+		// textures or lighting, etc.
+		return;
+	}
+	beginDefaultShader();
+}
+
+//----------------------------------------------------------
+void ofGLProgrammableRenderer::unbind(const ofShadow & shadow) {
+	currentShadow = nullptr;
+	bIsShadowDepthPass = false;
+	bCustomShadowShader = false;
+	beginDefaultShader();
+}
+
+//----------------------------------------------------------
+void ofGLProgrammableRenderer::unbind(const ofShadow & shadow, GLenum aCubeFace) {
+	unbind(shadow);
 }
 
 //----------------------------------------------------------
@@ -1415,14 +1493,14 @@ void ofGLProgrammableRenderer::bind(const ofTexture & texture, int location){
 	if(ofGetUsingNormalizedTexCoords()) {
 		matrixMode(OF_MATRIX_TEXTURE);
 		pushMatrix();
-		ofMatrix4x4 m;
+		glm::mat4 m = glm::mat4(1.0);
 
 #ifndef TARGET_OPENGLES
 		if(texture.texData.textureTarget == GL_TEXTURE_RECTANGLE_ARB)
-			m.makeScaleMatrix(texture.texData.width, texture.texData.height, 1.0f);
+			m = glm::scale(m, glm::vec3(texture.texData.width, texture.texData.height, 1.0f));
 		else
 #endif
-			m.makeScaleMatrix(texture.texData.width / texture.texData.tex_w, texture.texData.height / texture.texData.tex_h, 1.0f);
+			m = glm::scale(m, glm::vec3(texture.texData.width / texture.texData.tex_w, texture.texData.height / texture.texData.tex_h, 1.0f));
 
 		loadMatrix(m);
 		matrixMode(OF_MATRIX_MODELVIEW);
@@ -1455,9 +1533,10 @@ void ofGLProgrammableRenderer::bind(const ofCamera & camera, const ofRectangle &
 	viewport(_viewport);
 	setOrientation(matrixStack.getOrientation(),camera.isVFlipped());
 	matrixMode(OF_MATRIX_PROJECTION);
-	loadMatrix(camera.getProjectionMatrix(_viewport).getPtr());
+	loadMatrix(camera.getProjectionMatrix(_viewport));
 	matrixMode(OF_MATRIX_MODELVIEW);
 	loadViewMatrix(camera.getModelViewMatrix());
+	currentEyePos = camera.getPosition();
 }
 
 //----------------------------------------------------------
@@ -1469,6 +1548,8 @@ void ofGLProgrammableRenderer::unbind(const ofCamera & camera){
 //----------------------------------------------------------
 void ofGLProgrammableRenderer::uploadMatrices(){
 	if(!currentShader) return;
+	currentShader->setUniformMatrix4f(MODEL_MATRIX_UNIFORM, matrixStack.getModelMatrix());
+	currentShader->setUniformMatrix4f(VIEW_MATRIX_UNIFORM, matrixStack.getViewMatrix());
 	currentShader->setUniformMatrix4f(MODELVIEW_MATRIX_UNIFORM, matrixStack.getModelViewMatrix());
 	currentShader->setUniformMatrix4f(PROJECTION_MATRIX_UNIFORM, matrixStack.getProjectionMatrix());
 	currentShader->setUniformMatrix4f(TEXTURE_MATRIX_UNIFORM, matrixStack.getTextureMatrix());
@@ -1488,18 +1569,31 @@ void ofGLProgrammableRenderer::setDefaultUniforms(){
 	if(currentMaterial){
 		currentMaterial->updateMaterial(*currentShader,*this);
 		currentMaterial->updateLights(*currentShader,*this);
+		currentMaterial->updateShadows(*currentShader,*this);
+		currentMaterial->updateEnvironmentMaps(*currentShader, *this);
+	}
+	if(currentShadow) {
+		if( currentShadow->isMultiCubeFacePass() ) {
+			currentShadow->updateDepth(*currentShader, shadowCubeFace, *this);
+		} else {
+			currentShadow->updateDepth(*currentShader, *this);
+		}
 	}
 }
 
 //----------------------------------------------------------
 void ofGLProgrammableRenderer::beginDefaultShader(){
-	if(usingCustomShader && !currentMaterial)	return;
+	if(usingCustomShader && !currentMaterial && !currentShadow)	return;
+	if( currentShadow && bCustomShadowShader ) return;
 
 	const ofShader * nextShader = nullptr;
 
-	if(!uniqueShader || currentMaterial){
-        if(currentMaterial){
-			nextShader = &currentMaterial->getShader(currentTextureTarget,*this);
+	if(!uniqueShader || currentMaterial || currentShadow ){
+		if(currentShadow) {
+			nextShader = &currentShadow->getDepthShader(*this);
+		} else if(currentMaterial){
+//			std::cout << "ofGLProgrammableRenderer::beginDefaultShader: " << currentTextureTarget << " | " << ofGetFrameNum() << std::endl;
+            nextShader = &currentMaterial->getShader(currentTextureTarget,colorsEnabled,*this);
 
 		}else if(bitmapStringEnabled){
 			nextShader = &bitmapStringShader;
@@ -1517,6 +1611,11 @@ void ofGLProgrammableRenderer::beginDefaultShader(){
 			case OF_NO_TEXTURE:
 				nextShader = &defaultNoTexColor;
 				break;
+	#ifdef TARGET_ANDROID
+			case GL_TEXTURE_EXTERNAL_OES:
+				nextShader = &defaultOESTexColor;
+				break;
+	#endif
 			}
 
 		}else if(colorsEnabled){
@@ -1535,6 +1634,11 @@ void ofGLProgrammableRenderer::beginDefaultShader(){
 			case OF_NO_TEXTURE:
 				nextShader = &defaultNoTexNoColor;
 				break;
+	#ifdef TARGET_ANDROID
+			case GL_TEXTURE_EXTERNAL_OES:
+				nextShader = &defaultOESTexNoColor;
+				break;
+	#endif
 			}
 
 		}else{
@@ -1557,8 +1661,8 @@ void ofGLProgrammableRenderer::beginDefaultShader(){
 //----------------------------------------------------------
 void ofGLProgrammableRenderer::drawLine(float x1, float y1, float z1, float x2, float y2, float z2) const{
 	ofGLProgrammableRenderer * mutThis = const_cast<ofGLProgrammableRenderer*>(this);
-	lineMesh.getVertices()[0].set(x1,y1,z1);
-	lineMesh.getVertices()[1].set(x2,y2,z2);
+	lineMesh.getVertices()[0] = {x1,y1,z1};
+	lineMesh.getVertices()[1] = {x2,y2,z2};
     
 	// use smoothness, if requested:
 	if (currentStyle.smoothing) mutThis->startSmoothing();
@@ -1573,15 +1677,15 @@ void ofGLProgrammableRenderer::drawLine(float x1, float y1, float z1, float x2, 
 void ofGLProgrammableRenderer::drawRectangle(float x, float y, float z, float w, float h) const{
 	ofGLProgrammableRenderer * mutThis = const_cast<ofGLProgrammableRenderer*>(this);
 	if (currentStyle.rectMode == OF_RECTMODE_CORNER){
-		rectMesh.getVertices()[0].set(x,y,z);
-		rectMesh.getVertices()[1].set(x+w, y, z);
-		rectMesh.getVertices()[2].set(x+w, y+h, z);
-		rectMesh.getVertices()[3].set(x, y+h, z);
+		rectMesh.getVertices()[0] = {x,y,z};
+		rectMesh.getVertices()[1] = {x+w, y, z};
+		rectMesh.getVertices()[2] = {x+w, y+h, z};
+		rectMesh.getVertices()[3] = {x, y+h, z};
 	}else{
-		rectMesh.getVertices()[0].set(x-w/2.0f, y-h/2.0f, z);
-		rectMesh.getVertices()[1].set(x+w/2.0f, y-h/2.0f, z);
-		rectMesh.getVertices()[2].set(x+w/2.0f, y+h/2.0f, z);
-		rectMesh.getVertices()[3].set(x-w/2.0f, y+h/2.0f, z);
+		rectMesh.getVertices()[0] = {x-w/2.0f, y-h/2.0f, z};
+		rectMesh.getVertices()[1] = {x+w/2.0f, y-h/2.0f, z};
+		rectMesh.getVertices()[2] = {x+w/2.0f, y+h/2.0f, z};
+		rectMesh.getVertices()[3] = {x-w/2.0f, y+h/2.0f, z};
 	}
     
 	// use smoothness, if requested:
@@ -1597,9 +1701,9 @@ void ofGLProgrammableRenderer::drawRectangle(float x, float y, float z, float w,
 //----------------------------------------------------------
 void ofGLProgrammableRenderer::drawTriangle(float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3) const{
 	ofGLProgrammableRenderer * mutThis = const_cast<ofGLProgrammableRenderer*>(this);
-	triangleMesh.getVertices()[0].set(x1,y1,z1);
-	triangleMesh.getVertices()[1].set(x2,y2,z2);
-	triangleMesh.getVertices()[2].set(x3,y3,z3);
+	triangleMesh.getVertices()[0] = {x1,y1,z1};
+	triangleMesh.getVertices()[1] = {x2,y2,z2};
+	triangleMesh.getVertices()[2] = {x3,y3,z3};
     
 	// use smoothness, if requested:
 	if (currentStyle.smoothing && !currentStyle.bFill) mutThis->startSmoothing();
@@ -1614,9 +1718,9 @@ void ofGLProgrammableRenderer::drawTriangle(float x1, float y1, float z1, float 
 //----------------------------------------------------------
 void ofGLProgrammableRenderer::drawCircle(float x, float y, float z,  float radius) const{
 	ofGLProgrammableRenderer * mutThis = const_cast<ofGLProgrammableRenderer*>(this);
-	const vector<ofPoint> & circleCache = circlePolyline.getVertices();
+	const auto & circleCache = circlePolyline.getVertices();
 	for(int i=0;i<(int)circleCache.size();i++){
-		circleMesh.getVertices()[i].set(radius*circleCache[i].x+x,radius*circleCache[i].y+y,z);
+		circleMesh.getVertices()[i] = {radius*circleCache[i].x+x,radius*circleCache[i].y+y,z};
 	}
     
 	// use smoothness, if requested:
@@ -1634,9 +1738,9 @@ void ofGLProgrammableRenderer::drawEllipse(float x, float y, float z, float widt
 	ofGLProgrammableRenderer * mutThis = const_cast<ofGLProgrammableRenderer*>(this);
 	float radiusX = width*0.5;
 	float radiusY = height*0.5;
-	const vector<ofPoint> & circleCache = circlePolyline.getVertices();
+	const auto & circleCache = circlePolyline.getVertices();
 	for(int i=0;i<(int)circleCache.size();i++){
-		circleMesh.getVertices()[i].set(radiusX*circlePolyline[i].x+x,radiusY*circlePolyline[i].y+y,z);
+		circleMesh.getVertices()[i] = {radiusX*circlePolyline[i].x+x,radiusY*circlePolyline[i].y+y,z};
 	}
     
 	// use smoothness, if requested:
@@ -1665,7 +1769,7 @@ void ofGLProgrammableRenderer::drawString(string textString, float x, float y, f
 	bool hasViewport = false;
 
 	ofRectangle rViewport;
-	ofMatrix4x4 modelView;
+	glm::mat4 modelView = glm::mat4(1.0);
 
 	switch (currentStyle.drawBitmapMode) {
 
@@ -1687,9 +1791,9 @@ void ofGLProgrammableRenderer::drawString(string textString, float x, float y, f
 			mutThis->loadIdentityMatrix();
 			mutThis->matrixMode(OF_MATRIX_MODELVIEW);
 
-			modelView.makeTranslationMatrix(-1,-1,0);
-			modelView.glScale(2/rViewport.width, 2/rViewport.height, 1);
-			modelView.glTranslate(x,y, 0);
+			modelView = glm::translate(modelView, glm::vec3(-1,-1,0));
+			modelView = glm::scale(modelView, glm::vec3(2/rViewport.width, 2/rViewport.height, 1));
+			modelView = glm::translate(modelView, glm::vec3(x,y, 0));
 			mutThis->loadMatrix(modelView);
 			break;
 
@@ -1706,9 +1810,9 @@ void ofGLProgrammableRenderer::drawString(string textString, float x, float y, f
 			mutThis->matrixMode(OF_MATRIX_MODELVIEW);
 			mutThis->pushMatrix();
 
-			modelView.makeTranslationMatrix(-1,-1,0);
-			modelView.glScale(2/rViewport.width, 2/rViewport.height, 1);
-			modelView.glTranslate(x,y, 0);
+			modelView = glm::translate(modelView, glm::vec3(-1,-1,0));
+			modelView = glm::scale(modelView, glm::vec3(2/rViewport.width, 2/rViewport.height, 1));
+			modelView = glm::translate(modelView, glm::vec3(x,y, 0));
 			mutThis->loadMatrix(modelView);
 			break;
 
@@ -1734,8 +1838,10 @@ void ofGLProgrammableRenderer::drawString(string textString, float x, float y, f
 			
 			rViewport = getCurrentViewport();
 			
-			ofVec3f dScreen = ofVec3f(x,y,z) * matrixStack.getModelViewMatrix() * matrixStack.getProjectionMatrixNoOrientation();
-			dScreen += ofVec3f(1.0) ;
+			glm::mat4 mat = matrixStack.getProjectionMatrixNoOrientation()  * matrixStack.getModelViewMatrix();
+			glm::vec4 dScreen4 = mat * glm::vec4(x,y,z,1.0);
+			glm::vec3 dScreen = glm::vec3(dScreen4) / dScreen4.w;
+			dScreen += glm::vec3(1.0) ;
 			dScreen *= 0.5;
 			
 			dScreen.x += rViewport.x;
@@ -1756,9 +1862,9 @@ void ofGLProgrammableRenderer::drawString(string textString, float x, float y, f
 			mutThis->matrixMode(OF_MATRIX_MODELVIEW);
 			mutThis->pushMatrix();
 
-			modelView.makeTranslationMatrix(-1,-1,0);
-			modelView.glScale(2/rViewport.width, 2/rViewport.height, 1);
-			modelView.glTranslate(dScreen.x, dScreen.y, 0);
+			modelView = glm::translate(modelView, glm::vec3(-1,-1,0));
+			modelView = glm::scale(modelView, glm::vec3(2/rViewport.width, 2/rViewport.height, 1));
+			modelView = glm::translate(modelView, glm::vec3(dScreen.x, dScreen.y, 0));
 			mutThis->loadMatrix(modelView);
 		}
 			break;
@@ -1823,13 +1929,15 @@ void ofGLProgrammableRenderer::drawString(const ofTrueTypeFont & font, string te
 
 #ifdef TARGET_OPENGLES
 static const string vertex_shader_header =
-		"precision mediump float;\n"
+		"%extensions%\n"
+		"precision highp float;\n"
 		"#define IN attribute\n"
 		"#define OUT varying\n"
 		"#define TEXTURE texture2D\n"
 		"#define TARGET_OPENGLES\n";
 static const string fragment_shader_header =
-		"precision mediump float;\n"
+		"%extensions%\n"
+		"precision highp float;\n"
 		"#define IN varying\n"
 		"#define OUT\n"
 		"#define TEXTURE texture2D\n"
@@ -1976,13 +2084,48 @@ static const string defaultFragmentShaderTex2DNoColor = fragment_shader_header +
 	uniform float usingTexture;
 	uniform float usingColors;
 	uniform vec4 globalColor;
+
+	IN float depth;
+	IN vec4 colorVarying;
+	IN vec2 texCoordVarying;
+	void main(){
+		FRAG_COLOR = TEXTURE(src_tex_unit0, texCoordVarying) * globalColor;
+	}
+);
+
+// ----------------------------------------------------------------------
+
+static const string defaultFragmentShaderOESTexNoColor = fragment_shader_header + STRINGIFY(
+    
+    uniform samplerExternalOES src_tex_unit0;
+    uniform float usingTexture;
+    uniform float usingColors;
+    uniform vec4 globalColor;
+    
+    IN float depth;
+    IN vec4 colorVarying;
+    IN vec2 texCoordVarying;
+    
+    void main(){
+        FRAG_COLOR = TEXTURE(src_tex_unit0, texCoordVarying) * globalColor;
+    }
+);
+
+// ----------------------------------------------------------------------
+
+static const string defaultFragmentShaderOESTexColor = fragment_shader_header + STRINGIFY(
+																							
+	uniform samplerExternalOES src_tex_unit0;
+	uniform float usingTexture;
+	uniform float usingColors;
+	uniform vec4 globalColor;
 	
 	IN float depth;
 	IN vec4 colorVarying;
 	IN vec2 texCoordVarying;
 	
 	void main(){
-		FRAG_COLOR = TEXTURE(src_tex_unit0, texCoordVarying) * globalColor;
+		FRAG_COLOR = TEXTURE(src_tex_unit0, texCoordVarying) * colorVarying;
 	}
 );
 
@@ -2221,6 +2364,8 @@ static string defaultShaderHeader(string header, GLenum textureTarget, int major
 	}else{
 		ofStringReplace(header,"%extensions%","");
 	}
+#else 
+	ofStringReplace(header,"%extensions%","#extension GL_OES_standard_derivatives : enable");
 #endif
 	if(textureTarget==GL_TEXTURE_2D){
 		header += "#define SAMPLER sampler2D\n";
@@ -2240,9 +2385,20 @@ static string shaderSource(const string & src, int major, int minor){
 	}else{
 		ofStringReplace(shaderSrc,"%extensions%","");
 	}
+#else
+	ofStringReplace(shaderSrc,"%extensions%","");
 #endif
 	return shaderSrc;
 }
+
+#ifdef TARGET_ANDROID
+static string shaderOESSource(const string & src, int major, int minor){
+	string shaderSrc = src;
+	ofStringReplace(shaderSrc,"%glsl_version%",ofGLSLVersionFromGL(major,minor));
+	ofStringReplace(shaderSrc,"%extensions%","#extension GL_OES_EGL_image_external : require");
+	return shaderSrc;
+}
+#endif
 
 static string videoFragmentShaderSource(const ofBaseVideoDraws & video, int major, int minor){
 	string src;
@@ -2317,6 +2473,7 @@ void ofGLProgrammableRenderer::setup(int _major, int _minor){
 	GLint currentFrameBuffer;
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFrameBuffer);
 	defaultFramebufferId = currentFrameBuffer;
+    currentFramebufferId = defaultFramebufferId;
 #endif
 
 	major = _major;
@@ -2328,8 +2485,8 @@ void ofGLProgrammableRenderer::setup(int _major, int _minor){
 #endif
 
 	if(uniqueShader){
-		defaultUniqueShader.setupShaderFromSource(GL_VERTEX_SHADER,uniqueVertexShader);
-		defaultUniqueShader.setupShaderFromSource(GL_FRAGMENT_SHADER,uniqueFragmentShader);
+		defaultUniqueShader.setupShaderFromSource(GL_VERTEX_SHADER,shaderSource(uniqueVertexShader, major, minor));
+		defaultUniqueShader.setupShaderFromSource(GL_FRAGMENT_SHADER,shaderSource(uniqueFragmentShader, major, minor));
 		defaultUniqueShader.bindDefaults();
 		defaultUniqueShader.linkProgram();
 		beginDefaultShader();
@@ -2384,6 +2541,20 @@ void ofGLProgrammableRenderer::setup(int _major, int _minor){
 
 		bitmapStringShader.bindDefaults();
 		bitmapStringShader.linkProgram();
+		
+		
+#ifdef TARGET_ANDROID
+		defaultOESTexNoColor.setupShaderFromSource(GL_VERTEX_SHADER,shaderOESSource(defaultVertexShader,major, minor));
+		defaultOESTexColor.setupShaderFromSource(GL_VERTEX_SHADER,shaderOESSource(defaultVertexShader,major, minor));
+		defaultOESTexColor.setupShaderFromSource(GL_FRAGMENT_SHADER,shaderOESSource(defaultFragmentShaderOESTexColor,major, minor));
+		defaultOESTexNoColor.setupShaderFromSource(GL_FRAGMENT_SHADER,shaderOESSource(defaultFragmentShaderOESTexNoColor,major, minor));
+		
+		defaultOESTexColor.bindDefaults();
+		defaultOESTexNoColor.bindDefaults();
+		
+		defaultOESTexColor.linkProgram();
+		defaultOESTexNoColor.linkProgram();
+#endif
 	}
 
 	setupGraphicDefaults();
@@ -2547,28 +2718,34 @@ void ofGLProgrammableRenderer::saveFullViewport(ofPixels & pixels){
 }
 
 void ofGLProgrammableRenderer::saveScreen(int x, int y, int w, int h, ofPixels & pixels){
-
     int sh = getViewportHeight();
 
 
-	#ifndef TARGET_OPENGLES
-	ofBufferObject buffer;
-	pixels.allocate(w, h, OF_PIXELS_RGB);
-	buffer.allocate(pixels.size(),GL_STATIC_READ);
+    #ifndef TARGET_OPENGLES
 	if(isVFlipped()){
 		y = sh - y;
 		y -= h; // top, bottom issues
 	}
+	auto pixelFormat = OF_PIXELS_BGRA;
+	pixels.allocate(w, h, pixelFormat);
+	auto glFormat = ofGetGLFormat(pixels);
+
+
+	ofBufferObject buffer;
+	buffer.allocate(pixels.size(), GL_STATIC_READ);
 
 	buffer.bind(GL_PIXEL_PACK_BUFFER);
-	glReadPixels(x, y, w, h, ofGetGlFormat(pixels), GL_UNSIGNED_BYTE, 0); // read the memory....
+	glReadPixels(x, y, w, h, glFormat, GL_UNSIGNED_BYTE, 0); // read the memory....
 	buffer.unbind(GL_PIXEL_PACK_BUFFER);
-	unsigned char * p = buffer.map<unsigned char>(GL_READ_ONLY);
-	ofPixels src;
-	src.setFromExternalPixels(p,w,h,OF_PIXELS_RGB);
-	src.mirrorTo(pixels,true,false);
-	buffer.unmap();
 
+	if(unsigned char * p = buffer.map<unsigned char>(GL_READ_ONLY)){
+		ofPixels src;
+		src.setFromExternalPixels(p,w,h,pixelFormat);
+		src.mirrorTo(pixels,true,false);
+		buffer.unmap();
+	}else{
+		ofLogError("ofGLProgrammableRenderer") << "Error saving screen";
+	}
 
 	#else
 

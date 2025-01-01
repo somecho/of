@@ -1,9 +1,7 @@
 //
 // Utility.cpp
 //
-// $Id: //poco/Main/Data/MySQL/src/Utility.cpp#5 $
-//
-// Library: MySQL
+// Library: Data/MySQL
 // Package: MySQL
 // Module:  Utility
 //
@@ -17,7 +15,7 @@
 
 
 #include "Poco/Data/MySQL/Utility.h"
-#include <mysql.h>
+#include <mysql/mysql.h>
 
 
 namespace Poco {

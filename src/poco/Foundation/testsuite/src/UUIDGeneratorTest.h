@@ -1,8 +1,6 @@
 //
 // UUIDGeneratorTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/UUIDGeneratorTest.h#1 $
-//
 // Definition of the UUIDGeneratorTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -29,7 +27,11 @@ public:
 	void testTimeBased();
 	void testRandom();
 	void testNameBased();
-	
+	void testV6();
+	void testV7();
+	void testV6Uniqueness();
+	void testV7Uniqueness();
+
 	void setUp();
 	void tearDown();
 

@@ -1,8 +1,6 @@
 //
 // ServerSocketImpl.h
 //
-// $Id: //poco/1.4/Net/include/Poco/Net/ServerSocketImpl.h#1 $
-//
 // Library: Net
 // Package: Sockets
 // Module:  ServerSocketImpl
@@ -36,7 +34,7 @@ public:
 		/// Creates the ServerSocketImpl.
 
 protected:
-	virtual ~ServerSocketImpl();
+	~ServerSocketImpl() override;
 		/// Destroys the ServerSocketImpl.
 };
 

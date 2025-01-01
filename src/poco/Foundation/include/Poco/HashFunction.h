@@ -1,8 +1,6 @@
 //
 // HashFunction.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/HashFunction.h#1 $
-//
 // Library: Foundation
 // Package: Hashing
 // Module:  HashFunction
@@ -27,9 +25,8 @@
 namespace Poco {
 
 
-//@ deprecated
 template <class T>
-struct HashFunction
+struct POCO_DEPRECATED("use Hash") HashFunction
 	/// A generic hash function.
 {
 	UInt32 operator () (T key, UInt32 maxValue) const
@@ -40,9 +37,8 @@ struct HashFunction
 };
 
 
-//@ deprecated
 template <>
-struct HashFunction<std::string>
+struct POCO_DEPRECATED("use Hash") HashFunction<std::string>
 	/// A generic hash function.
 {
 	UInt32 operator () (const std::string& key, UInt32 maxValue) const

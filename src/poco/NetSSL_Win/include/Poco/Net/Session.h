@@ -1,8 +1,6 @@
 //
 // Session.h
 //
-// $Id: //poco/1.4/NetSSL_Win/include/Poco/Net/Session.h#1 $
-//
 // Library: NetSSL_Win
 // Package: SSLCore
 // Module:  Session
@@ -38,13 +36,13 @@ class NetSSL_Win_API Session: public Poco::RefCountedObject
 	/// if it wants to reuse it with a future connection.
 {
 public:
-	typedef Poco::AutoPtr<Session> Ptr;
+	using Ptr = Poco::AutoPtr<Session>;
 
-protected:	
+protected:
 	Session();
 		/// Creates a new Session object, using the given
-		/// SSL_SESSION object. 
-		/// 
+		/// SSL_SESSION object.
+		///
 		/// The SSL_SESSION's reference count is not changed.
 
 	~Session();

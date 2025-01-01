@@ -1,8 +1,6 @@
 //
 // FilesystemTestSuite.cpp
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/FilesystemTestSuite.cpp#1 $
-//
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -29,6 +27,6 @@ CppUnit::Test* FilesystemTestSuite::suite()
 	pSuite->addTest(DirectoryWatcherTest::suite());
 #endif // POCO_NO_INOTIFY
 	pSuite->addTest(DirectoryIteratorsTest::suite());
-	
+
 	return pSuite;
 }

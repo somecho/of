@@ -1,8 +1,6 @@
 //
 // Handler.cpp
 //
-// $Id$
-//
 // Library: JSON
 // Package: JSON
 // Module:  Handler
@@ -15,32 +13,27 @@
 
 
 #include "Poco/JSON/Handler.h"
-#include "Poco/JSON/Object.h"
 
 
 namespace Poco {
 namespace JSON {
 
 
-Handler::Handler()
-{
-}
+Handler::Handler() = default;
 
 
-Handler::~Handler()
-{
-}
+Handler::~Handler() = default;
 
 
 Dynamic::Var Handler::asVar() const
 {
-	return Dynamic::Var();
+	return {};
 }
 
 
 Poco::DynamicStruct Handler::asStruct() const
 {
-	return Poco::DynamicStruct();
+	return {};
 }
 
 

@@ -1,8 +1,6 @@
 //
 // PipeImpl_WIN32.cpp
 //
-// $Id: //poco/1.4/Foundation/src/PipeImpl_WIN32.cpp#1 $
-//
 // Library: Foundation
 // Package: Processes
 // Module:  PipeImpl
@@ -27,7 +25,7 @@ PipeImpl::PipeImpl()
 	attr.nLength              = sizeof(attr);
 	attr.lpSecurityDescriptor = NULL;
 	attr.bInheritHandle       = FALSE;
-	
+
 	if (!CreatePipe(&_readHandle, &_writeHandle, &attr, 0))
 		throw CreateFileException("anonymous pipe");
 }

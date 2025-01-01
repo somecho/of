@@ -1,8 +1,6 @@
 //
 // HTTPResponseTest.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/HTTPResponseTest.h#1 $
-//
 // Definition of the HTTPResponseTest class.
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
@@ -35,6 +33,8 @@ public:
 	void testInvalid2();
 	void testInvalid3();
 	void testCookies();
+	void testReplaceCookie();
+	void testRemoveCookie();
 
 	void setUp();
 	void tearDown();

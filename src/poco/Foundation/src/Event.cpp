@@ -1,8 +1,6 @@
 //
 // Event.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Event.cpp#2 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  Event
@@ -29,19 +27,17 @@
 namespace Poco {
 
 
-Event::Event(EventType type): EventImpl((EventTypeImpl) type)
+Event::Event(EventType type) : EventImpl(type == EVENT_AUTORESET)
 {
 }
 
 
-Event::Event(bool autoReset): EventImpl(autoReset ? EVENT_AUTORESET_IMPL : EVENT_MANUALRESET_IMPL)
+Event::Event(bool autoReset): EventImpl(autoReset)
 {
 }
 
 
-Event::~Event()
-{
-}
+Event::~Event() = default;
 
 
 } // namespace Poco

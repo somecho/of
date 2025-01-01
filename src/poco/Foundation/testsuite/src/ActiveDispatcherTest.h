@@ -1,8 +1,6 @@
 //
 // ActiveDispatcherTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/ActiveDispatcherTest.h#1 $
-//
 // Definition of the ActiveDispatcherTest class.
 //
 // SPDX-License-Identifier:	BSL-1.0
@@ -30,6 +28,7 @@ public:
 	void testVoid();
 	void testVoidIn();
 	void testVoidInOut();
+	void testActiveDispatcher();
 
 	void setUp();
 	void tearDown();

@@ -1,8 +1,6 @@
 //
 // Activity.cpp
 //
-// $Id: //poco/1.4/Foundation/samples/Activity/src/Activity.cpp#1 $
-//
 // This sample demonstrates the Activity class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -28,12 +26,12 @@ public:
 		_activity(this, &ActivityExample::runActivity)
 	{
 	}
-	
+
 	void start()
 	{
 		_activity.start();
 	}
-	
+
 	void stop()
 	{
 		_activity.stop();
@@ -50,7 +48,7 @@ protected:
 		}
 		std::cout << "Activity stopped." << std::endl;
 	}
-	
+
 private:
 	Activity<ActivityExample> _activity;
 };

@@ -1,8 +1,6 @@
 //
 // ThreadTest.cpp
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/ThreadTest.cpp#1 $
-//
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -19,13 +17,12 @@
 #include "Poco/Event.h"
 #include "Poco/Timestamp.h"
 #include "Poco/Timespan.h"
-#include "Poco/Environment.h"
 #if defined(__sun) && defined(__SVR4) && !defined(__EXTENSIONS__)
 #define __EXTENSIONS__
 #endif
 #include <climits>
-#include <vector>
-#include <sstream>
+#include <iostream>
+
 
 using Poco::Thread;
 using Poco::Runnable;
@@ -44,7 +41,13 @@ public:
 	{
 		Thread* pThread = Thread::current();
 		if (pThread)
+		{
 			_threadName = pThread->name();
+#ifndef POCO_NO_THREADNAME
+			auto *pThreadImpl = reinterpret_cast<Poco::ThreadImpl *>(pThread);
+			_osThreadName = pThreadImpl->getOSThreadNameImpl();
+#endif
+		}
 		_ran = true;
 		_event.wait();
 	}
@@ -58,6 +61,13 @@ public:
 	{
 		return _threadName;
 	}
+
+#ifndef POCO_NO_THREADNAME
+	const std::string& osThreadName() const
+	{
+		return _osThreadName;
+	}
+#endif
 
 	void notify()
 	{
@@ -74,6 +84,9 @@ public:
 private:
 	bool _ran;
 	std::string _threadName;
+#ifndef POCO_NO_THREADNAME
+	std::string _osThreadName;
+#endif
 	Event _event;
 };
 
@@ -111,7 +124,38 @@ public:
 	}
 
 private:
-	bool _finished;
+	std::atomic<bool> _finished;
+};
+
+
+class JoinRunnable : public Runnable
+{
+public:
+	JoinRunnable() : _stop(false), _running(false)
+	{
+	}
+
+	void run()
+	{
+		_running = true;
+		while (!_stop)
+			Thread::sleep(100);
+		_running = false;
+	}
+
+	void stop()
+	{
+		_stop = true;
+	}
+
+	bool running() const
+	{
+		return _running;
+	}
+
+private:
+	std::atomic<bool> _stop;
+	std::atomic<bool> _running;
 };
 
 
@@ -143,8 +187,8 @@ public:
 	}
 
 private:
-	int _counter;
-	bool _sleepy;
+	std::atomic<int> _counter;
+	std::atomic<bool> _sleepy;
 };
 
 
@@ -162,15 +206,18 @@ void ThreadTest::testThread()
 {
 	Thread thread;
 	MyRunnable r;
-	assert (!thread.isRunning());
+	assertTrue (!thread.isRunning());
 	thread.start(r);
 	Thread::sleep(200);
-	assert (thread.isRunning());
+	assertTrue (thread.isRunning());
 	r.notify();
 	thread.join();
-	assert (!thread.isRunning());
-	assert (r.ran());
-	assert (!r.threadName().empty());
+	assertTrue (!thread.isRunning());
+	assertTrue (r.ran());
+	assertTrue (!r.threadName().empty());
+#ifndef POCO_NO_THREADNAME
+	assertTrue (!r.osThreadName().empty());
+#endif
 }
 
 
@@ -181,8 +228,25 @@ void ThreadTest::testNamedThread()
 	thread.start(r);
 	r.notify();
 	thread.join();
-	assert (r.ran());
-	assert (r.threadName() == "MyThread");
+	assertTrue (r.ran());
+	assertTrue (r.threadName() == "MyThread");
+#ifndef POCO_NO_THREADNAME
+	assertTrue (r.osThreadName() == r.threadName());
+#endif
+
+	// name len > POCO_MAX_THREAD_NAME_LEN
+	Thread thread2("0123456789aaaaaaaaaa9876543210");
+	MyRunnable r2;
+	thread2.start(r2);
+	r2.notify();
+	thread2.join();
+	assertTrue (r2.ran());
+#ifndef POCO_NO_THREADNAME
+	assertTrue (r2.osThreadName() == r2.threadName());
+#endif
+	assertTrue (r2.threadName().length() <= POCO_MAX_THREAD_NAME_LEN);
+	assertTrue (std::string(r2.threadName(), 0, 7) == "0123456");
+	assertTrue (std::string(r2.threadName(), r2.threadName().size() - 7) == "6543210");
 }
 
 
@@ -203,62 +267,78 @@ void ThreadTest::testThreads()
 	MyRunnable r2;
 	MyRunnable r3;
 	MyRunnable r4;
-	assert (!thread1.isRunning());
-	assert (!thread2.isRunning());
-	assert (!thread3.isRunning());
-	assert (!thread4.isRunning());
+	assertTrue (!thread1.isRunning());
+	assertTrue (!thread2.isRunning());
+	assertTrue (!thread3.isRunning());
+	assertTrue (!thread4.isRunning());
 	thread1.start(r1);
 	Thread::sleep(200);
-	assert (thread1.isRunning());
-	assert (!thread2.isRunning());
-	assert (!thread3.isRunning());
-	assert (!thread4.isRunning());
+	assertTrue (thread1.isRunning());
+	assertTrue (!thread2.isRunning());
+	assertTrue (!thread3.isRunning());
+	assertTrue (!thread4.isRunning());
 	thread2.start(r2);
 	thread3.start(r3);
 	thread4.start(r4);
 	Thread::sleep(200);
-	assert (thread1.isRunning());
-	assert (thread2.isRunning());
-	assert (thread3.isRunning());
-	assert (thread4.isRunning());
+	assertTrue (thread1.isRunning());
+	assertTrue (thread2.isRunning());
+	assertTrue (thread3.isRunning());
+	assertTrue (thread4.isRunning());
 	r4.notify();
 	thread4.join();
-	assert (!thread4.isRunning());
-	assert (thread1.isRunning());
-	assert (thread2.isRunning());
-	assert (thread3.isRunning());
+	assertTrue (!thread4.isRunning());
+	assertTrue (thread1.isRunning());
+	assertTrue (thread2.isRunning());
+	assertTrue (thread3.isRunning());
 	r3.notify();
 	thread3.join();
-	assert (!thread3.isRunning());
+	assertTrue (!thread3.isRunning());
 	r2.notify();
 	thread2.join();
-	assert (!thread2.isRunning());
+	assertTrue (!thread2.isRunning());
 	r1.notify();
 	thread1.join();
-	assert (!thread1.isRunning());
-	assert (r1.ran());
-	assert (r1.threadName() == "Thread1");
-	assert (r2.ran());
-	assert (r2.threadName() == "Thread2");
-	assert (r3.ran());
-	assert (r3.threadName() == "Thread3");
-	assert (r4.ran());
-	assert (r4.threadName() == "Thread4");
+	assertTrue (!thread1.isRunning());
+	assertTrue (r1.ran());
+	assertTrue (r1.threadName() == "Thread1");
+	assertTrue (r2.ran());
+	assertTrue (r2.threadName() == "Thread2");
+	assertTrue (r3.ran());
+	assertTrue (r3.threadName() == "Thread3");
+	assertTrue (r4.ran());
+	assertTrue (r4.threadName() == "Thread4");
+}
+
+
+void ThreadTest::testTryJoin()
+{
+	Thread thread;
+	MyRunnable r;
+	assertTrue (!thread.isRunning());
+	thread.start(r);
+	Thread::sleep(200);
+	assertTrue (thread.isRunning());
+	assertTrue (!thread.tryJoin(100));
+	r.notify();
+	assertTrue (thread.tryJoin(500));
+	assertTrue (!thread.isRunning());
 }
 
 
 void ThreadTest::testJoin()
 {
 	Thread thread;
-	MyRunnable r;
-	assert (!thread.isRunning());
+	JoinRunnable r;
+	assertTrue(!thread.isRunning());
 	thread.start(r);
 	Thread::sleep(200);
-	assert (thread.isRunning());
-	assert (!thread.tryJoin(100));
-	r.notify();
-	assert (thread.tryJoin(500));
-	assert (!thread.isRunning());
+	assertTrue(thread.isRunning());
+	assertTrue(!thread.tryJoin(100));
+	r.stop();
+	thread.join();
+	assertTrue(!thread.isRunning());
+	assertTrue(!r.running());
 }
 
 
@@ -274,7 +354,7 @@ void ThreadTest::testNotJoin()
 	}
 
 	Thread::sleep(100);
-	assert (!thread.isRunning());
+	assertTrue (!thread.isRunning());
 }
 
 
@@ -282,32 +362,30 @@ void ThreadTest::testTrySleep()
 {
 	Thread thread;
 	TrySleepRunnable r;
-	assert(r.isSleepy());
-	assert(!thread.isRunning());
-	assert(r.counter() == 0);
+	assertTrue (r.isSleepy());
+	assertTrue (!thread.isRunning());
+	assertTrue (r.counter() == 0);
 	thread.start(r);
-	assert(thread.isRunning());
-	assert(r.counter() == 0);
-	assert(r.isSleepy());
+	assertTrue (thread.isRunning());
+	assertTrue (r.counter() == 0);
+	assertTrue (r.isSleepy());
 	Thread::sleep(100);
-	assert(r.counter() == 0);
-	assert(r.isSleepy());
-	thread.wakeUp();
-	Thread::sleep(10);
-	assert(r.counter() == 1);
-	assert(r.isSleepy());
+	assertTrue (r.counter() == 0);
+	assertTrue (r.isSleepy());
+	thread.wakeUp(); Thread::sleep(10);
+	assertTrue (r.counter() == 1);
+	assertTrue (r.isSleepy());
 	Thread::sleep(100);
-	assert(r.counter() == 1);
-	thread.wakeUp();
-	Thread::sleep(10);
-	assert(r.counter() == 2);
-	assert(r.isSleepy());
+	assertTrue (r.counter() == 1);
+	thread.wakeUp(); Thread::sleep(10);
+	assertTrue (r.counter() == 2);
+	assertTrue (r.isSleepy());
 	Thread::sleep(200);
-	assert(r.counter() == 3);
-	assert(!r.isSleepy());
-	assert(!thread.isRunning());
+	assertTrue (r.counter() == 3);
+	assertTrue (!r.isSleepy());
+	assertTrue (!thread.isRunning());
 	thread.wakeUp();
-	assert(!thread.isRunning());
+	assertTrue (!thread.isRunning());
 }
 
 
@@ -329,20 +407,20 @@ void ThreadTest::testThreadTarget()
 	ThreadTarget te(&MyRunnable::staticFunc);
 	Thread thread;
 
-	assert (!thread.isRunning());
+	assertTrue (!thread.isRunning());
 
 	int tmp = MyRunnable::_staticVar;
 	thread.start(te);
 	thread.join();
-	assert (tmp + 1 == MyRunnable::_staticVar);
+	assertTrue (tmp + 1 == MyRunnable::_staticVar);
 
 	ThreadTarget te1(freeFunc);
-	assert (!thread.isRunning());
+	assertTrue (!thread.isRunning());
 
 	tmp = MyRunnable::_staticVar;
 	thread.start(te1);
 	thread.join();
-	assert (tmp + 1 == MyRunnable::_staticVar);
+	assertTrue (tmp + 1 == MyRunnable::_staticVar);
 }
 
 
@@ -350,19 +428,20 @@ void ThreadTest::testThreadFunction()
 {
 	Thread thread;
 
-	assert (!thread.isRunning());
+	assertTrue (!thread.isRunning());
 
-	int tmp = MyRunnable::_staticVar;
+	MyRunnable::_staticVar = 0;
+	int tmp = 1;
 	thread.start(freeFunc, &tmp);
 	thread.join();
-	assert (tmp * 2 == MyRunnable::_staticVar);
+	assertTrue (tmp == MyRunnable::_staticVar);
 
-	assert (!thread.isRunning());
+	assertTrue (!thread.isRunning());
 
 	tmp = MyRunnable::_staticVar = 0;
 	thread.start(freeFunc, &tmp);
 	thread.join();
-	assert (0 == MyRunnable::_staticVar);
+	assertTrue (0 == MyRunnable::_staticVar);
 }
 
 
@@ -379,20 +458,18 @@ void ThreadTest::testThreadFunctor()
 {
 	Thread thread;
 
-	assert (!thread.isRunning());
+	assertTrue (!thread.isRunning());
 
 	MyRunnable::_staticVar = 0;
 	thread.startFunc(Functor());
 	thread.join();
-	assert (1 == MyRunnable::_staticVar);
+	assertTrue (1 == MyRunnable::_staticVar);
 
-	assert (!thread.isRunning());
-
-#if __cplusplus >= 201103L
+	assertTrue (!thread.isRunning());
 
 	Thread thread2;
 
-	assert (!thread2.isRunning());
+	assertTrue (!thread2.isRunning());
 
 	MyRunnable::_staticVar = 0;
 	thread.startFunc([] ()
@@ -400,11 +477,9 @@ void ThreadTest::testThreadFunctor()
 		MyRunnable::_staticVar++;
 	});
 	thread.join();
-	assert (1 == MyRunnable::_staticVar);
+	assertTrue (1 == MyRunnable::_staticVar);
 
-	assert (!thread2.isRunning());
-
-#endif
+	assertTrue (!thread2.isRunning());
 }
 
 
@@ -414,36 +489,42 @@ void ThreadTest::testThreadStackSize()
 
 	Thread thread;
 
-	assert (0 == thread.getStackSize());
+	assertTrue (0 == thread.getStackSize());
 	thread.setStackSize(stackSize);
-	assert (stackSize <= thread.getStackSize());
-	int tmp = MyRunnable::_staticVar;
+	assertTrue (stackSize <= thread.getStackSize());
+	MyRunnable::_staticVar = 0;
+	int tmp = 1;
 	thread.start(freeFunc, &tmp);
 	thread.join();
-	assert (tmp * 2 == MyRunnable::_staticVar);
+	assertTrue (1 == MyRunnable::_staticVar);
 
 	stackSize = 1;
 	thread.setStackSize(stackSize);
 
-#if !defined(POCO_OS_FAMILY_BSD) // on BSD family, stack size is rounded
-#ifdef PTHREAD_STACK_MIN
-	assert (PTHREAD_STACK_MIN == thread.getStackSize());
-#else
-	assert (stackSize >= thread.getStackSize());
-#endif
+#if defined(POCO_OS_FAMILY_BSD) // on BSD family, stack size is rounded
+	#ifdef PTHREAD_STACK_MIN
+		assertTrue (PTHREAD_STACK_MIN == thread.getStackSize());
+	#else
+		assertTrue (stackSize >= thread.getStackSize());
+	#endif
 #endif
 
-	tmp = MyRunnable::_staticVar;
-	thread.start(freeFunc, &tmp);
-	thread.join();
-	assert (tmp * 2 == MyRunnable::_staticVar);
-
-	thread.setStackSize(0);
-	assert (0 == thread.getStackSize());
-	tmp = MyRunnable::_staticVar;
-	thread.start(freeFunc, &tmp);
-	thread.join();
-	assert (tmp * 2 == MyRunnable::_staticVar);
+// disabled on FreeBSD; segfaults due to stack overflow,
+// possibly happens on other BSD OSes)
+#if (POCO_OS == POCO_OS_FREE_BSD)
+	{
+		int tmp = MyRunnable::_staticVar;
+		thread.start(freeFunc, &tmp);
+		thread.join();
+		assertTrue (tmp * 2 == MyRunnable::_staticVar);
+		thread.setStackSize(0);
+		assertTrue (0 == thread.getStackSize());
+		tmp = MyRunnable::_staticVar;
+		thread.start(freeFunc, &tmp);
+		thread.join();
+		assertTrue (tmp * 2 == MyRunnable::_staticVar);
+	}
+#endif
 }
 
 
@@ -452,50 +533,23 @@ void ThreadTest::testSleep()
 	Poco::Timestamp start;
 	Thread::sleep(200);
 	Poco::Timespan elapsed = start.elapsed();
-	assert (elapsed.totalMilliseconds() >= 190 && elapsed.totalMilliseconds() < 250);
+	assertTrue (elapsed.totalMilliseconds() >= 190 && elapsed.totalMilliseconds() < 250);
 }
+
 
 void ThreadTest::testAffinity()
 {
-	std::stringstream ss;
-	unsigned cpuCount = Poco::Environment::processorCount();
-	unsigned usedCpu = 0;
-	std::vector<Thread*> threadList;
-	Thread* thread = NULL;
-	std::vector<MyRunnable*> runnableList;
-	MyRunnable* runbl = NULL;
-
-	for (unsigned i = 0; i < cpuCount; i++)
-	{
-		ss.str("");
-		ss << "Thread" << i;
-		thread = new Thread(ss.str());
-		threadList.push_back(thread);
-		runbl = new MyRunnable();
-		runnableList.push_back(runbl);
-	}
-
-	for (int i = 0; i < cpuCount; i++)
-	{
-		assert (!threadList[i]->isRunning());
-	}
-
-	for (int i = 0; i < cpuCount; i++)
-	{
-		threadList[i]->start(*runnableList[i]);
-		threadList[i]->setAffinity(i);
-		Thread::sleep(100);
-		usedCpu = threadList[i]->getAffinity();
-		assert (usedCpu == i || usedCpu == -1);
-	}
-
-	for (int i = 0; i < cpuCount; i++)
-	{
-		runnableList[i]->notify();
-		threadList[i]->join();
-		delete runnableList[i];
-		delete threadList[i];
-	}
+#if POCO_OS == POCO_OS_LINUX
+	MyRunnable mr;
+	Thread t;
+	t.start(mr);
+	assertTrue (t.setAffinity(0));
+	assertEqual (t.getAffinity(), 0);
+	mr.notify();
+	t.join();
+#else
+	std::cout << "not implemented";
+#endif
 }
 
 
@@ -517,6 +571,7 @@ CppUnit::Test* ThreadTest::suite()
 	CppUnit_addTest(pSuite, ThreadTest, testNamedThread);
 	CppUnit_addTest(pSuite, ThreadTest, testCurrent);
 	CppUnit_addTest(pSuite, ThreadTest, testThreads);
+	CppUnit_addTest(pSuite, ThreadTest, testTryJoin);
 	CppUnit_addTest(pSuite, ThreadTest, testJoin);
 	CppUnit_addTest(pSuite, ThreadTest, testNotJoin);
 	CppUnit_addTest(pSuite, ThreadTest, testNotRun);

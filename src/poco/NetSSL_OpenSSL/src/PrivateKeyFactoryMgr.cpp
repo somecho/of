@@ -1,8 +1,6 @@
 //
 // PrivateKeyFactoryMgr.cpp
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/src/PrivateKeyFactoryMgr.cpp#1 $
-//
 // Library: NetSSL_OpenSSL
 // Package: SSLCore
 // Module:  PrivateKeyFactoryMgr
@@ -42,14 +40,14 @@ void PrivateKeyFactoryMgr::setFactory(const std::string& name, PrivateKeyFactory
 		delete pFactory;
 	poco_assert(success);
 }
-		
+
 
 bool PrivateKeyFactoryMgr::hasFactory(const std::string& name) const
 {
 	return _factories.find(name) != _factories.end();
 }
-		
-	
+
+
 const PrivateKeyFactory* PrivateKeyFactoryMgr::getFactory(const std::string& name) const
 {
 	FactoriesMap::const_iterator it = _factories.find(name);

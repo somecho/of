@@ -1,8 +1,6 @@
 //
 // AttributesParser.cpp
 //
-// $Id: //poco/1.4/CppParser/src/AttributesParser.cpp#1 $
-//
 // Library: CppParser
 // Package: Attributes
 // Module:  AttributesParser
@@ -90,7 +88,7 @@ const Token* AttributesParser::parseAttribute(const Token* pNext)
 const Token* AttributesParser::parseComplexAttribute(const Token* pNext, const std::string& id)
 {
 	poco_assert_dbg (isOperator(pNext, OperatorToken::OP_OPENBRACE));
-	
+
 	pNext = next();
 	std::string oldId(_id);
 	if (!_id.empty())
@@ -105,7 +103,7 @@ const Token* AttributesParser::parseComplexAttribute(const Token* pNext, const s
 		pNext = next();
 	else
 		throw SyntaxException("bad attribute declaration");
-	
+
 	return pNext;
 }
 

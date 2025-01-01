@@ -1,8 +1,6 @@
 //
 // md5.cpp
 //
-// $Id: //poco/1.4/Foundation/samples/md5/src/md5.cpp#1 $
-//
 // This sample demonstrates the DigestEngine, DigestOutputStream and
 // MD5Engine classes.
 //
@@ -34,21 +32,21 @@ int main(int argc, char** argv)
 		          << "       create the MD5 digest for <input_file>" << std::endl;
 		return 1;
 	}
-	
+
 	std::ifstream istr(argv[1], std::ios::binary);
 	if (!istr)
 	{
 		std::cerr << "cannot open input file: " << argv[1] << std::endl;
 		return 2;
 	}
-	
+
 	MD5Engine md5;
 	DigestOutputStream dos(md5);
-	
+
 	StreamCopier::copyStream(istr, dos);
 	dos.close();
 
 	std::cout << DigestEngine::digestToHex(md5.digest()) << std::endl;
-	
+
 	return 0;
 }

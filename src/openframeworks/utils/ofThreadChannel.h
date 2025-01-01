@@ -1,11 +1,8 @@
 #pragma once
 
-
 #include <mutex>
 #include <queue>
 #include <condition_variable>
-#include "ofUtils.h"
-
 
 /// \brief Safely send data between threads without additional synchronization.
 ///
@@ -15,7 +12,7 @@
 /// signalling system that allows receiving threads to sleep until new data
 /// arrives or the ofThreadChannel is closed.
 ///
-/// A single ofThreadChannel class is desgined for one-way communication. In
+/// A single ofThreadChannel class is designed for one-way communication. In
 /// most cases an additional ofThreadChannel can be used for two-way
 /// communication.
 ///
@@ -71,7 +68,7 @@ public:
 		if(closed){
 			return false;
 		}
-		if(queue.empty()){
+        while(queue.empty() && !closed){
 			condition.wait(lock);
 		}
 		if(!closed){
@@ -118,7 +115,7 @@ public:
 		if(closed){
 			return false;
 		}
-		if(!queue.empty()){
+        if(!queue.empty()){
 			std::swap(sentValue,queue.front());
 			queue.pop();
 			return true;
@@ -165,7 +162,8 @@ public:
 			return false;
 		}
 		if(queue.empty()){
-			if(condition.wait_for(lock,std::chrono::milliseconds(timeoutMs))==std::cv_status::timeout){
+			condition.wait_for(lock, std::chrono::milliseconds(timeoutMs));
+			if(queue.empty()) {
 				return false;
 			}
 		}
@@ -211,7 +209,7 @@ public:
 			return false;
 		}
 		queue.push(value);
-		condition.notify_all();
+        condition.notify_one();
 		return true;
 	}
 
@@ -251,8 +249,8 @@ public:
 		if(closed){
 			return false;
 		}
-		queue.push(value);
-		condition.notify_all();
+		queue.push(std::move(value));
+        condition.notify_one();
 		return true;
 	}
 
@@ -276,6 +274,15 @@ public:
 	/// a message right afterwards
 	bool empty() const{
 		return queue.empty();
+	}
+
+
+	/// \brief Queries size of queue.
+	///
+	/// This call is only an approximation, since messages come from a different
+	/// thread.
+	size_t size() const {
+		return queue.size();
 	}
 
 private:

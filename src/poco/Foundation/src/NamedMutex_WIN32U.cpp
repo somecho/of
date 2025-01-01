@@ -1,8 +1,6 @@
 //
 // NamedMutex_WIN32.cpp
 //
-// $Id: //poco/1.4/Foundation/src/NamedMutex_WIN32U.cpp#1 $
-//
 // Library: Foundation
 // Package: Processes
 // Module:  NamedMutex
@@ -27,7 +25,7 @@ NamedMutexImpl::NamedMutexImpl(const std::string& name):
 {
 	UnicodeConverter::toUTF16(_name, _uname);
 	_mutex = CreateMutexW(NULL, FALSE, _uname.c_str());
-	if (!_mutex) 
+	if (!_mutex)
 		throw SystemException("cannot create named mutex", _name);
 }
 

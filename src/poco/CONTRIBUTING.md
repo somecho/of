@@ -1,9 +1,11 @@
 # Contributing
 
 ---
-## Bug Reports and Feature requests
+## Bug Reports and Feature Requests
 ---
 If you think you've found a bug or would like to see a feature in one of the [upcoming releases](https://github.com/pocoproject/poco/milestones), file an [issue](https://github.com/pocoproject/poco/issues). Please make sure that your explanations are clear and coherent; do the homework of understanding the problem and searching for existing solutions before posting.
+
+Possible security issues or vulnerabilities can also be reported via email directly to the core team security AT pocoproject.org. The core team will respond to security issues within 24 hours.
 
 If you're in a hurry, the fastest way to have bugs fixed or features added are code contributions. Good code contributions, to be precise; if you want to contribute, read on ...
 
@@ -21,7 +23,7 @@ Before writing any code, please read the
 
 1. [Fork](https://help.github.com/articles/fork-a-repo/) the [POCO](https://github.com/pocoproject/poco) repo
 
-2. Keep your repo [synced](https://help.github.com/articles/syncing-a-fork/) with the upstream to ensure smooth progress (i.e. that your changes do not interfere or conflict with someone elses's work). Note that the [develop](https://github.com/pocoproject/poco/tree/develop) branch is where most of the ongoing development happens. For new features or libraries, create a new branch with a descriptive camel-cased name. See the mentioned [branching model](http://nvie.com/posts/a-successful-git-branching-model/) for details.
+2. Keep your repo [synced](https://help.github.com/articles/syncing-a-fork/) with the upstream to ensure smooth progress (i.e. that your changes do not interfere or conflict with someone elses's work). Note that the [devel](https://github.com/pocoproject/poco/tree/devel) branch is where most of the ongoing development happens. For new features or libraries, create a new branch with a descriptive name. See the mentioned [branching model](http://nvie.com/posts/a-successful-git-branching-model/) for details.
 
 3. Write the code changes; make sure they compile
 
@@ -30,6 +32,8 @@ Before writing any code, please read the
 5. Test your changes (preferably at least on major platforms - Linux, Windows, Mac)
 
 6. Send [pull request](https://help.github.com/articles/using-pull-requests/) with a descriptive and clear commit message
+
+Important: Pull requests should either target a specific release branch (if in ongoing development), or the `main` branch.
 
 At this point, it's our turn; if you've done everything well, we may just thank you and merge your request. Otherwise, we may provide some comments or suggestions to steer the contribution in the right direction.
 

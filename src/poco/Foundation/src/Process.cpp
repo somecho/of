@@ -1,8 +1,6 @@
 //
 // Process.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Process.cpp#4 $
-//
 // Library: Foundation
 // Package: Processes
 // Module:  Process
@@ -18,59 +16,43 @@
 #include "Poco/Environment.h"
 
 
-namespace 
+namespace
 {
 	std::vector<char> getEnvironmentVariablesBuffer(const Poco::Process::Env& env)
-	{   
+	{
 		std::vector<char> envbuf;
-		std::size_t pos = 0; 
-		
-		for (Poco::Process::Env::const_iterator it = env.begin(); it != env.end(); ++it)
+		std::size_t pos = 0;
+
+		for (const auto& p: env)
 		{
-			std::size_t envlen = it->first.length() + it->second.length() + 1;
-	
+			std::size_t envlen = p.first.length() + p.second.length() + 1;
+
 			envbuf.resize(pos + envlen + 1);
-			std::copy(it->first.begin(), it->first.end(), &envbuf[pos]);
-			pos += it->first.length();
+			std::copy(p.first.begin(), p.first.end(), &envbuf[pos]);
+			pos += p.first.length();
 			envbuf[pos] = '=';
 			++pos;
-			std::copy(it->second.begin(), it->second.end(), &envbuf[pos]);
-			pos += it->second.length();
-		
+			std::copy(p.second.begin(), p.second.end(), &envbuf[pos]);
+			pos += p.second.length();
+
 			envbuf[pos] = '\0';
 			++pos;
 		}
-	 
+
 		envbuf.resize(pos + 1);
 		envbuf[pos] = '\0';
-	
+
 		return envbuf;
-	}
-	
-	void setEnvironmentVariables(const Poco::Process::Env& env)
-	{
-		for (Poco::Process::Env::const_iterator it = env.begin(); it != env.end(); ++it)
-		{
-			Poco::Environment::set(it->first, it->second);
-		}
 	}
 }
 
 
-#if defined(POCO_OS_FAMILY_WINDOWS) && defined(POCO_WIN32_UTF8)
-#if defined(_WIN32_WCE)
-#include "Process_WINCE.cpp"
-#else
+#if defined(POCO_OS_FAMILY_WINDOWS)
 #include "Process_WIN32U.cpp"
-#endif
-#elif defined(POCO_OS_FAMILY_WINDOWS)
-#include "Process_WIN32.cpp"
 #elif defined(POCO_VXWORKS)
 #include "Process_VX.cpp"
 #elif defined(POCO_OS_FAMILY_UNIX)
 #include "Process_UNIX.cpp"
-#else
-#include "Process_VMS.cpp"
 #endif
 
 
@@ -86,7 +68,7 @@ ProcessHandle::ProcessHandle(const ProcessHandle& handle):
 	_pImpl->duplicate();
 }
 
-	
+
 ProcessHandle::~ProcessHandle()
 {
 	_pImpl->release();
@@ -111,72 +93,84 @@ ProcessHandle& ProcessHandle::operator = (const ProcessHandle& handle)
 	return *this;
 }
 
-	
+
 ProcessHandle::PID ProcessHandle::id() const
 {
 	return _pImpl->id();
 }
 
-	
+
 int ProcessHandle::wait() const
 {
 	return _pImpl->wait();
 }
 
 
+int ProcessHandle::tryWait() const
+{
+	return _pImpl->tryWait();
+}
+
+
 //
 // Process
 //
-ProcessHandle Process::launch(const std::string& command, const Args& args)
+ProcessHandle Process::launch(const std::string& command, const Args& args, int options)
 {
 	std::string initialDirectory;
 	Env env;
-	return ProcessHandle(launchImpl(command, args, initialDirectory, 0, 0, 0, env));
+	return ProcessHandle(launchImpl(command, args, initialDirectory, 0, 0, 0, env, options));
 }
 
 
-ProcessHandle Process::launch(const std::string& command, const Args& args, const std::string& initialDirectory)
+ProcessHandle Process::launch(const std::string& command, const Args& args, const std::string& initialDirectory, int options)
 {
 	Env env;
-	return ProcessHandle(launchImpl(command, args, initialDirectory, 0, 0, 0, env));
+	return ProcessHandle(launchImpl(command, args, initialDirectory, 0, 0, 0, env, options));
 }
 
 
-ProcessHandle Process::launch(const std::string& command, const Args& args, Pipe* inPipe, Pipe* outPipe, Pipe* errPipe)
+ProcessHandle Process::launch(const std::string& command, const Args& args, Pipe* inPipe, Pipe* outPipe, Pipe* errPipe, int options)
 {
 	poco_assert (inPipe == 0 || (inPipe != outPipe && inPipe != errPipe));
 	std::string initialDirectory;
 	Env env;
-	return ProcessHandle(launchImpl(command, args, initialDirectory, inPipe, outPipe, errPipe, env));
+	return ProcessHandle(launchImpl(command, args, initialDirectory, inPipe, outPipe, errPipe, env, options));
 }
 
 
-ProcessHandle Process::launch(const std::string& command, const Args& args, const std::string& initialDirectory, Pipe* inPipe, Pipe* outPipe, Pipe* errPipe)
+ProcessHandle Process::launch(const std::string& command, const Args& args, const std::string& initialDirectory, Pipe* inPipe, Pipe* outPipe, Pipe* errPipe, int options)
 {
 	poco_assert (inPipe == 0 || (inPipe != outPipe && inPipe != errPipe));
 	Env env;
-	return ProcessHandle(launchImpl(command, args, initialDirectory, inPipe, outPipe, errPipe, env));
+	return ProcessHandle(launchImpl(command, args, initialDirectory, inPipe, outPipe, errPipe, env, options));
 }
 
 
-ProcessHandle Process::launch(const std::string& command, const Args& args, Pipe* inPipe, Pipe* outPipe, Pipe* errPipe, const Env& env)
+ProcessHandle Process::launch(const std::string& command, const Args& args, Pipe* inPipe, Pipe* outPipe, Pipe* errPipe, const Env& env, int options)
 {
 	poco_assert (inPipe == 0 || (inPipe != outPipe && inPipe != errPipe));
 	std::string initialDirectory;
-	return ProcessHandle(launchImpl(command, args, initialDirectory, inPipe, outPipe, errPipe, env));
+	return ProcessHandle(launchImpl(command, args, initialDirectory, inPipe, outPipe, errPipe, env, options));
 }
 
 
-ProcessHandle Process::launch(const std::string& command, const Args& args, const std::string& initialDirectory, Pipe* inPipe, Pipe* outPipe, Pipe* errPipe, const Env& env)
+ProcessHandle Process::launch(const std::string& command, const Args& args, const std::string& initialDirectory, Pipe* inPipe, Pipe* outPipe, Pipe* errPipe, const Env& env, int options)
 {
 	poco_assert (inPipe == 0 || (inPipe != outPipe && inPipe != errPipe));
-	return ProcessHandle(launchImpl(command, args, initialDirectory, inPipe, outPipe, errPipe, env));
+	return ProcessHandle(launchImpl(command, args, initialDirectory, inPipe, outPipe, errPipe, env, options));
 }
-	
-	
+
+
 int Process::wait(const ProcessHandle& handle)
 {
 	return handle.wait();
+}
+
+
+int Process::tryWait(const ProcessHandle& handle)
+{
+	return handle.tryWait();
 }
 
 
@@ -195,10 +189,13 @@ bool Process::isRunning(const ProcessHandle& handle)
 {
 	return isRunningImpl(*handle._pImpl);
 }
+
+
 bool Process::isRunning(PID pid)
 {
 	return isRunningImpl(pid);
 }
+
 
 void Process::requestTermination(PID pid)
 {

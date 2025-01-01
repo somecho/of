@@ -1,8 +1,6 @@
 //
 // CertificateHandlerFactoryMgr.cpp
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/src/CertificateHandlerFactoryMgr.cpp#1 $
-//
 // Library: NetSSL_OpenSSL
 // Package: SSLCore
 // Module:  CertificateHandlerFactoryMgr
@@ -44,14 +42,14 @@ void CertificateHandlerFactoryMgr::setFactory(const std::string& name, Certifica
 		delete pFactory;
 	poco_assert(success);
 }
-		
+
 
 bool CertificateHandlerFactoryMgr::hasFactory(const std::string& name) const
 {
 	return _factories.find(name) != _factories.end();
 }
-		
-	
+
+
 const CertificateHandlerFactory* CertificateHandlerFactoryMgr::getFactory(const std::string& name) const
 {
 	FactoriesMap::const_iterator it = _factories.find(name);

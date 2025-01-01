@@ -1,8 +1,6 @@
 //
 // ValidatorTest.cpp
 //
-// $Id: //poco/1.4/Util/testsuite/src/ValidatorTest.cpp#1 $
-//
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -42,7 +40,7 @@ void ValidatorTest::testRegExpValidator()
 {
 	Option option("option", "o");
 	AutoPtr<Validator> pVal(new RegExpValidator("[0-9]+"));
-	
+
 	pVal->validate(option, "0");
 	pVal->validate(option, "12345");
 
@@ -53,8 +51,10 @@ void ValidatorTest::testRegExpValidator()
 	}
 	catch (InvalidArgumentException& exc)
 	{
+#ifndef POCO_ENABLE_TRACE
 		std::string s(exc.message());
-		assert (s == "argument for option does not match regular expression [0-9]+");
+		assertTrue (s == "argument for option does not match regular expression [0-9]+");
+#endif
 	}
 
 	try
@@ -64,8 +64,10 @@ void ValidatorTest::testRegExpValidator()
 	}
 	catch (InvalidArgumentException& exc)
 	{
+#ifndef POCO_ENABLE_TRACE
 		std::string s(exc.message());
-		assert (s == "argument for option does not match regular expression [0-9]+");
+		assertTrue (s == "argument for option does not match regular expression [0-9]+");
+#endif
 	}
 
 	try
@@ -75,8 +77,10 @@ void ValidatorTest::testRegExpValidator()
 	}
 	catch (InvalidArgumentException& exc)
 	{
+#ifndef POCO_ENABLE_TRACE
 		std::string s(exc.message());
-		assert (s == "argument for option does not match regular expression [0-9]+");
+		assertTrue (s == "argument for option does not match regular expression [0-9]+");
+#endif
 	}
 
 	try
@@ -86,8 +90,10 @@ void ValidatorTest::testRegExpValidator()
 	}
 	catch (InvalidArgumentException& exc)
 	{
+#ifndef POCO_ENABLE_TRACE
 		std::string s(exc.message());
-		assert (s == "argument for option does not match regular expression [0-9]+");
+		assertTrue (s == "argument for option does not match regular expression [0-9]+");
+#endif
 	}
 }
 
@@ -96,11 +102,11 @@ void ValidatorTest::testIntValidator()
 {
 	Option option("option", "o");
 	AutoPtr<Validator> pVal(new IntValidator(0, 100));
-	
+
 	pVal->validate(option, "0");
 	pVal->validate(option, "100");
 	pVal->validate(option, "55");
-	
+
 	try
 	{
 		pVal->validate(option, "-1");
@@ -108,8 +114,10 @@ void ValidatorTest::testIntValidator()
 	}
 	catch (InvalidArgumentException& exc)
 	{
+#ifndef POCO_ENABLE_TRACE
 		std::string s(exc.message());
-		assert (s == "argument for option must be in range 0 to 100");
+		assertTrue (s == "argument for option must be in range 0 to 100");
+#endif
 	}
 
 	try
@@ -119,8 +127,10 @@ void ValidatorTest::testIntValidator()
 	}
 	catch (InvalidArgumentException& exc)
 	{
+#ifndef POCO_ENABLE_TRACE
 		std::string s(exc.message());
-		assert (s == "argument for option must be in range 0 to 100");
+		assertTrue (s == "argument for option must be in range 0 to 100");
+#endif
 	}
 
 	try
@@ -130,8 +140,10 @@ void ValidatorTest::testIntValidator()
 	}
 	catch (InvalidArgumentException& exc)
 	{
+#ifndef POCO_ENABLE_TRACE
 		std::string s(exc.message());
-		assert (s == "argument for option must be an integer");
+		assertTrue (s == "argument for option must be an integer");
+#endif
 	}
 }
 

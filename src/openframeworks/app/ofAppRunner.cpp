@@ -3,36 +3,44 @@
 #include "ofBaseApp.h"
 #include "ofAppBaseWindow.h"
 
-#ifndef TARGET_NO_SOUND
-#include "ofSoundPlayer.h"
-#include "ofSoundStream.h"
-#endif
-
-#include "ofImage.h"
-#include "ofUtils.h"
-#include "ofEvents.h"
+// IDEA BRANCH - remove this comment
+#include "ofLog.h"
 #include "ofMath.h"
-#include "ofGraphics.h"
-#include "ofGLRenderer.h"
-#include "ofGLProgrammableRenderer.h"
-#include "ofTrueTypeFont.h"
-#include "ofURLFileLoader.h"
+#include "ofGraphicsBaseTypes.h"
+#include "ofRectangle.h"
+
+// MASTER - TODO: Remove commented out code
+// #ifndef TARGET_NO_SOUND
+// #include "ofSoundPlayer.h"
+// #endif
+
+// #include "ofImage.h"
+// #include "ofTrueTypeFont.h"
+
+
 #include "ofMainLoop.h"
 
-#if !defined( TARGET_OF_IOS ) & !defined(TARGET_ANDROID) & !defined(TARGET_EMSCRIPTEN) & !defined(TARGET_RASPBERRY_PI)
+using std::shared_ptr;
+
+#if !defined(TARGET_NODISPLAY)
+	#if !defined( TARGET_OF_IOS ) & !defined(TARGET_ANDROID) & !defined(TARGET_EMSCRIPTEN) & !defined(TARGET_RASPBERRY_PI_LEGACY)
 	#include "ofAppGLFWWindow.h"
 	//special case so we preserve supplied settngs
 	//TODO: remove me when we remove the ofAppGLFWWindow setters.
 	//--------------------------------------
-	void ofSetupOpenGL(shared_ptr<ofAppGLFWWindow> windowPtr, int w, int h, ofWindowMode screenMode){
+	void ofSetupOpenGL(const shared_ptr<ofAppGLFWWindow> & windowPtr, int w, int h, ofWindowMode screenMode){
 		ofInit();
 		auto settings = windowPtr->getSettings();
-		settings.width = w;
-		settings.height = h;
+		settings.setSize(w,h);
 		settings.windowMode = screenMode;
 		ofGetMainLoop()->addWindow(windowPtr);
 		windowPtr->setup(settings);
 	}
+	#endif
+#endif
+
+#ifdef TARGET_LINUX
+#include "ofGstUtils.h"
 #endif
 
 // adding this for vc2010 compile: error C3861: 'closeQuicktime': identifier not found
@@ -47,6 +55,7 @@
 
 //--------------------------------------
 namespace{
+
     shared_ptr<ofMainLoop> & mainLoop(){
         static shared_ptr<ofMainLoop> * mainLoop(new shared_ptr<ofMainLoop>(new ofMainLoop));
         return *mainLoop;
@@ -56,6 +65,16 @@ namespace{
         static bool * initialized = new bool(false);
         return *initialized;
     }
+
+	bool & exiting(){
+		static bool * exiting = new bool(false);
+		return *exiting;
+	}
+
+	ofCoreEvents & noopEvents(){
+		static auto * noopEvents = new ofCoreEvents();
+		return *noopEvents;
+	}
 
     #if defined(TARGET_LINUX) || defined(TARGET_OSX)
         #include <signal.h>
@@ -83,13 +102,22 @@ namespace{
 }
 
 
-
 void ofExitCallback();
 void ofURLFileLoaderShutdown();
+void ofTrueTypeShutdown();
+void ofCloseFreeImage();
+
+#if defined(TARGET_ANDROID) || defined (TARGET_LINUX_ARM)
+	inline void ofSoundShutdown(){}
+#else
+	void ofSoundShutdown();
+#endif
+
 
 void ofInit(){
 	if(initialized()) return;
 	initialized() = true;
+	exiting() = false;
 
 #if defined(TARGET_ANDROID) || defined(TARGET_OF_IOS)
     // manage own exit
@@ -109,23 +137,24 @@ void ofInit(){
 	signal(SIGABRT, &ofSignalHandler);  // abort signal
 #endif
 
-        of::priv::initutils();
+    of::priv::initutils();
+    of::priv::initfileutils();
 
-	#ifdef WIN32_HIGH_RES_TIMING
-		timeBeginPeriod(1);		// ! experimental, sets high res time
-								// you need to call timeEndPeriod.
-								// if you quit the app other than "esc"
-								// (ie, close the console, kill the process, etc)
-								// at exit wont get called, and the time will
-								// remain high res, that could mess things
-								// up on your system.
-								// info here:http://www.geisswerks.com/ryan/FAQS/timing.html
-	#endif
+#ifdef WIN32_HIGH_RES_TIMING
+    timeBeginPeriod(1);		// ! experimental, sets high res time
+                            // you need to call timeEndPeriod.
+                            // if you quit the app other than "esc"
+                            // (ie, close the console, kill the process, etc)
+                            // at exit wont get called, and the time will
+                            // remain high res, that could mess things
+                            // up on your system.
+                            // info here:http://www.geisswerks.com/ryan/FAQS/timing.html
+#endif
 
 #ifdef TARGET_LINUX
 	if(std::locale().name() == "C"){
 		try{
-			std::locale::global(std::locale("C.UTF-8"));
+            std::locale::global(std::locale("C.UTF-8"));
 		}catch(...){
 			if(ofToLower(std::locale("").name()).find("utf-8")==std::string::npos){
 				ofLogWarning("ofInit") << "Couldn't set UTF-8 locale, string manipulation functions\n"
@@ -136,6 +165,11 @@ void ofInit(){
 		}
 	}
 #endif
+
+#if defined(TARGET_WIN32) && !_MSC_VER //MSYS2 UTF-8 limited support
+    setlocale(LC_ALL,"");
+    ofLogWarning("ofInit") << "MSYS2 has limited support for UTF-8. using "<< std::string( setlocale(LC_ALL,NULL) );
+#endif
 }
 
 //--------------------------------------
@@ -144,20 +178,14 @@ shared_ptr<ofMainLoop> ofGetMainLoop(){
 }
 
 //--------------------------------------
-void ofSetMainLoop(shared_ptr<ofMainLoop> newMainLoop) {
+void ofSetMainLoop(const shared_ptr<ofMainLoop> & newMainLoop) {
 	mainLoop() = newMainLoop;
 }
 
 //--------------------------------------
 int ofRunApp(ofBaseApp * OFSA){
-	return ofRunApp(shared_ptr<ofBaseApp>(OFSA));
-}
-
-//--------------------------------------
-int ofRunApp(shared_ptr<ofBaseApp> app){
-	mainLoop()->run(app);
+	mainLoop()->run(shared_ptr<ofBaseApp>(OFSA));
 	auto ret = ofRunMainLoop();
-	app.reset();
 #if !defined(TARGET_ANDROID) && !defined(TARGET_OF_IOS)
 	ofExitCallback();
 #endif
@@ -165,8 +193,18 @@ int ofRunApp(shared_ptr<ofBaseApp> app){
 }
 
 //--------------------------------------
-void ofRunApp(shared_ptr<ofAppBaseWindow> window, shared_ptr<ofBaseApp> app){
-	mainLoop()->run(window,app);
+int ofRunApp(shared_ptr<ofBaseApp> && app){
+	mainLoop()->run(std::move(app));
+	auto ret = ofRunMainLoop();
+#if !defined(TARGET_ANDROID) && !defined(TARGET_OF_IOS)
+	ofExitCallback();
+#endif
+	return ret;
+}
+
+//--------------------------------------
+void ofRunApp(const shared_ptr<ofAppBaseWindow> & window, shared_ptr<ofBaseApp> && app){
+	mainLoop()->run(window, std::move(app));
 }
 
 int ofRunMainLoop(){
@@ -185,8 +223,7 @@ void ofSetupOpenGL(int w, int h, ofWindowMode screenMode){
 	settings.glVersionMinor = 1;
 #endif
 
-	settings.width = w;
-	settings.height = h;
+	settings.setSize(w, h);
 	settings.windowMode = screenMode;
 	ofCreateWindow(settings);
 }
@@ -212,9 +249,7 @@ void ofExitCallback(){
 
 
 	// finish every library and subsystem
-	#ifndef TARGET_EMSCRIPTEN
-		ofURLFileLoaderShutdown();
-	#endif
+	ofURLFileLoaderShutdown();
 
 	#ifndef TARGET_NO_SOUND
 		//------------------------
@@ -239,22 +274,38 @@ void ofExitCallback(){
 	#endif
 
 	//------------------------
+	// try to close gstreamer
+	#ifdef TARGET_LINUX
+		ofGstUtils::quitGstMainLoop();
+	#endif
+
+	//------------------------
 	// try to close font libraries
 	ofTrueTypeShutdown();
 
 	// static deinitialization happens after this finishes
 	// every object should have ended by now and won't receive any
 	// events
-
-        of::priv::endutils();
+	of::priv::endutils();
 
 	initialized() = false;
+	exiting() = true;
 }
 
 //--------------------------------------
 // core events instance & arguments
 ofCoreEvents & ofEvents(){
-	return mainLoop()->events();
+	auto window = mainLoop()->getCurrentWindow();
+	if(window){
+		return window->events();
+	}else{
+		if(!exiting()){
+			ofLogError("ofEvents") << "Trying to call ofEvents() before a window has been setup";
+			ofLogError("ofEvents") << "We'll return a void events instance to avoid crashes but somethings might not work";
+			ofLogError("ofEvents") << "Set a breakpoint in " << __FILE__ << " line " << __LINE__ << " to check where is the wrong call";
+		}
+		return noopEvents();
+	}
 }
 
 //--------------------------------------
@@ -273,13 +324,22 @@ ofBaseApp * ofGetAppPtr(){
 }
 
 //--------------------------------------
+std::thread::id ofGetMainThreadId() {
+	return ofGetMainLoop()->get_thread_id() ;
+}
+
+bool ofIsCurrentThreadTheMainThread() {
+	return ofGetMainThreadId() == std::this_thread::get_id();
+}
+
+//--------------------------------------
 ofAppBaseWindow * ofGetWindowPtr(){
 	return mainLoop()->getCurrentWindow().get();
 }
 
 //--------------------------------------
-void ofSetAppPtr(shared_ptr<ofBaseApp> appPtr) {
-	//OFSAptr = appPtr;
+std::shared_ptr<ofAppBaseWindow> ofGetCurrentWindow() {
+	return mainLoop()->getCurrentWindow();
 }
 
 //--------------------------------------
@@ -360,13 +420,23 @@ int ofGetWindowHeight(){
 }
 
 //--------------------------------------------------
+std::string ofGetClipboardString(){
+	return mainLoop()->getCurrentWindow()->getClipboardString();
+}
+
+//--------------------------------------------------
+void ofSetClipboardString(const std::string & str){
+	mainLoop()->getCurrentWindow()->setClipboardString(str);
+}
+
+//--------------------------------------------------
 bool ofDoesHWOrientation(){
 	return mainLoop()->getCurrentWindow()->doesHWOrientation();
 }
 
 //--------------------------------------------------
-ofPoint	ofGetWindowSize() {
-	//this can't be return ofPoint(ofGetWidth(), ofGetHeight()) as width and height change based on orientation.
+glm::vec2 ofGetWindowSize() {
+	//this can't return glm::vec2(ofGetWidth(), ofGetHeight()) as width and height change based on orientation.
 	return mainLoop()->getCurrentWindow()->getWindowSize();
 }
 
@@ -386,7 +456,7 @@ ofRectangle	ofGetWindowRect() {
 }
 
 //--------------------------------------
-void ofSetWindowTitle(string title){
+void ofSetWindowTitle(std::string title){
 	mainLoop()->getCurrentWindow()->setWindowTitle(title);
 }
 
@@ -421,7 +491,7 @@ void ofSetVerticalSync(bool bSync){
 }
 
 //-------------------------- native window handles
-#if defined(TARGET_LINUX) && !defined(TARGET_RASPBERRY_PI)
+#if defined(TARGET_LINUX) && !defined(TARGET_RASPBERRY_PI_LEGACY)
 Display* ofGetX11Display(){
 	return mainLoop()->getCurrentWindow()->getX11Display();
 }

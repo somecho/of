@@ -1,8 +1,6 @@
 //
 // DialogServer.cpp
 //
-// $Id: //poco/1.4/Net/testsuite/src/DialogServer.cpp#1 $
-//
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -99,7 +97,7 @@ void DialogServer::run()
 const std::string& DialogServer::lastCommand() const
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	static const std::string EMPTY;
 	if (_lastCommands.empty())
 		return EMPTY;
@@ -110,6 +108,7 @@ const std::string& DialogServer::lastCommand() const
 
 const std::vector<std::string>& DialogServer::lastCommands() const
 {
+	FastMutex::ScopedLock lock(_mutex);
 	return _lastCommands;
 }
 
@@ -147,7 +146,7 @@ void DialogServer::addResponse(const std::string& response)
 	_nextResponses.push_back(response);
 }
 
-	
+
 void DialogServer::clearCommands()
 {
 	FastMutex::ScopedLock lock(_mutex);
@@ -155,11 +154,11 @@ void DialogServer::clearCommands()
 	_lastCommands.clear();
 }
 
-		
+
 void DialogServer::clearResponses()
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	_nextResponses.clear();
 }
 

@@ -1,8 +1,6 @@
 //
 // TaskManager.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/TaskManager.h#2 $
-//
 // Library: Foundation
 // Package: Tasks
 // Module:  Tasks
@@ -26,7 +24,6 @@
 #include "Poco/AutoPtr.h"
 #include "Poco/NotificationCenter.h"
 #include "Poco/Timestamp.h"
-#include "Poco/ThreadPool.h"
 #include <list>
 
 
@@ -34,6 +31,7 @@ namespace Poco {
 
 
 class Notification;
+class ThreadPool;
 class Exception;
 
 
@@ -49,30 +47,41 @@ class Foundation_API TaskManager
 	/// will only be sent out once in 100 milliseconds.
 {
 public:
-	typedef AutoPtr<Task>      TaskPtr;
-	typedef std::list<TaskPtr> TaskList;
+	using TaskPtr = AutoPtr<Task>;
+	using TaskList = std::list<TaskPtr>;
 
-	TaskManager(ThreadPool::ThreadAffinityPolicy affinityPolicy = ThreadPool::TAP_DEFAULT);
-		/// Creates the TaskManager, using the
-		/// default ThreadPool.
+	TaskManager(const std::string& name = "",
+		int minCapacity = 2,
+		int maxCapacity = 16,
+		int idleTime = 60,
+		int stackSize = POCO_THREAD_STACK_SIZE);
+		/// Creates the TaskManager.
 
 	TaskManager(ThreadPool& pool);
 		/// Creates the TaskManager, using the
-		/// given ThreadPool.
+		/// given ThreadPool (should be used
+		/// by this TaskManager exclusively).
 
 	~TaskManager();
 		/// Destroys the TaskManager.
 
-	void start(Task* pTask, int cpu = -1);
+	bool start(Task* pTask);
 		/// Starts the given task in a thread obtained
-		/// from the thread pool,
-		/// on specified cpu.
+		/// from the thread pool; returns true if successful.
+		///
+		/// If this method returns false, the task was cancelled
+		/// before it could be started, or it was already running;
+		/// in any case, a false return means refusal of ownership
+		/// and indicates that the task pointer may not be valid
+		/// anymore (it will only be valid if it was duplicated
+		/// prior to this call).
+		///
 		/// The TaskManager takes ownership of the Task object
-		/// and deletes it when it it finished.
+		/// and deletes it when it is finished.
 
 	void cancelAll();
 		/// Requests cancellation of all tasks.
-		
+
 	void joinAll();
 		/// Waits for the completion of all the threads
 		/// in the TaskManager's thread pool.
@@ -102,7 +111,7 @@ public:
 
 protected:
 	void postNotification(const Notification::Ptr& pNf);
-		/// Posts a notification to the task manager's 
+		/// Posts a notification to the task manager's
 		/// notification center.
 
 	void taskStarted(Task* pTask);
@@ -112,11 +121,15 @@ protected:
 	void taskFailed(Task* pTask, const Exception& exc);
 
 private:
+	using MutexT = FastMutex;
+	using ScopedLockT = MutexT::ScopedLock;
+
 	ThreadPool&        _threadPool;
+	bool               _ownPool;
 	TaskList           _taskList;
 	Timestamp          _lastProgressNotification;
 	NotificationCenter _nc;
-	mutable FastMutex  _mutex;
+	mutable MutexT     _mutex;
 
 	friend class Task;
 };
@@ -127,7 +140,7 @@ private:
 //
 inline int TaskManager::count() const
 {
-	FastMutex::ScopedLock lock(_mutex);
+	ScopedLockT lock(_mutex);
 
 	return (int) _taskList.size();
 }

@@ -1,8 +1,6 @@
 //
 // InvalidCertificateHandler.cpp
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/src/InvalidCertificateHandler.cpp#1 $
-//
 // Library: NetSSL_OpenSSL
 // Package: SSLCore
 // Module:  InvalidCertificateHandler
@@ -28,26 +26,11 @@ namespace Net {
 
 InvalidCertificateHandler::InvalidCertificateHandler(bool handleErrorsOnServerSide): _handleErrorsOnServerSide(handleErrorsOnServerSide)
 {
-	if (_handleErrorsOnServerSide)
-		SSLManager::instance().ServerVerificationError += Delegate<InvalidCertificateHandler, VerificationErrorArgs>(this, &InvalidCertificateHandler::onInvalidCertificate);
-	else
-		SSLManager::instance().ClientVerificationError += Delegate<InvalidCertificateHandler, VerificationErrorArgs>(this, &InvalidCertificateHandler::onInvalidCertificate);
 }
 
 
 InvalidCertificateHandler::~InvalidCertificateHandler()
 {
-	try
-	{
-		if (_handleErrorsOnServerSide)
-			SSLManager::instance().ServerVerificationError -= Delegate<InvalidCertificateHandler, VerificationErrorArgs>(this, &InvalidCertificateHandler::onInvalidCertificate);
-		else
-			SSLManager::instance().ClientVerificationError -= Delegate<InvalidCertificateHandler, VerificationErrorArgs>(this, &InvalidCertificateHandler::onInvalidCertificate);
-	}
-	catch (...)
-	{
-		poco_unexpected();
-	}
 }
 
 

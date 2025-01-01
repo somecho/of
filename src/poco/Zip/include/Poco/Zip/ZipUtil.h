@@ -1,18 +1,16 @@
 //
 // ZipUtil.h
 //
-// $Id: //poco/1.4/Zip/include/Poco/Zip/ZipUtil.h#1 $
-//
 // Library: Zip
 // Package: Zip
-// Module:	ZipUtil
+// Module:  ZipUtil
 //
 // Definition of the ZipUtil class.
 //
 // Copyright (c) 2007, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
-// SPDX-License-Identifier: BSL-1.0
+// SPDX-License-Identifier:	BSL-1.0
 //
 
 
@@ -31,7 +29,7 @@ namespace Poco {
 namespace Zip {
 
 
-class ZipUtil
+class Zip_API ZipUtil
 	/// A utility class used for parsing header information inside of zip files
 {
 public:
@@ -40,7 +38,7 @@ public:
 	static Poco::UInt32 get32BitValue(const char* pVal, const Poco::UInt32 pos);
 
 	static Poco::UInt64 get64BitValue(const char* pVal, const Poco::UInt32 pos);
-	
+
 	static void set16BitValue(const Poco::UInt16 val, char* pVal, const Poco::UInt32 pos);
 
 	static void set32BitValue(const Poco::UInt32 val, char* pVal, const Poco::UInt32 pos);
@@ -55,6 +53,9 @@ public:
 
 	static void sync(std::istream& in);
 		/// Searches the next valid header in the input stream, stops right before it
+
+	static void syncDataDescriptor(std::istream& in, bool force64);
+		/// Searches the next data descriptor
 
 	static void verifyZipEntryFileName(const std::string& zipPath);
 		/// Verifies that the name of the ZipEntry is a valid path

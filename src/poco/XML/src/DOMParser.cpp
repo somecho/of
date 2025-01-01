@@ -1,8 +1,6 @@
 //
 // DOMParser.cpp
 //
-// $Id: //poco/1.4/XML/src/DOMParser.cpp#1 $
-//
 // Library: XML
 // Package: DOM
 // Module:  DOMParser
@@ -30,10 +28,17 @@ const XMLString DOMParser::FEATURE_FILTER_WHITESPACE = toXMLString("http://www.a
 
 
 DOMParser::DOMParser(NamePool* pNamePool):
-	_pNamePool(pNamePool),
-	_filterWhitespace(false)
+	_pNamePool(pNamePool)
 {
 	if (_pNamePool) _pNamePool->duplicate();
+	_saxParser.setFeature(XMLReader::FEATURE_NAMESPACES, true);
+	_saxParser.setFeature(XMLReader::FEATURE_NAMESPACE_PREFIXES, true);
+}
+
+
+DOMParser::DOMParser(unsigned long namePoolSize):
+	_pNamePool(new NamePool(namePoolSize))
+{
 	_saxParser.setFeature(XMLReader::FEATURE_NAMESPACES, true);
 	_saxParser.setFeature(XMLReader::FEATURE_NAMESPACE_PREFIXES, true);
 }
@@ -86,12 +91,12 @@ Document* DOMParser::parse(const XMLString& uri)
 	if (_filterWhitespace)
 	{
 		WhitespaceFilter filter(&_saxParser);
-		DOMBuilder builder(filter, _pNamePool);
+		DOMBuilder builder(filter, _pNamePool, _maxElementDepth);
 		return builder.parse(uri);
 	}
 	else
 	{
-		DOMBuilder builder(_saxParser, _pNamePool);
+		DOMBuilder builder(_saxParser, _pNamePool, _maxElementDepth);
 		return builder.parse(uri);
 	}
 }
@@ -102,12 +107,12 @@ Document* DOMParser::parse(InputSource* pInputSource)
 	if (_filterWhitespace)
 	{
 		WhitespaceFilter filter(&_saxParser);
-		DOMBuilder builder(filter, _pNamePool);
+		DOMBuilder builder(filter, _pNamePool, _maxElementDepth);
 		return builder.parse(pInputSource);
 	}
 	else
 	{
-		DOMBuilder builder(_saxParser, _pNamePool);
+		DOMBuilder builder(_saxParser, _pNamePool, _maxElementDepth);
 		return builder.parse(pInputSource);
 	}
 }
@@ -124,12 +129,12 @@ Document* DOMParser::parseMemory(const char* xml, std::size_t size)
 	if (_filterWhitespace)
 	{
 		WhitespaceFilter filter(&_saxParser);
-		DOMBuilder builder(filter, _pNamePool);
+		DOMBuilder builder(filter, _pNamePool, _maxElementDepth);
 		return builder.parseMemoryNP(xml, size);
 	}
 	else
 	{
-		DOMBuilder builder(_saxParser, _pNamePool);
+		DOMBuilder builder(_saxParser, _pNamePool, _maxElementDepth);
 		return builder.parseMemoryNP(xml, size);
 	}
 }
@@ -144,6 +149,18 @@ EntityResolver* DOMParser::getEntityResolver() const
 void DOMParser::setEntityResolver(EntityResolver* pEntityResolver)
 {
 	_saxParser.setEntityResolver(pEntityResolver);
+}
+
+
+void DOMParser::setMaxElementDepth(std::size_t limit)
+{
+	_maxElementDepth = limit;
+}
+
+
+std::size_t DOMParser::getMaxElementDepth() const
+{
+	return _maxElementDepth;
 }
 
 

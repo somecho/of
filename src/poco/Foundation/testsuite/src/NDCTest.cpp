@@ -1,8 +1,6 @@
 //
 // NDCTest.cpp
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/NDCTest.cpp#1 $
-//
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -14,10 +12,18 @@
 #include "CppUnit/TestCaller.h"
 #include "CppUnit/TestSuite.h"
 #include "Poco/NestedDiagnosticContext.h"
+#include "Poco/ActiveThreadPool.h"
+#include "Poco/RunnableAdapter.h"
+#include "Poco/Format.h"
+#include "Poco/Path.h"
 #include <iostream>
+#include <sstream>
 
 
 using Poco::NDC;
+using Poco::ActiveThreadPool;
+using Poco::RunnableAdapter;
+using Poco::Path;
 
 
 NDCTest::NDCTest(const std::string& name): CppUnit::TestCase(name)
@@ -33,36 +39,80 @@ NDCTest::~NDCTest()
 void NDCTest::testNDC()
 {
 	NDC ndc;
-	assert (ndc.depth() == 0);
+	assertTrue (ndc.depth() == 0);
 	ndc.push("item1");
-	assert (ndc.toString() == "item1");
-	assert (ndc.depth() == 1);
+	assertTrue (ndc.toString() == "item1");
+	assertTrue (ndc.depth() == 1);
 	ndc.push("item2");
-	assert (ndc.toString() == "item1:item2");
-	assert (ndc.depth() == 2);
+	assertTrue (ndc.toString() == "item1:item2");
+	assertTrue (ndc.depth() == 2);
 	ndc.pop();
-	assert (ndc.depth() == 1);
-	assert (ndc.toString() == "item1");
+	assertTrue (ndc.depth() == 1);
+	assertTrue (ndc.toString() == "item1");
 	ndc.pop();
-	assert (ndc.depth() == 0);
+	assertTrue (ndc.depth() == 0);
 }
 
 
 void NDCTest::testNDCScope()
 {
 	poco_ndc("item1");
-	assert (NDC::current().depth() == 1);
+	auto line1 = __LINE__ - 1;
+	assertTrue (NDC::current().depth() == 1);
+
 	{
 		poco_ndc("item2");
-		assert (NDC::current().depth() == 2);
+		auto line2 = __LINE__ - 1;
+		assertTrue (NDC::current().depth() == 2);
+
 		{
 			poco_ndc("item3");
-			assert (NDC::current().depth() == 3);
-			NDC::current().dump(std::cout);
+			auto line3 = __LINE__ - 1;
+			assertTrue (NDC::current().depth() == 3);
+
+ 			std::ostringstream ostr1;
+			NDC::current().dump(ostr1);
+			assertEqual (ostr1.str(), Poco::format(
+				"\"item1\" (in \"%s\", line %d)\n"
+				"\"item2\" (in \"%s\", line %d)\n"
+				"\"item3\" (in \"%s\", line %d)",
+				std::string(__FILE__), line1,
+				std::string(__FILE__), line2,
+				std::string(__FILE__), line3));
+
+			std::ostringstream ostr2;
+			NDC::current().dump(ostr2, "\n", true);
+			std::string fileName = Path(__FILE__).getFileName();
+			assertEqual(ostr2.str(), Poco::format(
+				"\"item1\" (in \"%s\", line %d)\n"
+				"\"item2\" (in \"%s\", line %d)\n"
+				"\"item3\" (in \"%s\", line %d)",
+				fileName, line1,
+				fileName, line2,
+				fileName, line3));
 		}
-		assert (NDC::current().depth() == 2);
+		assertTrue (NDC::current().depth() == 2);
 	}
-	assert (NDC::current().depth() == 1);
+	assertTrue (NDC::current().depth() == 1);
+}
+
+
+void NDCTest::testNDCMultiThread()
+{
+	ActiveThreadPool pool;
+	RunnableAdapter<NDCTest> ra(*this, &NDCTest::runInThread);
+	for (int i = 0; i < 1000; i++)
+	{
+		pool.start(ra);
+	}
+	pool.joinAll();
+}
+
+
+void NDCTest::runInThread()
+{
+	testNDC();
+	testNDCScope();
 }
 
 
@@ -82,6 +132,7 @@ CppUnit::Test* NDCTest::suite()
 
 	CppUnit_addTest(pSuite, NDCTest, testNDC);
 	CppUnit_addTest(pSuite, NDCTest, testNDCScope);
+	CppUnit_addTest(pSuite, NDCTest, testNDCMultiThread);
 
 	return pSuite;
 }

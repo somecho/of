@@ -8,14 +8,18 @@
 #include "ofUtils.h"
 #include "ofVbo.h"
 #include "ofShader.h"
-#include "ofGLProgrammableRenderer.h"
+#include "ofGLUtils.h"
+#include "ofMesh.h"
+#include "ofGLBaseTypes.h"
 
-#include <map>
-#include <set>
+#ifdef TARGET_ANDROID
+#include "ofAppAndroidWindow.h"
+#endif
+
+using std::unordered_map;
 
 bool ofVbo::vaoSupported=true;
 bool ofVbo::vaoChecked=false;
-
 
 #ifdef TARGET_OPENGLES
 	#include <dlfcn.h>
@@ -32,8 +36,8 @@ bool ofVbo::vaoChecked=false;
 	#define glBindVertexArray								glBindVertexArrayFunc
 #endif
 
-static map<GLuint,int> & getVAOIds(){
-	static map<GLuint,int> * ids = new map<GLuint,int>;
+static unordered_map<GLuint,int> & getVAOIds(){
+	static unordered_map<GLuint,int> * ids = new unordered_map<GLuint,int>;
 	return *ids;
 }
 
@@ -52,12 +56,19 @@ static void releaseVAO(GLuint id){
 	if(getVAOIds().find(id)!=getVAOIds().end()){
 		getVAOIds()[id]--;
 		if(getVAOIds()[id]==0){
-			glDeleteVertexArrays(1, &id);
+#ifdef TARGET_ANDROID
+			if (!ofAppAndroidWindow::isSurfaceDestroyed())
+#endif
+				glDeleteVertexArrays(1, &id);
 			getVAOIds().erase(id);
 		}
 	}else{
 		ofLogWarning("ofVbo") << "releaseVAO(): something's wrong here, releasing unknown vertex array object id " << id;
-		glDeleteVertexArrays(1, &id);
+
+#ifdef TARGET_ANDROID
+		if (!ofAppAndroidWindow::isSurfaceDestroyed())
+#endif
+			glDeleteVertexArrays(1, &id);
 	}
 }
 
@@ -225,7 +236,7 @@ ofVbo::ofVbo(const ofVbo & mom){
 	normalAttribute = mom.normalAttribute;
 
 	customAttributes = mom.customAttributes;
-	
+
 	totalVerts = mom.totalVerts;
 	totalIndices = mom.totalIndices;
 	indexAttribute = mom.indexAttribute;
@@ -311,13 +322,23 @@ void ofVbo::setMesh(const ofMesh & mesh, int usage, bool useColors, bool useText
 }
 
 //--------------------------------------------------------------
+void ofVbo::setVertexData(const glm::vec3 * verts, int total, int usage) {
+	setVertexData(&verts[0].x,3,total,usage,sizeof(glm::vec3));
+}
+
+//--------------------------------------------------------------
 void ofVbo::setVertexData(const ofVec3f * verts, int total, int usage) {
-	setVertexData(&verts[0].x,3,total,usage,sizeof(ofVec3f));
+	setVertexData(&verts[0].x,3,total,usage,sizeof(glm::vec3));
+}
+
+//--------------------------------------------------------------
+void ofVbo::setVertexData(const glm::vec2 * verts, int total, int usage) {
+	setVertexData(&verts[0].x,2,total,usage,sizeof(glm::vec2));
 }
 
 //--------------------------------------------------------------
 void ofVbo::setVertexData(const ofVec2f * verts, int total, int usage) {
-	setVertexData(&verts[0].x,2,total,usage,sizeof(ofVec2f));
+	setVertexData(&verts[0].x,2,total,usage,sizeof(glm::vec2));
 }
 
 //--------------------------------------------------------------
@@ -339,27 +360,29 @@ void ofVbo::setColorData(const float * color0r, int total, int usage, int stride
 }
 
 //--------------------------------------------------------------
+void ofVbo::setNormalData(const glm::vec3 * normals, int total, int usage) {
+	setNormalData(&normals[0].x,total,usage,sizeof(glm::vec3));
+}
+
+//--------------------------------------------------------------
 void ofVbo::setNormalData(const ofVec3f * normals, int total, int usage) {
-	setNormalData(&normals[0].x,total,usage,sizeof(ofVec3f));
+	setNormalData(&normals[0].x,total,usage,sizeof(glm::vec3));
 }
 
 //--------------------------------------------------------------
 void ofVbo::setNormalData(const float * normal0x, int total, int usage, int stride) {
-	// tig: note that we set the 'Normalize' flag to true here, assuming that mesh normals need to be
-	// normalized while being uploaded to GPU memory.
-	// http://www.opengl.org/sdk/docs/man/xhtml/glVertexAttribPointer.xml
-	// Normalizing the normals on the shader is probably faster, but sending non-normalized normals is
-	// more prone to lead to artifacts difficult to diagnose, especially with the built-in 3D primitives.
-	// If you need to optimise this, and you've dug this far through the code, you are most probably
-	// able to roll your own client code for binding & rendering vbos anyway...
 	normalAttribute.setData(normal0x, 3, total, usage, stride);
-	normalAttribute.normalize = true;
 	enableNormals();
 }
 
 //--------------------------------------------------------------
+void ofVbo::setTexCoordData(const glm::vec2 * texCoords, int total, int usage) {
+	setTexCoordData(&texCoords[0].x,total, usage, sizeof(glm::vec2));
+}
+
+//--------------------------------------------------------------
 void ofVbo::setTexCoordData(const ofVec2f * texCoords, int total, int usage) {
-	setTexCoordData(&texCoords[0].x,total, usage, sizeof(ofVec2f));
+	setTexCoordData(&texCoords[0].x,total, usage, sizeof(glm::vec2));
 }
 
 //--------------------------------------------------------------
@@ -423,7 +446,6 @@ void ofVbo::setAttributeData(int location, const float * attrib0x, int numCoords
 		bUsingColors |= (location == ofShader::COLOR_ATTRIBUTE);
 		bUsingNormals |= (location == ofShader::NORMAL_ATTRIBUTE);
 		bUsingTexCoords |= (location == ofShader::TEXCOORD_ATTRIBUTE);
-		normalize = (location == ofShader::NORMAL_ATTRIBUTE);
 	}
 
 	getOrCreateAttr(location).setData(attrib0x,numCoords,total,usage,stride,normalize);
@@ -438,15 +460,24 @@ void ofVbo::setAttributeDivisor(int location, int divisor){
 
 //--------------------------------------------------------------
 void ofVbo::updateMesh(const ofMesh & mesh){
-	ofMesh * nonconstMesh = (ofMesh*)&mesh;
-	if(nonconstMesh->haveVertsChanged()) updateVertexData(mesh.getVerticesPointer(),mesh.getNumVertices());
-	if(nonconstMesh->haveColorsChanged()) updateColorData(mesh.getColorsPointer(),mesh.getNumColors());
-	if(nonconstMesh->haveNormalsChanged()) updateNormalData(mesh.getNormalsPointer(),mesh.getNumNormals());
-	if(nonconstMesh->haveTexCoordsChanged()) updateTexCoordData(mesh.getTexCoordsPointer(),mesh.getNumTexCoords());
+	updateVertexData(mesh.getVerticesPointer(),mesh.getNumVertices());
+	updateColorData(mesh.getColorsPointer(),mesh.getNumColors());
+	updateNormalData(mesh.getNormalsPointer(),mesh.getNumNormals());
+	updateTexCoordData(mesh.getTexCoordsPointer(),mesh.getNumTexCoords());
+}
+
+//--------------------------------------------------------------
+void ofVbo::updateVertexData(const glm::vec3 * verts, int total) {
+	updateVertexData(&verts[0].x,total);
 }
 
 //--------------------------------------------------------------
 void ofVbo::updateVertexData(const ofVec3f * verts, int total) {
+	updateVertexData(&verts[0].x,total);
+}
+
+//--------------------------------------------------------------
+void ofVbo::updateVertexData(const glm::vec2 * verts, int total) {
 	updateVertexData(&verts[0].x,total);
 }
 
@@ -471,6 +502,11 @@ void ofVbo::updateColorData(const float * color0r, int total) {
 }
 
 //--------------------------------------------------------------
+void ofVbo::updateNormalData(const glm::vec3 * normals, int total) {
+	updateNormalData(&normals[0].x,total);
+}
+
+//--------------------------------------------------------------
 void ofVbo::updateNormalData(const ofVec3f * normals, int total) {
 	updateNormalData(&normals[0].x,total);
 }
@@ -478,6 +514,11 @@ void ofVbo::updateNormalData(const ofVec3f * normals, int total) {
 //--------------------------------------------------------------
 void ofVbo::updateNormalData(const float * normal0x, int total) {
 	normalAttribute.updateData(0, total * normalAttribute.stride, normal0x);
+}
+
+//--------------------------------------------------------------
+void ofVbo::updateTexCoordData(const glm::vec2 * texCoords, int total) {
+	updateTexCoordData(&texCoords[0].x,total);
 }
 
 //--------------------------------------------------------------
@@ -593,12 +634,12 @@ bool ofVbo::getIsAllocated() const {
 //--------------------------------------------------------------
 bool ofVbo::getUsingVerts() const  {
 	return bUsingVerts;
-}	
+}
 
 //--------------------------------------------------------------
 bool ofVbo::getUsingColors() const {
 	return bUsingColors;
-}	
+}
 
 //--------------------------------------------------------------
 bool ofVbo::getUsingNormals() const {
@@ -662,7 +703,7 @@ void ofVbo::setVertexBuffer(ofBufferObject & buffer, int numCoords, int stride, 
 	// Calculate the total number of vertices based on what we know:
 	int tmpStride = stride;
 	if (tmpStride == 0) {
-		// if stride is not given through argument, we need to calculate it based on 
+		// if stride is not given through argument, we need to calculate it based on
 		// on the data size and the number of coordinates.
 		tmpStride = (numCoords * sizeof(float));
 		if (tmpStride == 0) {
@@ -739,6 +780,17 @@ ofBufferObject & ofVbo::getIndexBuffer(){
 
 //--------------------------------------------------------------
 ofBufferObject & ofVbo::getAttributeBuffer(int attributePos_) {
+	
+	if( attributePos_ == ofShader::POSITION_ATTRIBUTE ) {
+		return getVertexBuffer();
+	} else if( attributePos_ == ofShader::COLOR_ATTRIBUTE ) {
+		return getColorBuffer();
+	} else if( attributePos_ == ofShader::NORMAL_ATTRIBUTE ) {
+		return getNormalBuffer();
+	} else if( attributePos_ == ofShader::TEXCOORD_ATTRIBUTE ) {
+		return getTexCoordBuffer();
+	}
+	
 	return customAttributes.at(attributePos_).buffer;
 }
 
@@ -764,6 +816,16 @@ const ofBufferObject & ofVbo::getTexCoordBuffer() const{
 
 //--------------------------------------------------------------
 const ofBufferObject & ofVbo::getAttributeBuffer(int attributePos_) const{
+	if( attributePos_ == ofShader::POSITION_ATTRIBUTE ) {
+		return getVertexBuffer();
+	} else if( attributePos_ == ofShader::COLOR_ATTRIBUTE ) {
+		return getColorBuffer();
+	} else if( attributePos_ == ofShader::NORMAL_ATTRIBUTE ) {
+		return getNormalBuffer();
+	} else if( attributePos_ == ofShader::TEXCOORD_ATTRIBUTE ) {
+		return getTexCoordBuffer();
+	}
+	
 	return customAttributes.at(attributePos_).buffer;
 }
 
@@ -778,7 +840,7 @@ void ofVbo::bind() const{
 	bool programmable = ofIsGLProgrammableRenderer();
 	if(programmable && (vaoSupported || !vaoChecked)){
 		if(vaoID==0){
-			#ifdef TARGET_OPENGLES
+			#if defined(TARGET_OPENGLES) && !defined(TARGET_EMSCRIPTEN)
 			if(glGenVertexArrays==0 && !vaoChecked){
 				glGenVertexArrays = (glGenVertexArraysType)dlsym(RTLD_DEFAULT, "glGenVertexArrays");
 				glDeleteVertexArrays = (glDeleteVertexArraysType)dlsym(RTLD_DEFAULT, "glDeleteVertexArrays");
@@ -786,9 +848,12 @@ void ofVbo::bind() const{
 				vaoChecked = true;
 				vaoSupported = glGenVertexArrays;
 			}
+			#elif  defined(TARGET_EMSCRIPTEN)
+				vaoChecked = true;
+				vaoSupported = false;
 			#else
-			vaoChecked = true;
-			vaoSupported = true;
+				vaoChecked = true;
+				vaoSupported = true;
 			#endif
 			if(vaoSupported) glGenVertexArrays(1, &const_cast<ofVbo*>(this)->vaoID);
 			if(vaoID!=0){
@@ -864,12 +929,12 @@ void ofVbo::bind() const{
 		}else if(programmable){
 			texCoordAttribute.disable();
 		}
-        
+
         if (bUsingIndices) {
             indexAttribute.bind();
         }
 
-		map<int,VertexAttribute>::const_iterator it;
+		unordered_map<int,VertexAttribute>::const_iterator it;
 		for(it = customAttributes.begin();it!=customAttributes.end();it++){
 			it->second.enable();
 		}
@@ -924,12 +989,12 @@ void ofVbo::drawElementsInstanced(int drawMode, int amt, int primCount) const{
 void ofVbo::clear(){
 
 	// clear all fixed function attributes
-	
+
 	clearVertices();
 	clearColors();
 	clearNormals();
 	clearTexCoords();
-	
+
 	// we're not using any of these.
 	bUsingVerts = false;
 	bUsingColors = false;
@@ -938,7 +1003,7 @@ void ofVbo::clear(){
 
 	// clear all custom attributes.
 	customAttributes.clear();
-	
+
 	clearIndices();
 	if(vaoID!=0){
 		releaseVAO(vaoID);
@@ -967,7 +1032,7 @@ void ofVbo::clearColors(){
 	colorAttribute = VertexAttribute();
 	colorAttribute.location = ofShader::COLOR_ATTRIBUTE;
 	bUsingColors = false;
-	
+
 }
 
 //--------------------------------------------------------------
@@ -991,7 +1056,7 @@ void ofVbo::clearIndices(){
 void ofVbo::clearAttribute(int attributePos_){
 
 	if (!hasAttribute(attributePos_)) return;
-	
+
 	if (ofIsGLProgrammableRenderer()) {
 		if(attributePos_>3){
 			customAttributes.erase(attributePos_);

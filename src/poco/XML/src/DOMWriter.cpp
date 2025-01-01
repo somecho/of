@@ -1,8 +1,6 @@
 //
 // DOMWriter.cpp
 //
-// $Id: //poco/1.4/XML/src/DOMWriter.cpp#1 $
-//
 // Library: XML
 // Package: DOM
 // Module:  DOMWriter
@@ -79,7 +77,7 @@ void DOMWriter::writeNode(XMLByteOutputStream& ostr, const Node* pNode)
 	XMLWriter writer(ostr, _options, _encodingName, _pTextEncoding);
 	writer.setNewLine(_newLine);
 	writer.setIndent(_indent);
-	
+
 	DOMSerializer serializer;
 	serializer.setContentHandler(&writer);
 	serializer.setDTDHandler(&writer);
@@ -95,7 +93,7 @@ void DOMWriter::writeNode(const std::string& systemId, const Node* pNode)
 	Poco::FileOutputStream ostr(systemId);
 	if (ostr.good())
 		writeNode(ostr, pNode);
-	else 
+	else
 		throw Poco::CreateFileException(systemId);
 }
 

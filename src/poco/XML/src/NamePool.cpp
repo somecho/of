@@ -1,8 +1,6 @@
 //
 // NamePool.cpp
 //
-// $Id: //poco/1.4/XML/src/NamePool.cpp#1 $
-//
 // Library: XML
 // Package: XML
 // Module:  NamePool
@@ -16,6 +14,7 @@
 
 #include "Poco/XML/NamePool.h"
 #include "Poco/Exception.h"
+#include "Poco/Random.h"
 
 
 namespace Poco {
@@ -28,11 +27,11 @@ public:
 	NamePoolItem(): _used(false)
 	{
 	}
-	
+
 	~NamePoolItem()
 	{
 	}
-	
+
 	bool set(const XMLString& qname, const XMLString& namespaceURI, const XMLString& localName)
 	{
 		if (!_used)
@@ -43,30 +42,35 @@ public:
 		}
 		else return _name.equals(qname, namespaceURI, localName);
 	}
-	
+
 	const Name& get() const
 	{
 		return _name;
 	}
-	
+
 	bool used() const
 	{
 		return _used;
 	}
-	
+
 private:
 	Name _name;
 	bool _used;
 };
 
 
-NamePool::NamePool(unsigned long size): 
+NamePool::NamePool(unsigned long size):
 	_size(size),
+	_salt(0),
 	_rc(1)
 {
 	poco_assert (size > 1);
 
 	_pItems = new NamePoolItem[size];
+
+	Poco::Random rnd;
+	rnd.seed();
+	_salt = rnd.next();
 }
 
 
@@ -92,11 +96,11 @@ void NamePool::release()
 const Name& NamePool::insert(const XMLString& qname, const XMLString& namespaceURI, const XMLString& localName)
 {
 	unsigned long i = 0;
-	unsigned long n = hash(qname, namespaceURI, localName) % _size;
+	unsigned long n = (hash(qname, namespaceURI, localName) ^ _salt) % _size;
 
-	while (!_pItems[n].set(qname, namespaceURI, localName) && i++ < _size) 
+	while (!_pItems[n].set(qname, namespaceURI, localName) && i++ < _size)
 		n = (n + 1) % _size;
-		
+
 	if (i > _size) throw Poco::PoolOverflowException("XML name pool");
 
 	return _pItems[n].get();

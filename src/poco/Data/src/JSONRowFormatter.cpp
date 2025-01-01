@@ -1,8 +1,6 @@
 //
 // JSONRowFormatter.cpp
 //
-// $Id: //poco/Main/Data/src/JSONRowFormatter.cpp#1 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  JSONRowFormatter
@@ -42,7 +40,6 @@ JSONRowFormatter::JSONRowFormatter(int mode) : RowFormatter("{", "]}"),
 	{
 		mode |= JSON_FMT_MODE_ROW_COUNT;
 		mode |= JSON_FMT_MODE_COLUMN_NAMES;
-		//setPostfix("]}");
 	}
 
 	setJSONMode(mode);
@@ -54,7 +51,7 @@ JSONRowFormatter::~JSONRowFormatter()
 }
 
 
-void JSONRowFormatter::adjustPrefix()
+void JSONRowFormatter::adjustPrefix() const
 {
 	if (printRowCount())
 	{
@@ -86,8 +83,6 @@ void JSONRowFormatter::setJSONMode(int mode)
 	{
 		_mode |= JSON_FMT_MODE_ROW_COUNT;
 	}
-
-	adjustPrefix();
 }
 
 
@@ -165,6 +160,7 @@ std::string& JSONRowFormatter::formatValues(const ValueVec& vals, std::string& f
 
 std::string& JSONRowFormatter::formatNames(const NameVecPtr pNames, std::string& formattedNames)
 {
+	//adjustPrefix();
 	if (isFull())
 	{
 		// names are used in formatValues

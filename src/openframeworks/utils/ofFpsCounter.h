@@ -1,5 +1,7 @@
 #pragma once
 
+// ofTime only
+#include "ofUtils.h"
 #include "ofConstants.h"
 #include <queue>
 
@@ -19,12 +21,17 @@ public:
 	uint64_t getNumFrames() const;
 	uint64_t getLastFrameNanos() const;
 	double getLastFrameSecs() const;
+	uint64_t getLastFrameFilteredNanos() const;
+	double getLastFrameFilteredSecs() const;
+	void setFilterAlpha(float alpha);
 
 private:
 	void update(double now);
 	uint64_t nFrameCount;
-	uint64_t secsThen, nanosThen;
+	ofTime then;
 	double fps;
-	uint64_t lastFrameTime;
-	queue<double> timestamps;
+	std::chrono::nanoseconds lastFrameTime;
+	std::chrono::nanoseconds filteredTime;
+	double filterAlpha;
+	std::queue<double> timestamps;
 };

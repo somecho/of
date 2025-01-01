@@ -1,8 +1,6 @@
 //
 // EchoServer.cpp
 //
-// $Id: //poco/1.4/Net/testsuite/src/EchoServer.cpp#1 $
-//
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -11,6 +9,7 @@
 
 
 #include "EchoServer.h"
+#include "Poco/Net/ServerSocket.h"
 #include "Poco/Net/StreamSocket.h"
 #include "Poco/Net/SocketAddress.h"
 #include "Poco/Timespan.h"
@@ -25,7 +24,30 @@ using Poco::Net::SocketAddress;
 EchoServer::EchoServer():
 	_socket(SocketAddress()),
 	_thread("EchoServer"),
-	_stop(false)
+	_stop(false),
+	_done(false)
+{
+	_thread.start(*this);
+	_ready.wait();
+}
+
+
+EchoServer::EchoServer(const Poco::Net::SocketAddress& address):
+	_socket(address),
+	_thread("EchoServer"),
+	_stop(false),
+	_done(false)
+{
+	_thread.start(*this);
+	_ready.wait();
+}
+
+
+EchoServer::EchoServer(const Poco::Net::ServerSocket& sock):
+	_socket(sock),
+	_thread("EchoServer"),
+	_stop(false),
+	_done(false)
 {
 	_thread.start(*this);
 	_ready.wait();
@@ -62,13 +84,32 @@ void EchoServer::run()
 				{
 					ss.sendBytes(buffer, n);
 					n = ss.receiveBytes(buffer, sizeof(buffer));
+					if (n == 0)
+					{
+						_stop = true;
+						break;
+					}
 				}
 			}
 			catch (Poco::Exception& exc)
 			{
 				std::cerr << "EchoServer: " << exc.displayText() << std::endl;
 			}
+			ss.close();
 		}
 	}
+	_socket.close();
+	_done = true;
 }
 
+
+void EchoServer::stop()
+{
+	_stop = true;
+}
+
+
+bool EchoServer::done()
+{
+	return _done;
+}

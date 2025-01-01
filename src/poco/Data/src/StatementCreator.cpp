@@ -1,8 +1,6 @@
 //
 // StatementCreator.cpp
 //
-// $Id: //poco/Main/Data/src/StatementCreator.cpp#4 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  StatementCreator
@@ -39,6 +37,13 @@ StatementCreator::StatementCreator(const StatementCreator& other):
 }
 
 
+StatementCreator::StatementCreator(StatementCreator&& other) noexcept:
+	_ptrImpl(std::move(other._ptrImpl))
+{
+	other._ptrImpl = nullptr;
+}
+
+
 StatementCreator& StatementCreator::operator = (const StatementCreator& other)
 {
 	StatementCreator tmp(other);
@@ -47,10 +52,11 @@ StatementCreator& StatementCreator::operator = (const StatementCreator& other)
 }
 
 
-void StatementCreator::swap(StatementCreator& other)
+StatementCreator& StatementCreator::operator = (StatementCreator&& other) noexcept
 {
-	using std::swap;
-	swap(_ptrImpl, other._ptrImpl);
+	_ptrImpl = std::move(other._ptrImpl);
+	other._ptrImpl = nullptr;
+	return *this;
 }
 
 

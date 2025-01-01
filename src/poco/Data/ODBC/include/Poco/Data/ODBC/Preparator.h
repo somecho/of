@@ -1,10 +1,8 @@
 //
 // Preparator.h
 //
-// $Id: //poco/Main/Data/ODBC/include/Poco/Data/ODBC/Preparator.h#5 $
-//
-// Library: Data
-// Package: DataCore
+// Library: Data/ODBC
+// Package: ODBC
 // Module:  Preparator
 //
 // Definition of the Preparator class.
@@ -20,15 +18,16 @@
 #define Data_ODBC_Preparator_INCLUDED
 
 
-#include "Poco/Data/Constants.h"
 #include "Poco/Data/ODBC/ODBC.h"
 #include "Poco/Data/ODBC/Handle.h"
 #include "Poco/Data/ODBC/ODBCMetaColumn.h"
 #include "Poco/Data/ODBC/Utility.h"
 #include "Poco/Data/AbstractPreparator.h"
+#include "Poco/Data/Constants.h"
 #include "Poco/Data/LOB.h"
+#include "Poco/Types.h"
 #include "Poco/Any.h"
-#include "Poco/DynamicAny.h"
+#include "Poco/Dynamic/Var.h"
 #include "Poco/DateTime.h"
 #include "Poco/SharedPtr.h"
 #include "Poco/UTFString.h"
@@ -51,13 +50,13 @@ namespace ODBC {
 
 
 class ODBC_API Preparator : public AbstractPreparator
-	/// Class used for database preparation where we first have to register all data types 
-	/// with respective memory output locations before extracting data. 
+	/// Class used for database preparation where we first have to register all data types
+	/// with respective memory output locations before extracting data.
 	/// Extraction works in two-phases: first prepare is called once, then extract n-times.
-	/// In ODBC, SQLBindCol/SQLFetch is the preferred method of data retrieval (SQLGetData is available, 
-	/// however with numerous driver implementation dependent limitations and inferior performance). 
-	/// In order to fit this functionality into Poco DataConnectors framework, every ODBC SQL statement 
-	/// instantiates its own Preparator object. 
+	/// In ODBC, SQLBindCol/SQLFetch is the preferred method of data retrieval (SQLGetData is available,
+	/// however with numerous driver implementation dependent limitations and inferior performance).
+	/// In order to fit this functionality into Poco DataConnectors framework, every ODBC SQL statement
+	/// instantiates its own Preparator object.
 	/// This is done once per statement execution (from StatementImpl::bindImpl()).
 	///
 	/// Preparator object is used to :
@@ -71,7 +70,7 @@ class ODBC_API Preparator : public AbstractPreparator
 	/// - Value datatypes in this interface prepare() calls serve only for the purpose of type distinction.
 	/// - Preparator keeps its own std::vector<Any> buffer for fetched data to be later retrieved by Extractor.
 	/// - prepare() methods should not be called when extraction mode is DE_MANUAL
-	/// 
+	///
 {
 public:
 	typedef std::vector<char*> CharArray;
@@ -98,8 +97,8 @@ public:
 		DT_DATETIME
 	};
 
-	Preparator(const StatementHandle& rStmt, 
-		const std::string& statement, 
+	Preparator(const StatementHandle& rStmt,
+		const std::string& statement,
 		std::size_t maxFieldSize,
 		DataExtraction dataExtraction = DE_BOUND);
 		/// Creates the Preparator.
@@ -206,7 +205,7 @@ public:
 	void prepare(std::size_t pos, const std::list<Poco::UInt64>& val);
 		/// Prepares an UInt64 list.
 
-#ifndef POCO_LONG_IS_64_BIT
+#ifndef POCO_INT64_IS_LONG
 	void prepare(std::size_t pos, const long& val);
 		/// Prepares a long.
 
@@ -355,6 +354,9 @@ public:
 	void prepare(std::size_t pos, const std::list<Poco::DateTime>& val);
 		/// Prepares a DateTime list.
 
+	void prepare(std::size_t pos, const Poco::UUID& val);
+		/// Prepares a UUID.
+
 	void prepare(std::size_t pos, const Poco::Any& val);
 		/// Prepares an Any.
 
@@ -367,17 +369,17 @@ public:
 	void prepare(std::size_t pos, const std::list<Poco::Any>& val);
 		/// Prepares an Any list.
 
-	void prepare(std::size_t pos, const Poco::DynamicAny& val);
-		/// Prepares a DynamicAny.
+	void prepare(std::size_t pos, const Poco::Dynamic::Var& val);
+		/// Prepares a Dynamic::Var.
 
-	void prepare(std::size_t pos, const std::vector<Poco::DynamicAny>& val);
-		/// Prepares a DynamicAny vector.
+	void prepare(std::size_t pos, const std::vector<Poco::Dynamic::Var>& val);
+		/// Prepares a Dynamic::Var vector.
 
-	void prepare(std::size_t pos, const std::deque<Poco::DynamicAny>& val);
-		/// Prepares a DynamicAny deque.
+	void prepare(std::size_t pos, const std::deque<Poco::Dynamic::Var>& val);
+		/// Prepares a Dynamic::Var deque.
 
-	void prepare(std::size_t pos, const std::list<Poco::DynamicAny>& val);
-		/// Prepares a DynamicAny list.
+	void prepare(std::size_t pos, const std::list<Poco::Dynamic::Var>& val);
+		/// Prepares a Dynamic::Var list.
 
 	std::size_t columns() const;
 		/// Returns the number of columns.
@@ -397,12 +399,12 @@ public:
 
 	std::size_t maxDataSize(std::size_t pos) const;
 		/// Returns max supported size for column at position pos.
-		/// Returned length for variable length fields is the one 
+		/// Returned length for variable length fields is the one
 		/// supported by this implementation, not the underlying DB.
 
 	std::size_t actualDataSize(std::size_t col, std::size_t row = POCO_DATA_INVALID_ROW) const;
-		/// Returns the returned length for the column and row specified. 
-		/// This is usually equal to the column size, except for 
+		/// Returns the returned length for the column and row specified.
+		/// This is usually equal to the column size, except for
 		/// variable length fields (BLOB and variable length strings).
 		/// For null values, the return value is -1 (SQL_NO_DATA)
 
@@ -427,7 +429,7 @@ private:
 
 	template <typename C>
 	void prepareImpl(std::size_t pos, const C* pVal = 0)
-		/// Utility function to prepare Any and DynamicAny.
+		/// Utility function to prepare Any and Dynamic::Var.
 	{
 		ODBCMetaColumn col(_rStmt, pos);
 
@@ -437,7 +439,7 @@ private:
 				if (pVal)
 					return prepareFixedSize<Poco::Int8>(pos, SQL_C_STINYINT, pVal->size());
 				else
-					return prepareFixedSize<Poco::Int8>(pos, SQL_C_STINYINT); 
+					return prepareFixedSize<Poco::Int8>(pos, SQL_C_STINYINT);
 
 			case MetaColumn::FDT_UINT8:
 				if (pVal)
@@ -550,7 +552,13 @@ private:
 				else
 					return prepareFixedSize<DateTime>(pos, SQL_C_TYPE_TIMESTAMP);
 
-			default: 
+			case MetaColumn::FDT_UUID:
+				if (pVal)
+					return prepareFixedSize<DateTime>(pos, SQL_C_BINARY, 16);
+				else
+					return prepareFixedSize<DateTime>(pos, SQL_C_BINARY);
+
+			default:
 				throw DataFormatException("Unsupported data type.");
 		}
 	}
@@ -569,14 +577,14 @@ private:
 		_values[pos] = Poco::Any(T());
 
 		T* pVal = AnyCast<T>(&_values[pos]);
-		if (Utility::isError(SQLBindCol(_rStmt, 
-			(SQLUSMALLINT) pos + 1, 
-			valueType, 
-			(SQLPOINTER) pVal,  
-			(SQLINTEGER) dataSize, 
+		if (Utility::isError(SQLBindCol(_rStmt,
+			(SQLUSMALLINT) pos + 1,
+			valueType,
+			(SQLPOINTER) pVal,
+			(SQLINTEGER) dataSize,
 			&_lengths[pos])))
 		{
-			throw StatementException(_rStmt, "SQLBindCol()");
+			throw StatementException(_rStmt, "ODBC::Preparator::prepareFixedSize():SQLBindCol()");
 		}
 	}
 
@@ -595,17 +603,17 @@ private:
 		poco_assert (0 == _lenLengths[pos].size());
 		_lenLengths[pos].resize(length);
 
-		std::vector<T>& cache = RefAnyCast<std::vector<T> >(_values[pos]);
+		std::vector<T>& cache = RefAnyCast<std::vector<T>>(_values[pos]);
 		cache.resize(length);
 
-		if (Utility::isError(SQLBindCol(_rStmt, 
-			(SQLUSMALLINT) pos + 1, 
-			valueType, 
-			(SQLPOINTER) &cache[0], 
-			(SQLINTEGER) dataSize, 
+		if (Utility::isError(SQLBindCol(_rStmt,
+			(SQLUSMALLINT) pos + 1,
+			valueType,
+			(SQLPOINTER) &cache[0],
+			(SQLINTEGER) dataSize,
 			&_lenLengths[pos][0])))
 		{
-			throw StatementException(_rStmt, "SQLBindCol()");
+			throw StatementException(_rStmt, "ODBC::Preparator::prepareFixedSize():SQLBindCol()");
 		}
 	}
 
@@ -616,21 +624,21 @@ private:
 		poco_assert (DE_BOUND == _dataExtraction);
 		poco_assert (pos < _values.size());
 
-		T* pCache = new T[size]; 
+		T* pCache = new T[size];
 		std::memset(pCache, 0, size);
 
 		_values[pos] = Any(pCache);
 		_lengths[pos] = (SQLLEN) size;
 		_varLengthArrays.insert(IndexMap::value_type(pos, dt));
 
-		if (Utility::isError(SQLBindCol(_rStmt, 
-			(SQLUSMALLINT) pos + 1, 
-			valueType, 
-			(SQLPOINTER) pCache, 
-			(SQLINTEGER) size, 
+		if (Utility::isError(SQLBindCol(_rStmt,
+			(SQLUSMALLINT) pos + 1,
+			valueType,
+			(SQLPOINTER) pCache,
+			(SQLINTEGER) size*sizeof(T),
 			&_lengths[pos])))
 		{
-			throw StatementException(_rStmt, "SQLBindCol()");
+			throw StatementException(_rStmt, "ODBC::Preparator::prepareVariableLen():SQLBindCol()");
 		}
 	}
 
@@ -650,14 +658,14 @@ private:
 		_lenLengths[pos].resize(length);
 		_varLengthArrays.insert(IndexMap::value_type(pos, DT));
 
-		if (Utility::isError(SQLBindCol(_rStmt, 
-			(SQLUSMALLINT) pos + 1, 
-			valueType, 
-			(SQLPOINTER) pArray, 
-			(SQLINTEGER) size, 
+		if (Utility::isError(SQLBindCol(_rStmt,
+			(SQLUSMALLINT) pos + 1,
+			valueType,
+			(SQLPOINTER) pArray,
+			(SQLINTEGER) size,
 			&_lenLengths[pos][0])))
 		{
-			throw StatementException(_rStmt, "SQLBindCol()");
+			throw StatementException(_rStmt, "ODBC::Preparator::prepareCharArray():SQLBindCol()");
 		}
 	}
 
@@ -879,7 +887,7 @@ inline void Preparator::prepare(std::size_t pos, const std::list<Poco::UInt64>& 
 }
 
 
-#ifndef POCO_LONG_IS_64_BIT
+#ifndef POCO_INT64_IS_LONG
 inline void Preparator::prepare(std::size_t pos, const long&)
 {
 	prepareFixedSize<long>(pos, SQL_C_SLONG);
@@ -888,7 +896,7 @@ inline void Preparator::prepare(std::size_t pos, const long&)
 
 inline void Preparator::prepare(std::size_t pos, const unsigned long&)
 {
-	prepareFixedSize<long>(pos, SQL_C_SLONG);
+	prepareFixedSize<unsigned long>(pos, SQL_C_ULONG);
 }
 
 
@@ -1033,7 +1041,7 @@ inline void Preparator::prepare(std::size_t pos, const std::list<std::string>& v
 
 inline void Preparator::prepare(std::size_t pos, const UTF16String&)
 {
-	prepareVariableLen<UTF16String::value_type>(pos, SQL_C_WCHAR, maxDataSize(pos), DT_CHAR);
+	prepareVariableLen<UTF16String::value_type>(pos, SQL_C_WCHAR, maxDataSize(pos), DT_WCHAR);
 }
 
 
@@ -1175,6 +1183,12 @@ inline void Preparator::prepare(std::size_t pos, const std::list<Poco::DateTime>
 }
 
 
+inline void Preparator::prepare(std::size_t pos, const Poco::UUID&)
+{
+	prepareCharArray<char, DT_CHAR_ARRAY>(pos, SQL_C_BINARY, 16, 16);
+}
+
+
 inline void Preparator::prepare(std::size_t pos, const Poco::Any& val)
 {
 	prepareImpl<std::vector<Poco::Any> >(pos);
@@ -1199,27 +1213,27 @@ inline void Preparator::prepare(std::size_t pos, const std::list<Poco::Any>& val
 }
 
 
-inline void Preparator::prepare(std::size_t pos, const Poco::DynamicAny& val)
+inline void Preparator::prepare(std::size_t pos, const Poco::Dynamic::Var& val)
 {
-	prepareImpl<std::vector<Poco::DynamicAny> >(pos);
+	prepareImpl<std::vector<Poco::Dynamic::Var> >(pos);
 }
 
 
-inline void Preparator::prepare(std::size_t pos, const std::vector<Poco::DynamicAny>& val)
+inline void Preparator::prepare(std::size_t pos, const std::vector<Poco::Dynamic::Var>& val)
 {
-	prepareImpl<std::vector<Poco::DynamicAny> >(pos, &val);
+	prepareImpl<std::vector<Poco::Dynamic::Var> >(pos, &val);
 }
 
 
-inline void Preparator::prepare(std::size_t pos, const std::deque<Poco::DynamicAny>& val)
+inline void Preparator::prepare(std::size_t pos, const std::deque<Poco::Dynamic::Var>& val)
 {
-	prepareImpl<std::deque<Poco::DynamicAny> >(pos, &val);
+	prepareImpl<std::deque<Poco::Dynamic::Var> >(pos, &val);
 }
 
 
-inline void Preparator::prepare(std::size_t pos, const std::list<Poco::DynamicAny>& val)
+inline void Preparator::prepare(std::size_t pos, const std::list<Poco::Dynamic::Var>& val)
 {
-	prepareImpl<std::list<Poco::DynamicAny> >(pos, &val);
+	prepareImpl<std::list<Poco::Dynamic::Var> >(pos, &val);
 }
 
 

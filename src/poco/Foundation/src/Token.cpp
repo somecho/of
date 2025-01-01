@@ -1,8 +1,6 @@
 //
 // Token.cpp
 //
-// $Id: //poco/1.4/Foundation/src/Token.cpp#1 $
-//
 // Library: Foundation
 // Package: Streams
 // Module:  StringTokenizer
@@ -49,7 +47,7 @@ Token::Class Token::tokenClass() const
 	return INVALID_TOKEN;
 }
 
-		
+
 std::string Token::asString() const
 {
 	return _value;

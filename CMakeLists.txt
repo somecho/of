@@ -116,7 +116,7 @@ message(STATUS "PKG_CONFIG_LIBDIR: "  $ENV{PKG_CONFIG_LIBDIR})
 message(STATUS "PKG_CONFIG_SYSROOT_DIR: " $ENV{PKG_CONFIG_SYSROOT_DIR})
 
 if(NOT CMAKE_BUILD_TYPE)
-   set(CMAKE_BUILD_TYPE Release)
+  set(CMAKE_BUILD_TYPE Release)
 endif()
 
 include(TargetArch)
@@ -124,9 +124,9 @@ include(TargetArch)
 target_architecture(TARGET_ARCH)
 
 if( ( TARGET_ARCH MATCHES "x86_64" OR TARGET_ARCH MATCHES "ia64" ) AND NOT OF_32BIT)
-   set(ARCH_BIT 64)
+  set(ARCH_BIT 64)
 else()
-   set(ARCH_BIT 32)
+  set(ARCH_BIT 32)
 endif()
 
 #// Include directories ////////////////////////////////////////////////////////
@@ -212,7 +212,6 @@ set(OPENFRAMEWORKS_SOURCES
     "${OF_ROOT_DIR}/src/openframeworks/3d/of3dUtils.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/3d/ofCamera.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/3d/ofEasyCam.cpp"
-    "${OF_ROOT_DIR}/src/openframeworks/3d/ofMesh.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/3d/ofNode.cpp"
 
     "${OF_ROOT_DIR}/src/openframeworks/app/ofAppNoWindow.cpp"
@@ -243,7 +242,6 @@ set(OPENFRAMEWORKS_SOURCES
     "${OF_ROOT_DIR}/src/openframeworks/graphics/ofImage.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/graphics/ofPath.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/graphics/ofPixels.cpp"
-    "${OF_ROOT_DIR}/src/openframeworks/graphics/ofPolyline.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/graphics/ofRendererCollection.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/graphics/ofTessellator.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/graphics/ofTrueTypeFont.cpp"
@@ -285,7 +283,6 @@ endif()
 
 if(OF_AUDIO)
   list(APPEND OPENFRAMEWORKS_SOURCES
-    "${OF_ROOT_DIR}/src/openframeworks/sound/ofBaseSoundStream.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/sound/ofOpenALSoundPlayer.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/sound/ofRtAudioSoundStream.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/sound/ofSoundBuffer.cpp"
@@ -300,20 +297,20 @@ if(OF_VIDEO)
     "${OF_ROOT_DIR}/src/openframeworks/video/ofVideoPlayer.cpp"
   )
   if(CMAKE_SYSTEM MATCHES Linux)
-  list(APPEND OPENFRAMEWORKS_SOURCES
+    list(APPEND OPENFRAMEWORKS_SOURCES
     "${OF_ROOT_DIR}/src/openframeworks/video/ofGstUtils.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/video/ofGstVideoGrabber.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/video/ofGstVideoPlayer.cpp"
   )
   elseif(CMAKE_SYSTEM MATCHES Darwin)
-  list(APPEND OPENFRAMEWORKS_SOURCES
+    list(APPEND OPENFRAMEWORKS_SOURCES
     "${OF_ROOT_DIR}/src/openframeworks/video/ofAVFoundationPlayer.mm"
     "${OF_ROOT_DIR}/src/openframeworks/video/ofAVFoundationVideoPlayer.m"
     "${OF_ROOT_DIR}/src/openframeworks/video/ofAVFoundationGrabber.mm"
     "${OF_ROOT_DIR}/src/openframeworks/video/ofQTKitGrabber.mm"
   )
   elseif(CMAKE_SYSTEM MATCHES Windows)
-  list(APPEND OPENFRAMEWORKS_SOURCES
+    list(APPEND OPENFRAMEWORKS_SOURCES
     "${OF_ROOT_DIR}/src/openframeworks/video/ofDirectShowGrabber.cpp"
     "${OF_ROOT_DIR}/src/openframeworks/video/ofDirectShowPlayer.cpp"
   )
@@ -458,7 +455,7 @@ set(FREEIMAGE_SOURCES
     "${OF_ROOT_DIR}/src/freeimage/Source/LibJPEG/jquant2.c"
     "${OF_ROOT_DIR}/src/freeimage/Source/LibJPEG/jutils.c"
     "${OF_ROOT_DIR}/src/freeimage/Source/LibJPEG/transupp.c"
-    
+
     "${OF_ROOT_DIR}/src/freeimage/Source/LibJXR/image/decode/decode.c"
     "${OF_ROOT_DIR}/src/freeimage/Source/LibJXR/image/decode/JXRTranscode.c"
     "${OF_ROOT_DIR}/src/freeimage/Source/LibJXR/image/decode/postprocess.c"
@@ -520,11 +517,7 @@ set(FREEIMAGE_SOURCES
     "${OF_ROOT_DIR}/src/freeimage/Source/LibPNG/pngwtran.c"
     "${OF_ROOT_DIR}/src/freeimage/Source/LibPNG/pngwutil.c"
 
-    "${OF_ROOT_DIR}/src/freeimage/Source/LibRawLite/internal/dcraw_common.cpp"
-    "${OF_ROOT_DIR}/src/freeimage/Source/LibRawLite/internal/dcraw_fileio.cpp"
-    "${OF_ROOT_DIR}/src/freeimage/Source/LibRawLite/internal/demosaic_packs.cpp"
     "${OF_ROOT_DIR}/src/freeimage/Source/LibRawLite/src/libraw_c_api.cpp"
-    "${OF_ROOT_DIR}/src/freeimage/Source/LibRawLite/src/libraw_cxx.cpp"
     "${OF_ROOT_DIR}/src/freeimage/Source/LibRawLite/src/libraw_datastream.cpp"
 
     "${OF_ROOT_DIR}/src/freeimage/Source/LibTIFF4/tif_aux.c"
@@ -805,19 +798,19 @@ set(LIBTESS2_SOURCES
 )
 
 if(CMAKE_SYSTEM MATCHES Windows)
-set(VIDEOINPUT_SOURCES
+  set(VIDEOINPUT_SOURCES
   "${OF_ROOT_DIR}/src/videoinput/videoInput.cpp"
 )
 endif()
 
 if(OF_AUDIO)
-set(RTAUDIO_SOURCES
+  set(RTAUDIO_SOURCES
     "${OF_ROOT_DIR}/src/rtaudio/RtAudio.cpp"
 )
 endif()
 
 if(ARCH_BIT MATCHES 64)
-set(GLEW_SOURCES
+  set(GLEW_SOURCES
     "${OF_ROOT_DIR}/src/glew/src/glew.c"
 )
 endif()
@@ -826,15 +819,15 @@ endif()
 
 if(CMAKE_SYSTEM MATCHES Linux)
 
-    if(OF_STATIC)
-      set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-linux/release-${TARGET_ARCH}-${ARCH_BIT}")
-      set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-linux/debug-${TARGET_ARCH}-${ARCH_BIT}")
-    else()
-      set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-linux/release-${TARGET_ARCH}-${ARCH_BIT}")
-      set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-linux/debug-${TARGET_ARCH}-${ARCH_BIT}")
-    endif()
+  if(OF_STATIC)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-linux/release-${TARGET_ARCH}-${ARCH_BIT}")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-linux/debug-${TARGET_ARCH}-${ARCH_BIT}")
+  else()
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-linux/release-${TARGET_ARCH}-${ARCH_BIT}")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-linux/debug-${TARGET_ARCH}-${ARCH_BIT}")
+  endif()
 
-    set(OPENFRAMEWORKS_DEFINITIONS
+  set(OPENFRAMEWORKS_DEFINITIONS
         -DOF_USING_MPG123
         -DOF_SOUND_PLAYER_OPENAL
         -DOF_SOUNDSTREAM_RTAUDIO
@@ -842,9 +835,9 @@ if(CMAKE_SYSTEM MATCHES Linux)
         -DOF_VIDEO_CAPTURE_GSTREAMER
     )
 
-    if(TARGET_ARCH MATCHES armv7)
-      # Assuming Raspberry Pi 2 and Raspbian
-      list(APPEND OPENFRAMEWORKS_DEFINITIONS
+  if(TARGET_ARCH MATCHES armv7)
+    # Assuming Raspberry Pi 2 and Raspbian
+    list(APPEND OPENFRAMEWORKS_DEFINITIONS
         -DTARGET_RASPBERRY_PI
         -DUSE_DISPMANX_TRANSFORM_T
         -DSTANDALONE
@@ -864,25 +857,25 @@ if(CMAKE_SYSTEM MATCHES Linux)
         -DUSE_EXTERNAL_LIBBCM_HOST
         -DUSE_VCHIQ_ARM
       )
-    endif()
+  endif()
 
-    message(STATUS "CMAKE_FIND_ROOT_PATH : " ${CMAKE_FIND_ROOT_PATH})
-    message(STATUS "PKG_CONFIG_LIBDIR : " ${PKG_CONFIG_LIBDIR})
+  message(STATUS "CMAKE_FIND_ROOT_PATH : " ${CMAKE_FIND_ROOT_PATH})
+  message(STATUS "PKG_CONFIG_LIBDIR : " ${PKG_CONFIG_LIBDIR})
 
-    pkg_check_modules(CAIRO REQUIRED cairo)
-    pkg_check_modules(FONTCONFIG REQUIRED fontconfig)
+  pkg_check_modules(CAIRO REQUIRED cairo)
+  pkg_check_modules(FONTCONFIG REQUIRED fontconfig)
 
-    if(TARGET_ARCH MATCHES armv7)
+  if(TARGET_ARCH MATCHES armv7)
     # TODO change that to point to /opt/vc/include directory
     find_package(OpenGLES REQUIRED)
-    else()
+  else()
     find_package(OpenGL REQUIRED)
-    endif()
+  endif()
 
-    find_package(Freetype REQUIRED)
-    find_package(Boost COMPONENTS filesystem system REQUIRED)
+  find_package(Freetype REQUIRED)
+  find_package(Boost COMPONENTS filesystem system REQUIRED)
 
-    list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
+  list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
         ${CAIRO_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIRS}
         ${OPENGL_INCLUDE_DIR}
@@ -890,137 +883,137 @@ if(CMAKE_SYSTEM MATCHES Linux)
         ${FONTCONFIG_INCLUDE_DIRS}
     )
 
-    if(TARGET_ARCH MATCHES armv7)
-      list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
+  if(TARGET_ARCH MATCHES armv7)
+    list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
         #${EGL_INCLUDE_DIR}
         ${OPENGLES2_INCLUDE_DIR}
         "${RPI_ROOT_PATH}/usr/include/arm-linux-gnueabihf" # needed when crosscompiling
       )
-      # Assuming Raspberry Pi 2 and Raspbian
-      # TODO : use FIND_LIBRARY instead of adding directory directly
-      list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
+    # Assuming Raspberry Pi 2 and Raspbian
+    # TODO : use FIND_LIBRARY instead of adding directory directly
+    list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
         ${RPI_ROOT_PATH}/opt/vc/include
         ${RPI_ROOT_PATH}/opt/vc/include/IL
         ${RPI_ROOT_PATH}/opt/vc/include/interface/vcos/pthreads
         ${RPI_ROOT_PATH}/opt/vc/include/interface/vmcs_host/linux
       )
-    endif()
+  endif()
 
-    message(STATUS "CAIRO_INCLUDE_DIRS: " ${CAIRO_INCLUDE_DIRS})
-    message(STATUS "EGL_INCLUDE_DIR: " ${EGL_INCLUDE_DIR})
-    message(STATUS "OPENGLES2_INCLUDE_DIR: " ${OPENGLES2_INCLUDE_DIR})
-    message(STATUS "FREETYPE_INCLUDE_DIRS: " ${FREETYPE_INCLUDE_DIRS})
+  message(STATUS "CAIRO_INCLUDE_DIRS: " ${CAIRO_INCLUDE_DIRS})
+  message(STATUS "EGL_INCLUDE_DIR: " ${EGL_INCLUDE_DIR})
+  message(STATUS "OPENGLES2_INCLUDE_DIR: " ${OPENGLES2_INCLUDE_DIR})
+  message(STATUS "FREETYPE_INCLUDE_DIRS: " ${FREETYPE_INCLUDE_DIRS})
 
-    if(NOT OF_AUDIO)
-      list(APPEND OPENFRAMEWORKS_DEFINITIONS -DTARGET_NO_SOUND)
-    else()
-      find_package(ALSA REQUIRED)
-      find_package(OpenAL REQUIRED)
-      find_package(MPG123 REQUIRED)
-      find_package(Sndfile REQUIRED)
+  if(NOT OF_AUDIO)
+    list(APPEND OPENFRAMEWORKS_DEFINITIONS -DTARGET_NO_SOUND)
+  else()
+    find_package(ALSA REQUIRED)
+    find_package(OpenAL REQUIRED)
+    find_package(MPG123 REQUIRED)
+    find_package(Sndfile REQUIRED)
 
-      list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
+    list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
         ${ALSA_INCLUDE_DIRS}
         ${OPENAL_INCLUDE_DIR}
         ${MPG123_INCLUDE_DIRS}
         ${SNDFILE_INCLUDE_DIR}
       )
+  endif()
+
+  if(NOT OF_VIDEO)
+    list(APPEND OPENFRAMEWORKS_DEFINITIONS -DTARGET_NO_VIDEO)
+  else()
+
+    find_package(UDev REQUIRED)
+    # FIXME : glib and Gstreamer are found in /usr/* instead of RPI_ROOT_PATH when CMAKE_CROSSCOMPILING
+    find_package(Glib REQUIRED)
+    message(STATUS "GLIB include dir: "      ${GLIB_INCLUDE_DIRS})
+
+    find_package(GStreamer QUIET)
+
+    if ( "${GSTREAMER_INCLUDE_DIRS}" STREQUAL "" )
+
+      PKG_CHECK_MODULES(GSTREAMER gstreamer-1.0)
+      PKG_CHECK_MODULES(GSTREAMER_BASE gstreamer-base-1.0)
+      PKG_CHECK_MODULES(GSTREAMER_VIDEO gstreamer-video-1.0)
+      PKG_CHECK_MODULES(GSTREAMER_APP gstreamer-app-1.0)
     endif()
 
-    if(NOT OF_VIDEO)
-      list(APPEND OPENFRAMEWORKS_DEFINITIONS -DTARGET_NO_VIDEO)
-    else()
+    message(STATUS "Gstreamer include dir: " ${GSTREAMER_INCLUDE_DIRS})
 
-      find_package(UDev REQUIRED)
-      # FIXME : glib and Gstreamer are found in /usr/* instead of RPI_ROOT_PATH when CMAKE_CROSSCOMPILING
-      find_package(Glib REQUIRED)
-      message(STATUS "GLIB include dir: "      ${GLIB_INCLUDE_DIRS})
-
-      find_package(GStreamer QUIET)
-
-      if ( "${GSTREAMER_INCLUDE_DIRS}" STREQUAL "" )
-
-        PKG_CHECK_MODULES(GSTREAMER gstreamer-1.0)
-        PKG_CHECK_MODULES(GSTREAMER_BASE gstreamer-base-1.0)
-        PKG_CHECK_MODULES(GSTREAMER_VIDEO gstreamer-video-1.0)
-        PKG_CHECK_MODULES(GSTREAMER_APP gstreamer-app-1.0)
-      endif()
-
-      message(STATUS "Gstreamer include dir: " ${GSTREAMER_INCLUDE_DIRS})
-
-      message(STATUS "Gstreamer lib: "       ${GSTREAMER_LIBRARIES})
-      message(STATUS "Gstreamer-app lib: "   ${GSTREAMER_APP_LIBRARIES})
-      message(STATUS "Gstreamer-base lib: "  ${GSTREAMER_BASE_LIBRARIES})
-      message(STATUS "Gstreamer-video lib: " ${GSTREAMER_VIDEO_LIBRARIES})
+    message(STATUS "Gstreamer lib: "       ${GSTREAMER_LIBRARIES})
+    message(STATUS "Gstreamer-app lib: "   ${GSTREAMER_APP_LIBRARIES})
+    message(STATUS "Gstreamer-base lib: "  ${GSTREAMER_BASE_LIBRARIES})
+    message(STATUS "Gstreamer-video lib: " ${GSTREAMER_VIDEO_LIBRARIES})
 
 
-      list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
+    list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
         ${UDEV_INCLUDE_DIR}
         ${GLIB_INCLUDE_DIRS}
         ${GSTREAMER_INCLUDE_DIRS}
       )
 
-      if ( OF_GTK )
-        list(APPEND OPENFRAMEWORKS_DEFINITIONS -DOF_USING_GTK)
-        pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
-        list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS ${GTK3_INCLUDE_DIRS} )
-        list(APPEND OPENFRAMEWORKS_LIBRARIES ${GTK3_LIBRARIES} )
+    if ( OF_GTK )
+      list(APPEND OPENFRAMEWORKS_DEFINITIONS -DOF_USING_GTK)
+      pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+      list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS ${GTK3_INCLUDE_DIRS} )
+      list(APPEND OPENFRAMEWORKS_LIBRARIES ${GTK3_LIBRARIES} )
 
-        message(STATUS "Gtk+-3 include dir: "      ${GTK3_INCLUDE_DIRS})
-        message(STATUS "Gtk+-3 libraries: "      ${GTK3_LIBRARIES})
-
-      endif()
-
-      if ( OF_GTK2 )
-        list(APPEND OPENFRAMEWORKS_DEFINITIONS -DOF_USING_GTK)
-        pkg_check_modules(GTK2 REQUIRED gtk+-2.0)
-        list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS ${GTK2_INCLUDE_DIRS} )
-        list(APPEND OPENFRAMEWORKS_LIBRARIES ${GTK2_LIBRARIES} )
-
-        message(STATUS "Gtk+-2 include dir: "      ${GTK2_INCLUDE_DIRS})
-        message(STATUS "Gtk+-2 libraries: "      ${GTK2_LIBRARIES})
-
-      endif()
+      message(STATUS "Gtk+-3 include dir: "      ${GTK3_INCLUDE_DIRS})
+      message(STATUS "Gtk+-3 libraries: "      ${GTK3_LIBRARIES})
 
     endif()
+
+    if ( OF_GTK2 )
+      list(APPEND OPENFRAMEWORKS_DEFINITIONS -DOF_USING_GTK)
+      pkg_check_modules(GTK2 REQUIRED gtk+-2.0)
+      list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS ${GTK2_INCLUDE_DIRS} )
+      list(APPEND OPENFRAMEWORKS_LIBRARIES ${GTK2_LIBRARIES} )
+
+      message(STATUS "Gtk+-2 include dir: "      ${GTK2_INCLUDE_DIRS})
+      message(STATUS "Gtk+-2 libraries: "      ${GTK2_LIBRARIES})
+
+    endif()
+
+  endif()
 
 elseif(CMAKE_SYSTEM MATCHES Darwin)
 
-    set_source_files_properties(${OPENFRAMEWORKS_SOURCES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
+  set_source_files_properties(${OPENFRAMEWORKS_SOURCES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
 
-    if(OF_STATIC)
-      set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-osx/release-${TARGET_ARCH}-${ARCH_BIT}")
-      set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-osx/debug-${TARGET_ARCH}-${ARCH_BIT}")
-    else()
-      set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-osx/release-${TARGET_ARCH}-${ARCH_BIT}")
-      set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-osx/debug-${TARGET_ARCH}-${ARCH_BIT}")
-    endif()
+  if(OF_STATIC)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-osx/release-${TARGET_ARCH}-${ARCH_BIT}")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-osx/debug-${TARGET_ARCH}-${ARCH_BIT}")
+  else()
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-osx/release-${TARGET_ARCH}-${ARCH_BIT}")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-osx/debug-${TARGET_ARCH}-${ARCH_BIT}")
+  endif()
 
-    set(OPENFRAMEWORKS_DEFINITIONS
+  set(OPENFRAMEWORKS_DEFINITIONS
         -DOF_USING_MPG123
         -DOF_SOUND_PLAYER_OPENAL
         -DOF_SOUNDSTREAM_RTAUDIO
     )
 
-    set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig")
+  set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig")
 
-    pkg_check_modules(CAIRO REQUIRED cairo)
-    pkg_check_modules(FONTCONFIG REQUIRED fontconfig)
+  pkg_check_modules(CAIRO REQUIRED cairo)
+  pkg_check_modules(FONTCONFIG REQUIRED fontconfig)
 
-    set(ENV{OPENSSL_ROOT_DIR} "/usr/local/opt/openssl")
-    find_package(OpenGL REQUIRED)
-    find_package(MPG123 REQUIRED)
-    find_package(OpenSSL REQUIRED)
-    find_package(SndFile REQUIRED)
-    find_package(Freetype REQUIRED)
-    find_package(Boost COMPONENTS filesystem system REQUIRED)
+  set(ENV{OPENSSL_ROOT_DIR} "/usr/local/opt/openssl")
+  find_package(OpenGL REQUIRED)
+  find_package(MPG123 REQUIRED)
+  find_package(OpenSSL REQUIRED)
+  find_package(SndFile REQUIRED)
+  find_package(Freetype REQUIRED)
+  find_package(Boost COMPONENTS filesystem system REQUIRED)
 
-    # Hardcode FreeType path, see issue #15
-    list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
+  # Hardcode FreeType path, see issue #15
+  list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
         "/usr/local/include/freetype2"
     )
 
-    list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
+  list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
         ${CAIRO_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIRS}
         ${OPENGL_INCLUDE_DIR}
@@ -1032,15 +1025,15 @@ elseif(CMAKE_SYSTEM MATCHES Darwin)
 
 elseif(CMAKE_SYSTEM MATCHES Windows)
 
-    if(OF_STATIC)
-      set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-windows/release-${TARGET_ARCH}-${ARCH_BIT}")
-      set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-windows/debug-${TARGET_ARCH}-${ARCH_BIT}")
-    else()
-      set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-windows/release-${TARGET_ARCH}-${ARCH_BIT}")
-      set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-windows/debug-${TARGET_ARCH}-${ARCH_BIT}")
-    endif()
+  if(OF_STATIC)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-windows/release-${TARGET_ARCH}-${ARCH_BIT}")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-windows/debug-${TARGET_ARCH}-${ARCH_BIT}")
+  else()
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${OF_ROOT_DIR}/lib-windows/release-${TARGET_ARCH}-${ARCH_BIT}")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG   "${OF_ROOT_DIR}/lib-windows/debug-${TARGET_ARCH}-${ARCH_BIT}")
+  endif()
 
-    set(OPENFRAMEWORKS_DEFINITIONS
+  set(OPENFRAMEWORKS_DEFINITIONS
         -D_WIN32_WINNT=0x0501
         -DOF_USING_MPG123
         -DOF_SOUNDSTREAM_RTAUDIO
@@ -1049,16 +1042,16 @@ elseif(CMAKE_SYSTEM MATCHES Windows)
         -DOF_VIDEO_PLAYER_DIRECTSHOW
     )
 
-    pkg_check_modules(CAIRO REQUIRED cairo)
-    pkg_check_modules(FONTCONFIG REQUIRED fontconfig)
+  pkg_check_modules(CAIRO REQUIRED cairo)
+  pkg_check_modules(FONTCONFIG REQUIRED fontconfig)
 
-    find_package(OpenAL REQUIRED)
-    find_package(OpenGL REQUIRED)
-    find_package(MPG123 REQUIRED)
-    find_package(Freetype REQUIRED)
-    find_package(Boost COMPONENTS filesystem system REQUIRED)
+  find_package(OpenAL REQUIRED)
+  find_package(OpenGL REQUIRED)
+  find_package(MPG123 REQUIRED)
+  find_package(Freetype REQUIRED)
+  find_package(Boost COMPONENTS filesystem system REQUIRED)
 
-    list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
+  list(APPEND OPENFRAMEWORKS_INCLUDE_DIRS
         ${CAIRO_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIRS}
         ${OPENAL_INCLUDE_DIR}
@@ -1078,24 +1071,24 @@ list(APPEND OPENFRAMEWORKS_DEFINITIONS
 )
 
 if(ARCH_BIT MATCHES 64)
-list(APPEND OPENFRAMEWORKS_DEFINITIONS
+  list(APPEND OPENFRAMEWORKS_DEFINITIONS
     -DGLEW_STATIC
     -DGLEW_NO_GLU
 )
 endif()
 
 if(CMAKE_SYSTEM MATCHES Linux)
-list(APPEND OPENFRAMEWORKS_DEFINITIONS
+  list(APPEND OPENFRAMEWORKS_DEFINITIONS
     -D__ANSI__
     -D__LINUX_ALSA__
 )
 elseif(CMAKE_SYSTEM MATCHES Darwin)
-list(APPEND OPENFRAMEWORKS_DEFINITIONS
+  list(APPEND OPENFRAMEWORKS_DEFINITIONS
     -D__MACOSX_CORE__
     -DHAVE_GETTIMEOFDAY
 )
 elseif(CMAKE_SYSTEM MATCHES Windows)
-list(APPEND OPENFRAMEWORKS_DEFINITIONS
+  list(APPEND OPENFRAMEWORKS_DEFINITIONS
     -DWIN32
     -DWINVER=0x0500
     -D_WIN32_WINNT=0x0501
@@ -1108,7 +1101,7 @@ endif()
 include_directories(${OPENFRAMEWORKS_INCLUDE_DIRS})
 
 if(CMAKE_C_COMPILER_ID STREQUAL Clang)
-    set(O_C_FLAG -O0)
+  set(O_C_FLAG -O0)
 elseif(CMAKE_C_COMPILER_ID STREQUAL GNU)
   if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 4.8.0)
     set(O_C_FLAG -Og)
@@ -1118,7 +1111,7 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL GNU)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-    set(O_CXX_FLAG -O0)
+  set(O_CXX_FLAG -O0)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.8.0)
     set(O_CXX_FLAG -Og)
@@ -1128,25 +1121,25 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 if(TARGET_ARCH MATCHES armv7)
-    set(ARCH_FLAG "-march=armv7-a -mfpu=vfp -mfloat-abi=hard")
+  set(ARCH_FLAG "-march=armv7-a -mfpu=vfp -mfloat-abi=hard")
 elseif(TARGET_ARCH MATCHES armv6)
-    set(ARCH_FLAG "-march=armv6 -mfpu=vfp -mfloat-abi=hard")
+  set(ARCH_FLAG "-march=armv6 -mfpu=vfp -mfloat-abi=hard")
 elseif(ARCH_BIT MATCHES 32)
-    set(ARCH_FLAG "-m32")
+  set(ARCH_FLAG "-m32")
 endif()
 
 if(CMAKE_SYSTEM MATCHES Linux)
-    set(PIC_FLAG -fPIC)
+  set(PIC_FLAG -fPIC)
 endif()
 
 if(CMAKE_SYSTEM MATCHES Darwin)
-    set(CPP11_FLAG -std=c++1y)
+  set(CPP11_FLAG -std=c++1y)
 else()
-    set(CPP11_FLAG -std=gnu++14)
+  set(CPP11_FLAG -std=gnu++17)
 endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL Clang)
-    set(C_COLORIZATION "-fcolor-diagnostics")
+  set(C_COLORIZATION "-fcolor-diagnostics")
 elseif(CMAKE_C_COMPILER_ID STREQUAL GNU)
   if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 4.9.0)
     set(C_COLORIZATION "-fdiagnostics-color")
@@ -1154,7 +1147,7 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL GNU)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-    set(CXX_COLORIZATION "-fcolor-diagnostics")
+  set(CXX_COLORIZATION "-fcolor-diagnostics")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9.0)
     set(CXX_COLORIZATION "-fdiagnostics-color")
@@ -1165,18 +1158,18 @@ string(REPLACE "\n" " " RELEASE_FLAGS ${RELEASE_FLAGS})
 string(REPLACE "\n" " "   DEBUG_FLAGS   ${DEBUG_FLAGS})
 
 if(CMAKE_C_COMPILER_ID STREQUAL Clang)
-string(REPLACE "\n" " " RELEASE_C_FLAGS_CLANG ${RELEASE_C_FLAGS_CLANG})
-string(REPLACE "\n" " "   DEBUG_C_FLAGS_CLANG   ${DEBUG_C_FLAGS_CLANG})
+  string(REPLACE "\n" " " RELEASE_C_FLAGS_CLANG ${RELEASE_C_FLAGS_CLANG})
+  string(REPLACE "\n" " "   DEBUG_C_FLAGS_CLANG   ${DEBUG_C_FLAGS_CLANG})
 elseif(CMAKE_C_COMPILER_ID STREQUAL GNU)
-string(REPLACE "\n" " " RELEASE_C_FLAGS_GCC ${RELEASE_C_FLAGS_GCC})
-string(REPLACE "\n" " "   DEBUG_C_FLAGS_GCC   ${DEBUG_C_FLAGS_GCC})
+  string(REPLACE "\n" " " RELEASE_C_FLAGS_GCC ${RELEASE_C_FLAGS_GCC})
+  string(REPLACE "\n" " "   DEBUG_C_FLAGS_GCC   ${DEBUG_C_FLAGS_GCC})
 endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-string(REPLACE "\n" " " RELEASE_CXX_FLAGS_CLANG ${RELEASE_CXX_FLAGS_CLANG})
-string(REPLACE "\n" " "   DEBUG_CXX_FLAGS_CLANG   ${DEBUG_CXX_FLAGS_CLANG})
+  string(REPLACE "\n" " " RELEASE_CXX_FLAGS_CLANG ${RELEASE_CXX_FLAGS_CLANG})
+  string(REPLACE "\n" " "   DEBUG_CXX_FLAGS_CLANG   ${DEBUG_CXX_FLAGS_CLANG})
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-string(REPLACE "\n" " " RELEASE_CXX_FLAGS_GCC ${RELEASE_CXX_FLAGS_GCC})
-string(REPLACE "\n" " "   DEBUG_CXX_FLAGS_GCC   ${DEBUG_CXX_FLAGS_GCC})
+  string(REPLACE "\n" " " RELEASE_CXX_FLAGS_GCC ${RELEASE_CXX_FLAGS_GCC})
+  string(REPLACE "\n" " "   DEBUG_CXX_FLAGS_GCC   ${DEBUG_CXX_FLAGS_GCC})
 endif()
 
 string(REGEX REPLACE " +" " " CMAKE_C_FLAGS_RELEASE "${C_COLORIZATION} ${CMAKE_C_FLAGS_RELEASE} ${RELEASE_FLAGS} ${RELEASE_C_FLAGS_CLANG} ${RELEASE_C_FLAGS_GCC} ${ARCH_FLAG} ${PIC_FLAG}" )
@@ -1196,7 +1189,7 @@ endif()
 add_subdirectory(src/poco)
 
 if(ARCH_BIT MATCHES 64)
-add_subdirectory(src/glfw)
+  add_subdirectory(src/glfw)
 endif()
 
 add_library(
@@ -1216,7 +1209,7 @@ target_compile_definitions(
 )
 
 if(CMAKE_BUILD_TYPE MATCHES Release)
-set_target_properties(
+  set_target_properties(
     openFrameworks PROPERTIES
     COMPILE_FLAGS -g1
 )
@@ -1228,13 +1221,13 @@ if(NOT OF_STATIC)
 
   add_dependencies(
       openFrameworks
-      PocoCrypto
-      PocoFoundation
-      PocoJSON
-      PocoNet
-      PocoNetSSL
-      PocoUtil
-      PocoXML
+      Poco::Crypto
+      Poco::Foundation
+      Poco::JSON
+      Poco::Net
+      Poco::NetSSL
+      Poco::Util
+      Poco::XML
   )
 
   if(ARCH_BIT MATCHES 64)
@@ -1259,23 +1252,23 @@ if(NOT OF_STATIC)
   endif()
 
   set(OPENFRAMEWORKS_LIBRARIES
-      PocoCrypto
-      PocoFoundation
-      PocoJSON
-      PocoNet
-      PocoNetSSL
-      PocoUtil
-      PocoXML
+      Poco::Crypto
+      Poco::Foundation
+      Poco::JSON
+      Poco::Net
+      Poco::NetSSL
+      Poco::Util
+      Poco::XML
   )
 
   if(CMAKE_SYSTEM MATCHES Windows)
-  list(APPEND OPENFRAMEWORKS_LIBRARIES
+    list(APPEND OPENFRAMEWORKS_LIBRARIES
       videoinput
   )
   endif()
 
   if(CMAKE_SYSTEM MATCHES Darwin)
-  list(APPEND OPENFRAMEWORKS_LIBRARIES
+    list(APPEND OPENFRAMEWORKS_LIBRARIES
       -L/usr/local/lib
   )
   endif()
@@ -1307,7 +1300,7 @@ if(NOT OF_STATIC)
   )
 
   if(ARCH_BIT MATCHES 64)
-  list(APPEND OPENFRAMEWORKS_LIBRARIES
+    list(APPEND OPENFRAMEWORKS_LIBRARIES
       glfw
   )
   endif()
@@ -1354,10 +1347,10 @@ message(STATUS "TARGET_ARCH: ${TARGET_ARCH} ${ARCH_BIT}bit")
 message(STATUS "OF_STATIC: " ${OF_STATIC})
 
 if(CMAKE_SYSTEM MATCHES Linux)
-message(STATUS "OF_AUDIO: " ${OF_AUDIO})
-message(STATUS "OF_VIDEO: " ${OF_VIDEO})
-message(STATUS "OF_GTK: " ${OF_GTK})
-message(STATUS "OF_GTK2: " ${OF_GTK2})
+  message(STATUS "OF_AUDIO: " ${OF_AUDIO})
+  message(STATUS "OF_VIDEO: " ${OF_VIDEO})
+  message(STATUS "OF_GTK: " ${OF_GTK})
+  message(STATUS "OF_GTK2: " ${OF_GTK2})
 
 endif()
 

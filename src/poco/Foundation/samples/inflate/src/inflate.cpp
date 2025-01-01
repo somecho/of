@@ -1,8 +1,6 @@
 //
 // inflate.cpp
 //
-// $Id: //poco/1.4/Foundation/samples/inflate/src/inflate.cpp#1 $
-//
 // This sample demonstrates the InflatingInputStream and StreamCopier classes.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -30,29 +28,29 @@ int main(int argc, char** argv)
 		          << "       read deflated (compressed) <input_file>, inflate it and write the result to <output_file>" << std::endl;
 		return 1;
 	}
-	
+
 	std::ifstream istr(argv[1], std::ios::binary);
 	if (!istr)
 	{
 		std::cerr << "cannot open input file: " << argv[1] << std::endl;
 		return 2;
 	}
-	
+
 	std::ofstream ostr(argv[2], std::ios::binary);
 	if (!ostr)
 	{
 		std::cerr << "cannot open output file: " << argv[2] << std::endl;
 		return 3;
 	}
-	
+
 	InflatingInputStream inflater(istr);
 	StreamCopier::copyStream(inflater, ostr);
-	
+
 	if (!ostr)
 	{
 		std::cerr << "error writing output file: " << argv[2] << std::endl;
 		return 4;
 	}
-	
+
 	return 0;
 }

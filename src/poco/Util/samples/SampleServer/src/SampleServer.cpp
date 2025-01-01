@@ -1,8 +1,6 @@
 //
 // SampleServer.cpp
 //
-// $Id: //poco/1.4/Util/samples/SampleServer/src/SampleServer.cpp#1 $
-//
 // This sample demonstrates the ServerApplication class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -39,7 +37,7 @@ public:
 	SampleTask(): Task("SampleTask")
 	{
 	}
-	
+
 	void runTask()
 	{
 		Application& app = Application::instance();
@@ -57,7 +55,7 @@ public:
 	SampleServer(): _helpRequested(false)
 	{
 	}
-	
+
 	~SampleServer()
 	{
 	}
@@ -69,7 +67,7 @@ protected:
 		ServerApplication::initialize(self);
 		logger().information("starting up");
 	}
-		
+
 	void uninitialize()
 	{
 		logger().information("shutting down");
@@ -79,7 +77,7 @@ protected:
 	void defineOptions(OptionSet& options)
 	{
 		ServerApplication::defineOptions(options);
-		
+
 		options.addOption(
 			Option("help", "h", "display help information on command line arguments")
 				.required(false)
@@ -115,7 +113,7 @@ protected:
 		}
 		return Application::EXIT_OK;
 	}
-	
+
 private:
 	bool _helpRequested;
 };

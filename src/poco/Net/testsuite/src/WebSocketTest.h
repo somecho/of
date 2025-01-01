@@ -1,8 +1,6 @@
 //
 // WebSocketTest.h
 //
-// $Id: //poco/1.4/Net/testsuite/src/WebSocketTest.h#1 $
-//
 // Definition of the WebSocketTest class.
 //
 // Copyright (c) 2012, Applied Informatics Software Engineering GmbH.
@@ -29,6 +27,7 @@ public:
 	void testWebSocket();
 	void testWebSocketLarge();
 	void testWebSocketLargeInOneFrame();
+	void testWebSocketNB();
 
 	void setUp();
 	void tearDown();

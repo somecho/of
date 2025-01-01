@@ -1,8 +1,6 @@
 //
 // String.h
 //
-// $Id: //poco/1.4/Foundation/src/String.cpp#1 $
-//
 // Library: Foundation
 // Package: Core
 // Module:  String
@@ -13,53 +11,73 @@
 // SPDX-License-Identifier:	BSL-1.0
 //
 
-
 #include "Poco/JSONString.h"
+#include "Poco/UTF8String.h"
 #include <ostream>
+
+
+namespace {
+
+
+template<typename T, typename S>
+struct WriteFunc
+{
+	typedef T& (T::*Type)(const char* s, S n);
+};
+
+
+
+template<typename T, typename S>
+void writeString(const std::string &value, T& obj, typename WriteFunc<T, S>::Type write, int options)
+{
+	bool wrap = ((options & Poco::JSON_WRAP_STRINGS) != 0);
+	bool escapeAllUnicode = ((options & Poco::JSON_ESCAPE_UNICODE) != 0);
+	bool lowerCaseHex = ((options & Poco::JSON_LOWERCASE_HEX) != 0);
+
+	if (value.size() == 0)
+	{
+		if(wrap) (obj.*write)("\"\"", 2);
+		return;
+	}
+
+	if(wrap) (obj.*write)("\"", 1);
+	if(escapeAllUnicode)
+	{
+		std::string str = Poco::UTF8::escape(value.begin(), value.end(), true, lowerCaseHex);
+		(obj.*write)(str.c_str(), str.size());
+	}
+	else
+	{
+		for(std::string::const_iterator it = value.begin(), end = value.end(); it != end; ++it)
+		{
+			if ((*it >= 0 && *it <= 31) || (*it == '"') || (*it == '\\'))
+			{
+				std::string str = Poco::UTF8::escape(it, it + 1, true, lowerCaseHex);
+				(obj.*write)(str.c_str(), str.size());
+			}
+			else (obj.*write)(&(*it), 1);
+		}
+	}
+	if(wrap) (obj.*write)("\"", 1);
+};
+
+
+}
 
 
 namespace Poco {
 
 
-std::string toJSON(char c)
+void toJSON(const std::string& value, std::ostream& out, int options)
 {
-	switch (c)
-	{
-	case '\\': return "\\\\";
-	case '"': return "\\\"";
-	case '/': return "\\/";
-	case '\b': return "\\b";
-	case '\f': return "\\f";
-	case '\n': return "\\n";
-	case '\r': return "\\r";
-	case '\t': return "\\t";
-	default: return std::string(1, c);
-	}
+	writeString<std::ostream, std::streamsize>(value, out, &std::ostream::write, options);
 }
 
 
-void toJSON(const std::string& value, std::ostream& out, bool wrap)
-{
-	if (wrap) out << '"';
-	for (std::string::const_iterator it = value.begin(),
-		end = value.end(); it != end; ++it)
-	{
-		out << toJSON(*it);
-	}
-	if (wrap) out << '"';
-}
-
-
-std::string toJSON(const std::string& value, bool wrap)
+std::string toJSON(const std::string& value, int options)
 {
 	std::string ret;
-	if (wrap) ret.append(1, '"');
-	for (std::string::const_iterator it = value.begin(),
-		end = value.end(); it != end; ++it)
-	{
-		ret.append(toJSON(*it));
-	}
-	if (wrap) ret.append(1, '"');
+	writeString<std::string, std::string::size_type>(value, ret, &std::string::append, options);
 	return ret;
 }
 

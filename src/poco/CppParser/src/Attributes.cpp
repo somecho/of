@@ -1,8 +1,6 @@
 //
 // Attributes.cpp
 //
-// $Id: //poco/1.4/CppParser/src/Attributes.cpp#2 $
-//
 // Library: CppParser
 // Package: Attributes
 // Module:  Attributes
@@ -50,13 +48,13 @@ Attributes& Attributes::operator = (const Attributes& attrs)
 	return *this;
 }
 
-	
+
 bool Attributes::has(const std::string& name) const
 {
 	return _map.find(name) != _map.end();
 }
 
-	
+
 std::string Attributes::getString(const std::string& name) const
 {
 	AttrMap::const_iterator it = _map.find(name);
@@ -66,7 +64,7 @@ std::string Attributes::getString(const std::string& name) const
 		throw Poco::NotFoundException(name);
 }
 
-	
+
 std::string Attributes::getString(const std::string& name, const std::string& defaultValue) const
 {
 	AttrMap::const_iterator it = _map.find(name);
@@ -86,7 +84,7 @@ int Attributes::getInt(const std::string& name) const
 		throw Poco::NotFoundException(name);
 }
 
-	
+
 int Attributes::getInt(const std::string& name, int defaultValue) const
 {
 	AttrMap::const_iterator it = _map.find(name);

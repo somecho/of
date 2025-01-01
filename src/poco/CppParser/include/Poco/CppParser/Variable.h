@@ -1,8 +1,6 @@
 //
 // Variable.h
 //
-// $Id: //poco/1.4/CppParser/include/Poco/CppParser/Variable.h#1 $
-//
 // Library: CppParser
 // Package: SymbolTable
 // Module:  Variable
@@ -39,13 +37,13 @@ public:
 		VAR_VOLATILE = 4, /// The variable is volatile.
 		VAR_CONST    = 8  /// The variable is const.
 	};
-	
+
 	Variable(const std::string& decl, NameSpace* pNameSpace);
 		/// Creates the Variable.
 
 	~Variable();
 		/// Destroys the Variable.
-		
+
 	int flags() const;
 		/// Returns the variable's flags.
 
@@ -59,7 +57,12 @@ public:
 		///
 		/// Example: a type const std::string& -> std::string, a type const std::string* returns std::string
 
-		
+	bool isConst() const;
+		/// Returns true iff the variable is const.
+
+	bool isStatic() const;
+		/// Returns true iff the variable is static.
+
 private:
 	int _flags;
 	bool _isPointer;
@@ -79,6 +82,18 @@ inline int Variable::flags() const
 inline bool Variable::isPointer() const
 {
 	return _isPointer;
+}
+
+
+inline bool Variable::isConst() const
+{
+	return (flags() & VAR_CONST) != 0;
+}
+
+
+inline bool Variable::isStatic() const
+{
+	return (flags() & VAR_STATIC) != 0;
 }
 
 

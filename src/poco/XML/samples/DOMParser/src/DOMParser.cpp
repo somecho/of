@@ -1,8 +1,6 @@
 //
 // DOMParser.cpp
 //
-// $Id: //poco/1.4/XML/samples/DOMParser/src/DOMParser.cpp#1 $
-//
 // This sample demonstrates the DOMParser, AutoPtr and
 // NodeIterator classes.
 //
@@ -37,13 +35,13 @@ int main(int argc, char** argv)
 {
 	// Parse an XML document from standard input
 	// and use a NodeIterator to print out all nodes.
-	
+
 	InputSource src(std::cin);
 	try
 	{
 		DOMParser parser;
 		AutoPtr<Document> pDoc = parser.parse(&src);
-		
+
 		NodeIterator it(pDoc, NodeFilter::SHOW_ALL);
 		Node* pNode = it.nextNode();
 		while (pNode)
@@ -56,6 +54,6 @@ int main(int argc, char** argv)
 	{
 		std::cerr << exc.displayText() << std::endl;
 	}
-	
+
 	return 0;
 }

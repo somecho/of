@@ -1,8 +1,6 @@
 //
 // TaskNotification.cpp
 //
-// $Id: //poco/1.4/Foundation/src/TaskNotification.cpp#1 $
-//
 // Library: Foundation
 // Package: Tasks
 // Module:  Tasks
@@ -38,7 +36,7 @@ TaskStartedNotification::TaskStartedNotification(Task* pTask):
 {
 }
 
-	
+
 TaskStartedNotification::~TaskStartedNotification()
 {
 }
@@ -49,7 +47,7 @@ TaskCancelledNotification::TaskCancelledNotification(Task* pTask):
 {
 }
 
-	
+
 TaskCancelledNotification::~TaskCancelledNotification()
 {
 }
@@ -60,7 +58,7 @@ TaskFinishedNotification::TaskFinishedNotification(Task* pTask):
 {
 }
 
-	
+
 TaskFinishedNotification::~TaskFinishedNotification()
 {
 }
@@ -72,7 +70,7 @@ TaskFailedNotification::TaskFailedNotification(Task* pTask, const Exception& exc
 {
 }
 
-	
+
 TaskFailedNotification::~TaskFailedNotification()
 {
 	delete _pException;
@@ -85,7 +83,7 @@ TaskProgressNotification::TaskProgressNotification(Task* pTask, float progress):
 {
 }
 
-	
+
 TaskProgressNotification::~TaskProgressNotification()
 {
 }

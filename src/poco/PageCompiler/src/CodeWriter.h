@@ -1,8 +1,6 @@
 //
 // CodeWriter.h
 //
-// $Id: //poco/1.4/PageCompiler/src/CodeWriter.h#1 $
-//
 // Copyright (c) 2008, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
@@ -23,7 +21,7 @@ class Page;
 
 class CodeWriter
 	/// This class implements the code generator for
-	/// generating C++ header and implementation files 
+	/// generating C++ header and implementation files
 	/// from C++ Server Pages.
 {
 public:
@@ -41,7 +39,7 @@ public:
 
 	const Page& page() const;
 		/// Returns a const reference to the Page.
-		
+
 	const std::string& clazz() const;
 		/// Returns the name of the handler class.
 
@@ -59,7 +57,7 @@ protected:
 	virtual void writeResponse(std::ostream& ostr);
 	virtual void writeContent(std::ostream& ostr);
 	virtual void writeManifest(std::ostream& ostr);
-	
+
 	void beginGuard(std::ostream& ostr, const std::string& headerFileName);
 	void endGuard(std::ostream& ostr, const std::string& headerFileName);
 	void beginNamespace(std::ostream& ostr);
@@ -67,6 +65,7 @@ protected:
 	void handlerClass(std::ostream& ostr, const std::string& base, const std::string& ctorArg);
 	void factoryClass(std::ostream& ostr, const std::string& base);
 	void factoryImpl(std::ostream& ostr, const std::string& arg);
+	std::string cleanupHandler(std::string handler);
 
 private:
 	CodeWriter();

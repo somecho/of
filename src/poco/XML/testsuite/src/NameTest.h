@@ -1,8 +1,6 @@
 //
 // NameTest.h
 //
-// $Id: //poco/1.4/XML/testsuite/src/NameTest.h#1 $
-//
 // Definition of the NameTest class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -32,7 +30,7 @@ public:
 	void testName();
 	void testCompare();
 	void testSwap();
-	
+
 	void setUp();
 	void tearDown();
 

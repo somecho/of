@@ -1,8 +1,6 @@
 //
 // XMLWriter.cpp
 //
-// $Id: //poco/1.4/XML/src/XMLWriter.cpp#5 $
-//
 // Library: XML
 // Package: XML
 // Module:  XMLWriter
@@ -21,6 +19,9 @@
 #include "Poco/UTF8Encoding.h"
 #include "Poco/UTF16Encoding.h"
 #include <sstream>
+
+
+using namespace std::string_literals;
 
 
 namespace Poco {
@@ -63,7 +64,7 @@ XMLWriter::XMLWriter(XMLByteOutputStream& str, int options):
 	_pInEncoding(new NATIVE_ENCODING),
 	_pOutEncoding(new Poco::UTF8Encoding),
 	_options(options),
-	_encoding("UTF-8"),
+	_encoding("UTF-8"s),
 	_depth(-1),
 	_elementCount(0),
 	_inFragment(false),
@@ -195,7 +196,7 @@ void XMLWriter::startDocument()
 
 	if (_options & WRITE_XML_DECLARATION)
 		writeXMLDeclaration();
-	
+
 	_contentWritten = true;
 	_namespaces.reset();
 	_namespaces.pushContext();
@@ -236,7 +237,7 @@ void XMLWriter::endFragment()
 {
 	if (_depth > 1)
 		throw XMLException("Not well-formed (at least one tag has no matching end tag)");
-	
+
 	_inFragment   = false;
 	_elementCount = 0;
 	_depth        = -1;
@@ -252,13 +253,16 @@ void XMLWriter::startElement(const XMLString& namespaceURI, const XMLString& loc
 
 void XMLWriter::startElement(const XMLString& namespaceURI, const XMLString& localName, const XMLString& qname, const Attributes& attributes)
 {
-	if (_depth == 0 && !_inFragment && _elementCount > 1) 
+	if (_depth == 0 && !_inFragment && _elementCount > 1)
 		throw XMLException("Not well-formed. Second root element found", nameToString(localName, qname));
-	
+
 	if (_unclosedStartTag) closeStartTag();
 	prettyPrint();
-	writeStartElement(namespaceURI, localName, qname, attributes);
-	_elementStack.push_back(Name(qname, namespaceURI, localName));
+	if (_options & CANONICAL_XML)
+		writeCanonicalStartElement(namespaceURI, localName, qname, attributes);
+	else
+		writeStartElement(namespaceURI, localName, qname, attributes);
+	_elementStack.emplace_back(qname, namespaceURI, localName);
 	_contentWritten = false;
 	++_depth;
 }
@@ -296,9 +300,12 @@ void XMLWriter::emptyElement(const XMLString& namespaceURI, const XMLString& loc
 
 	if (_unclosedStartTag) closeStartTag();
 	prettyPrint();
-	writeStartElement(namespaceURI, localName, qname, attributes);
+	if (_options & CANONICAL_XML)
+		writeCanonicalStartElement(namespaceURI, localName, qname, attributes);
+	else
+		writeStartElement(namespaceURI, localName, qname, attributes);
 	_contentWritten = false;
-	writeMarkup("/");
+	writeMarkup("/"s);
 	closeStartTag();
 	_namespaces.popContext();
 }
@@ -364,14 +371,14 @@ void XMLWriter::processingInstruction(const XMLString& target, const XMLString& 
 {
 	if (_unclosedStartTag) closeStartTag();
 	prettyPrint();
-	writeMarkup("<?");
+	writeMarkup("<?"s);
 	writeXML(target);
 	if (!data.empty())
 	{
 		writeMarkup(MARKUP_SPACE);
 		writeXML(data);
 	}
-	writeMarkup("?>");
+	writeMarkup("?>"s);
 	if (_depth == 0)
 		writeNewLine();
 }
@@ -379,7 +386,7 @@ void XMLWriter::processingInstruction(const XMLString& target, const XMLString& 
 
 namespace
 {
-	static const XMLString CDATA = toXMLString("CDATA");
+	static const XMLString CDATA = toXMLString("CDATA"s);
 }
 
 
@@ -452,32 +459,32 @@ void XMLWriter::comment(const XMLChar ch[], int start, int length)
 {
 	if (_unclosedStartTag) closeStartTag();
 	prettyPrint();
-	writeMarkup("<!--");
+	writeMarkup("<!--"s);
 	while (length-- > 0) writeXML(ch[start++]);
-	writeMarkup("-->");
+	writeMarkup("-->"s);
 	_contentWritten = false;
 }
 
 
 void XMLWriter::startDTD(const XMLString& name, const XMLString& publicId, const XMLString& systemId)
 {
-	writeMarkup("<!DOCTYPE ");
+	writeMarkup("<!DOCTYPE "s);
 	writeXML(name);
 	if (!publicId.empty())
 	{
-		writeMarkup(" PUBLIC \"");
+		writeMarkup(" PUBLIC \""s);
 		writeXML(publicId);
-		writeMarkup("\"");
+		writeMarkup("\""s);
 	}
 	if (!systemId.empty())
 	{
 		if (publicId.empty())
 		{
-			writeMarkup(" SYSTEM");
+			writeMarkup(" SYSTEM"s);
 		}
-		writeMarkup(" \"");
+		writeMarkup(" \""s);
 		writeXML(systemId);
-		writeMarkup("\"");
+		writeMarkup("\""s);
 	}
 	_inDTD = true;
 }
@@ -489,10 +496,10 @@ void XMLWriter::endDTD()
 	if (_inInternalDTD)
 	{
 		writeNewLine();
-		writeMarkup("]");
+		writeMarkup("]"s);
 		_inInternalDTD = false;
 	}
-	writeMarkup(">");
+	writeMarkup(">"s);
 	writeNewLine();
 	_inDTD = false;
 }
@@ -513,7 +520,7 @@ void XMLWriter::notationDecl(const XMLString& name, const XMLString* publicId, c
 	if (!_inDTD) throw XMLException("Notation declaration not within DTD");
 	if (!_inInternalDTD)
 	{
-		writeMarkup(" [");
+		writeMarkup(" ["s);
 		_inInternalDTD = true;
 	}
 	if (_options & PRETTY_PRINT)
@@ -521,21 +528,21 @@ void XMLWriter::notationDecl(const XMLString& name, const XMLString* publicId, c
 		writeNewLine();
 		writeMarkup(_indent);
 	}
-	writeMarkup("<!NOTATION ");
+	writeMarkup("<!NOTATION "s);
 	writeXML(name);
 	if (systemId && !systemId->empty())
 	{
-		writeMarkup(" SYSTEM \"");
+		writeMarkup(" SYSTEM \""s);
 		writeXML(*systemId);
-		writeMarkup("\"");
+		writeMarkup("\""s);
 	}
 	if (publicId && !publicId->empty())
 	{
-		writeMarkup(" PUBLIC \"");
+		writeMarkup(" PUBLIC \""s);
 		writeXML(*publicId);
-		writeMarkup("\"");
+		writeMarkup("\""s);
 	}
-	writeMarkup(">");
+	writeMarkup(">"s);
 }
 
 
@@ -544,7 +551,7 @@ void XMLWriter::unparsedEntityDecl(const XMLString& name, const XMLString* publi
 	if (!_inDTD) throw XMLException("Entity declaration not within DTD");
 	if (!_inInternalDTD)
 	{
-		writeMarkup(" [");
+		writeMarkup(" ["s);
 		_inInternalDTD = true;
 	}
 	if (_options & PRETTY_PRINT)
@@ -552,26 +559,26 @@ void XMLWriter::unparsedEntityDecl(const XMLString& name, const XMLString* publi
 		writeNewLine();
 		writeMarkup(_indent);
 	}
-	writeMarkup("<!ENTITY ");
+	writeMarkup("<!ENTITY "s);
 	writeXML(name);
 	if (!systemId.empty())
 	{
-		writeMarkup(" SYSTEM \"");
+		writeMarkup(" SYSTEM \""s);
 		writeXML(systemId);
-		writeMarkup("\"");
+		writeMarkup("\""s);
 	}
 	if (publicId && !publicId->empty())
 	{
-		writeMarkup(" PUBLIC \"");
+		writeMarkup(" PUBLIC \""s);
 		writeXML(*publicId);
-		writeMarkup("\"");
+		writeMarkup("\""s);
 	}
 	if (!notationName.empty())
 	{
-		writeMarkup(" NDATA ");
+		writeMarkup(" NDATA "s);
 		writeXML(notationName);
 	}
-	writeMarkup(">");
+	writeMarkup(">"s);
 }
 
 
@@ -591,7 +598,7 @@ void XMLWriter::writeStartElement(const XMLString& namespaceURI, const XMLString
 		_namespaces.pushContext();
 	_nsContextPushed = false;
 	++_elementCount;
-	
+
 	declareAttributeNamespaces(attributes);
 
 	writeMarkup(MARKUP_LT);
@@ -627,6 +634,36 @@ void XMLWriter::writeStartElement(const XMLString& namespaceURI, const XMLString
 
 	AttributeMap attributeMap;
 	addNamespaceAttributes(attributeMap);
+	addAttributes(attributeMap, attributes, namespaceURI);
+	writeAttributes(attributeMap);
+	_unclosedStartTag = true;
+}
+
+
+void XMLWriter::writeCanonicalStartElement(const XMLString& namespaceURI, const XMLString& localName, const XMLString& qname, const Attributes& attributes)
+{
+	if (!_nsContextPushed)
+		_namespaces.pushContext();
+	_nsContextPushed = false;
+	++_elementCount;
+
+	declareNamespaces(namespaceURI, localName, qname, attributes);
+
+	writeMarkup(MARKUP_LT);
+	if (!localName.empty())
+	{
+		writeName(_namespaces.getPrefix(namespaceURI), localName);
+	}
+	else if (namespaceURI.empty() && !qname.empty())
+	{
+		writeXML(qname);
+	}
+	else throw XMLException("Tag mismatch", nameToString(localName, qname));
+
+	CanonicalAttributeMap namespaceAttributeMap;
+	addNamespaceAttributes(namespaceAttributeMap);
+	writeAttributes(namespaceAttributeMap);
+	CanonicalAttributeMap attributeMap;
 	addAttributes(attributeMap, attributes, namespaceURI);
 	writeAttributes(attributeMap);
 	_unclosedStartTag = true;
@@ -670,13 +707,78 @@ void XMLWriter::closeStartTag()
 }
 
 
+void XMLWriter::declareNamespaces(const XMLString& namespaceURI, const XMLString& localName, const XMLString& qname, const Attributes& attributes)
+{
+	std::map<XMLString, std::set<XMLString>> usedNamespaces;
+	bool defaultNameSpaceUsed = false;
+	XMLString defaultNamespaceURI = _namespaces.getURI(XMLString());
+	XMLString local;
+	XMLString prefix;
+	XMLString elementNamespaceURI = namespaceURI;
+	Name::split(qname, prefix, local);
+	if (elementNamespaceURI.empty())
+		elementNamespaceURI = _namespaces.getURI(prefix);
+	if (!elementNamespaceURI.empty())
+	{
+		usedNamespaces[prefix].insert(elementNamespaceURI);
+		if (!defaultNamespaceURI.empty() && elementNamespaceURI == defaultNamespaceURI)
+			defaultNameSpaceUsed = true;
+	}
+	for (int i = 0; i < attributes.getLength(); i++)
+	{
+		XMLString attributeNamespaceURI = attributes.getURI(i);
+		const XMLString& attributeQName = attributes.getQName(i);
+
+		XMLString attributePrefix;
+		XMLString attributeLocal;
+		Name::split(attributeQName, attributePrefix, attributeLocal);
+		if (attributeNamespaceURI.empty())
+			attributeNamespaceURI = _namespaces.getURI(prefix);
+		if (!attributeNamespaceURI.empty())
+		{
+			usedNamespaces[attributePrefix].insert(attributeNamespaceURI);
+			defaultNameSpaceUsed = defaultNameSpaceUsed || (!defaultNamespaceURI.empty() &&  attributeNamespaceURI == defaultNamespaceURI);
+		}
+	}
+	for (const auto& p: usedNamespaces)
+	{
+		const std::set<XMLString> namespaceURIs = p.second;
+		for (const auto& nsURI: namespaceURIs)
+		{
+			XMLString prefix = p.first;
+			if (prefix.empty())
+				prefix = _namespaces.getPrefix(nsURI);
+			if (prefix.empty() && !_namespaces.isMapped(nsURI))
+			{
+				if (defaultNameSpaceUsed)
+				{
+					if (nsURI != defaultNamespaceURI)
+						prefix = uniquePrefix();
+				}
+				else
+				{
+					defaultNamespaceURI = nsURI;
+					defaultNameSpaceUsed = true;
+				}
+
+			}
+			const XMLString& uri = _namespaces.getURI(prefix);
+			if ((uri.empty() || uri != nsURI) && !nsURI.empty())
+			{
+				_namespaces.declarePrefix(prefix, nsURI);
+			}
+		}
+	}
+}
+
+
 void XMLWriter::declareAttributeNamespaces(const Attributes& attributes)
 {
 	for (int i = 0; i < attributes.getLength(); i++)
 	{
-		XMLString namespaceURI = attributes.getURI(i);
-		XMLString localName    = attributes.getLocalName(i);
-		XMLString qname        = attributes.getQName(i);
+		const XMLString& namespaceURI = attributes.getURI(i);
+		const XMLString& localName    = attributes.getLocalName(i);
+		const XMLString& qname        = attributes.getQName(i);
 		if (!localName.empty())
 		{
 			XMLString prefix;
@@ -703,12 +805,11 @@ void XMLWriter::addNamespaceAttributes(AttributeMap& attributeMap)
 {
 	NamespaceSupport::PrefixSet prefixes;
 	_namespaces.getDeclaredPrefixes(prefixes);
-	for (NamespaceSupport::PrefixSet::const_iterator it = prefixes.begin(); it != prefixes.end(); ++it)
+	for (const auto& prefix: prefixes)
 	{
-		XMLString prefix = *it;
-		XMLString uri    = _namespaces.getURI(prefix);
-		XMLString qname  = NamespaceSupport::XMLNS_NAMESPACE_PREFIX;
-		
+		XMLString uri   = _namespaces.getURI(prefix);
+		XMLString qname = NamespaceSupport::XMLNS_NAMESPACE_PREFIX;
+
 		if (!prefix.empty())
 		{
 			qname.append(toXMLString(MARKUP_COLON));
@@ -719,12 +820,31 @@ void XMLWriter::addNamespaceAttributes(AttributeMap& attributeMap)
 }
 
 
+void XMLWriter::addNamespaceAttributes(CanonicalAttributeMap& attributeMap)
+{
+	NamespaceSupport::PrefixSet prefixes;
+	_namespaces.getDeclaredPrefixes(prefixes);
+	for (const auto& prefix: prefixes)
+	{
+		XMLString uri   = _namespaces.getURI(prefix);
+		XMLString qname = NamespaceSupport::XMLNS_NAMESPACE_PREFIX;
+
+		if (!prefix.empty())
+		{
+			qname.append(toXMLString(MARKUP_COLON));
+			qname.append(prefix);
+		}
+		attributeMap.insert(std::make_pair(qname, std::make_pair(qname, uri)));
+	}
+}
+
+
 void XMLWriter::addAttributes(AttributeMap& attributeMap, const Attributes& attributes, const XMLString& elementNamespaceURI)
 {
 	for (int i = 0; i < attributes.getLength(); i++)
 	{
-		XMLString namespaceURI = attributes.getURI(i);
-		XMLString localName    = attributes.getLocalName(i);
+		const XMLString& namespaceURI = attributes.getURI(i);
+		const XMLString& localName    = attributes.getLocalName(i);
 		XMLString qname        = attributes.getQName(i);
 		if (!localName.empty())
 		{
@@ -744,9 +864,41 @@ void XMLWriter::addAttributes(AttributeMap& attributeMap, const Attributes& attr
 }
 
 
+void XMLWriter::addAttributes(CanonicalAttributeMap& attributeMap, const Attributes& attributes, const XMLString& elementNamespaceURI)
+{
+	for (int i = 0; i < attributes.getLength(); i++)
+	{
+		const XMLString& namespaceURI = attributes.getURI(i);
+		const XMLString& localName    = attributes.getLocalName(i);
+		XMLString qname        = attributes.getQName(i);
+		XMLString fullQName    = qname;
+		if (!localName.empty())
+		{
+			XMLString prefix;
+			if (!namespaceURI.empty())
+			{
+				prefix    = _namespaces.getPrefix(namespaceURI);
+				fullQName = namespaceURI;
+				fullQName.append(toXMLString(MARKUP_COLON));
+			}
+			else fullQName.clear();
+			if (!prefix.empty())
+			{
+				qname = prefix;
+				qname.append(toXMLString(MARKUP_COLON));
+			}
+			else qname.clear();
+			qname.append(localName);
+			fullQName.append(localName);
+		}
+		attributeMap.insert(std::make_pair(fullQName, std::make_pair(qname, attributes.getValue(i))));
+	}
+}
+
+
 void XMLWriter::writeAttributes(const AttributeMap& attributeMap)
 {
-	for (AttributeMap::const_iterator it = attributeMap.begin(); it != attributeMap.end(); ++it)
+	for (const auto& ap: attributeMap)
 	{
 		if ((_options & PRETTY_PRINT) && (_options & PRETTY_PRINT_ATTRIBUTES))
 		{
@@ -757,11 +909,10 @@ void XMLWriter::writeAttributes(const AttributeMap& attributeMap)
 		{
 			writeMarkup(MARKUP_SPACE);
 		}
-		writeXML(it->first);
+		writeXML(ap.first);
 		writeMarkup(MARKUP_EQQUOT);
-		for (XMLString::const_iterator itc = it->second.begin(); itc != it->second.end(); ++itc)
+		for (auto c: ap.second)
 		{
-			XMLChar c = *itc;
 			switch (c)
 			{
 			case '"':  writeMarkup(MARKUP_QUOTENC); break;
@@ -774,7 +925,45 @@ void XMLWriter::writeAttributes(const AttributeMap& attributeMap)
 			default:
 				if (c >= 0 && c < 32)
 					throw XMLException("Invalid character token.");
-				else 
+				else
+					writeXML(c);
+			}
+		}
+		writeMarkup(MARKUP_QUOT);
+	}
+}
+
+
+void XMLWriter::writeAttributes(const CanonicalAttributeMap& attributeMap)
+{
+	for (const auto& ap: attributeMap)
+	{
+		if ((_options & PRETTY_PRINT) && (_options & PRETTY_PRINT_ATTRIBUTES))
+		{
+			writeNewLine();
+			writeIndent(_depth + 1);
+		}
+		else
+		{
+			writeMarkup(MARKUP_SPACE);
+		}
+		writeXML(ap.second.first);
+		writeMarkup(MARKUP_EQQUOT);
+		for (auto c: ap.second.second)
+		{
+			switch (c)
+			{
+			case '"':  writeMarkup(MARKUP_QUOTENC); break;
+			case '&':  writeMarkup(MARKUP_AMPENC); break;
+			case '<':  writeMarkup(MARKUP_LTENC); break;
+			case '>':  writeMarkup(MARKUP_GTENC); break;
+			case '\t': writeMarkup(MARKUP_TABENC); break;
+			case '\r': writeMarkup(MARKUP_CRENC); break;
+			case '\n': writeMarkup(MARKUP_LFENC); break;
+			default:
+				if (c >= 0 && c < 32)
+					throw XMLException("Invalid character token.");
+				else
 					writeXML(c);
 			}
 		}
@@ -814,8 +1003,8 @@ void XMLWriter::writeName(const XMLString& prefix, const XMLString& localName)
 	}
 	else
 	{
-		writeXML(prefix); 
-		writeMarkup(MARKUP_COLON); 
+		writeXML(prefix);
+		writeMarkup(MARKUP_COLON);
 		writeXML(localName);
 	}
 }
@@ -843,14 +1032,14 @@ void XMLWriter::writeIndent(int depth) const
 
 void XMLWriter::writeXMLDeclaration()
 {
-	writeMarkup("<?xml version=\"1.0\"");
+	writeMarkup("<?xml version=\"1.0\""s);
 	if (!_encoding.empty())
 	{
-		writeMarkup(" encoding=\"");
+		writeMarkup(" encoding=\""s);
 		writeMarkup(_encoding);
-		writeMarkup("\"");
+		writeMarkup("\""s);
 	}
-	writeMarkup("?>");
+	writeMarkup("?>"s);
 	writeNewLine();
 }
 

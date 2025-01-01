@@ -1,8 +1,6 @@
 //
 // SessionImpl.h
 //
-// $Id: //poco/Main/Data/include/Poco/Data/SessionImpl.h#5 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  SessionImpl
@@ -24,6 +22,8 @@
 #include "Poco/RefCountedObject.h"
 #include "Poco/String.h"
 #include "Poco/Format.h"
+#include "Poco/SharedPtr.h"
+#include "Poco/AutoPtr.h"
 #include "Poco/Any.h"
 
 
@@ -35,10 +35,12 @@ class StatementImpl;
 
 
 class Data_API SessionImpl: public Poco::RefCountedObject
-	/// Interface for Session functionality that subclasses must extend. 
+	/// Interface for Session functionality that subclasses must extend.
 	/// SessionImpl objects are noncopyable.
 {
 public:
+	using Ptr = Poco::AutoPtr<SessionImpl>;
+
 	static const std::size_t LOGIN_TIMEOUT_INFINITE = 0;
 		/// Infinite connection/login timeout.
 
@@ -51,29 +53,44 @@ public:
 	static const std::size_t CONNECTION_TIMEOUT_DEFAULT = CONNECTION_TIMEOUT_INFINITE;
 		/// Default connection/login timeout in seconds.
 
+	// ODBC only, otherwise no-op
+	static const int CURSOR_USE_ALWAYS = 0;
+	static const int CURSOR_USE_IF_NEEDED = 1;
+	static const int CURSOR_USE_NEVER = 2;
+
 	SessionImpl(const std::string& connectionString,
-		std::size_t timeout = LOGIN_TIMEOUT_DEFAULT);
+		std::size_t loginTimeout = LOGIN_TIMEOUT_DEFAULT);
 		/// Creates the SessionImpl.
 
 	virtual ~SessionImpl();
 		/// Destroys the SessionImpl.
 
-	virtual StatementImpl* createStatementImpl() = 0;
+	const std::string& dbmsName() const;
+		/// Returns the DBMS name. The name must be set by the
+		/// implementation.
+		/// Defaults to "unknown".
+
+	virtual Poco::SharedPtr<StatementImpl> createStatementImpl() = 0;
 		/// Creates a StatementImpl.
 
 	virtual void open(const std::string& connectionString = "") = 0;
 		/// Opens the session using the supplied string.
-		/// Can also be used with default empty string to reconnect 
+		/// Can also be used with default empty string to reconnect
 		/// a disconnected session.
-		/// If the connection is not established within requested timeout 
-		/// (specified in seconds), a ConnectionFailedException is thrown. 
-		/// Zero timeout means indefinite
+		/// If the connection is not established within requested timeout
+		/// (specified in seconds), a ConnectionFailedException is thrown.
+		/// Zero timout means indefinite
 
 	virtual void close() = 0;
 		/// Closes the connection.
 
-	virtual bool isConnected() = 0;
+	virtual bool isConnected() const = 0;
 		/// Returns true if session is connected, false otherwise.
+
+	virtual bool isGood() const;
+		/// Returns true if session is good and can be used, false otherwise.
+		///
+		/// The default implementation returns result of isConnected().
 
 	void setLoginTimeout(std::size_t timeout);
 		/// Sets the session login timeout value.
@@ -84,11 +101,14 @@ public:
 	virtual void setConnectionTimeout(std::size_t timeout) = 0;
 		/// Sets the session connection timeout value.
 
-	virtual std::size_t getConnectionTimeout() = 0;
+	virtual std::size_t getConnectionTimeout() const = 0;
 		/// Returns the session connection timeout value.
 
 	void reconnect();
 		/// Closes the connection and opens it again.
+
+	virtual void reset() = 0;
+		/// Reset connection with dababase and clears session state, but without disconnecting
 
 	virtual void begin() = 0;
 		/// Starts a transaction.
@@ -99,23 +119,23 @@ public:
 	virtual void rollback() = 0;
 		/// Aborts a transaction.
 
-	virtual bool canTransact() = 0;
+	virtual bool canTransact() const = 0;
 		/// Returns true if session has transaction capabilities.
 
-	virtual bool isTransaction() = 0;
-		/// Returns true iff a transaction is a transaction is in progress, false otherwise.
+	virtual bool isTransaction() const = 0;
+		/// Returns true iff a transaction is in progress, false otherwise.
 
 	virtual void setTransactionIsolation(Poco::UInt32) = 0;
 		/// Sets the transaction isolation level.
 
-	virtual Poco::UInt32 getTransactionIsolation() = 0;
+	virtual Poco::UInt32 getTransactionIsolation() const = 0;
 		/// Returns the transaction isolation level.
 
-	virtual bool hasTransactionIsolation(Poco::UInt32) = 0;
+	virtual bool hasTransactionIsolation(Poco::UInt32) const = 0;
 		/// Returns true iff the transaction isolation level corresponding
 		/// to the supplied bitmask is supported.
 
-	virtual bool isTransactionIsolation(Poco::UInt32) = 0;
+	virtual bool isTransactionIsolation(Poco::UInt32) const = 0;
 		/// Returns true iff the transaction isolation level corresponds
 		/// to the supplied bitmask.
 
@@ -131,6 +151,15 @@ public:
 	std::string uri() const;
 		/// Returns the URI for this session.
 
+	bool isAutocommit() const;
+		/// Returns true if autocommit is on, false otherwise.
+
+	bool shouldParse() const;
+		/// Returns true if SQL parser is enabled, false otherwise.
+
+	virtual bool hasFeature(const std::string& name) const = 0;
+		/// Returns true if session has the named feature.
+
 	virtual void setFeature(const std::string& name, bool state) = 0;
 		/// Set the state of a feature.
 		///
@@ -139,8 +168,8 @@ public:
 		///
 		/// Throws a NotSupportedException if the requested feature is
 		/// not supported by the underlying implementation.
-	
-	virtual bool getFeature(const std::string& name) = 0;
+
+	virtual bool getFeature(const std::string& name) const = 0;
 		/// Look up the state of a feature.
 		///
 		/// Features are a generic extension mechanism for session implementations.
@@ -148,6 +177,9 @@ public:
 		///
 		/// Throws a NotSupportedException if the requested feature is
 		/// not supported by the underlying implementation.
+
+	virtual bool hasProperty(const std::string& name) const = 0;
+		/// Returns true if session has the named feature.
 
 	virtual void setProperty(const std::string& name, const Poco::Any& value) = 0;
 		/// Set the value of a property.
@@ -158,7 +190,7 @@ public:
 		/// Throws a NotSupportedException if the requested property is
 		/// not supported by the underlying implementation.
 
-	virtual Poco::Any getProperty(const std::string& name) = 0;
+	virtual Poco::Any getProperty(const std::string& name) const = 0;
 		/// Look up the value of a property.
 		///
 		/// Properties are a generic extension mechanism for session implementations.
@@ -168,6 +200,9 @@ public:
 		/// not supported by the underlying implementation.
 
 protected:
+	void setDBMSName(const std::string& name);
+		/// Sets the DBMS name.
+
 	void setConnectionString(const std::string& connectionString);
 		/// Sets the connection string. Should only be called on
 		/// disconnected sessions. Throws InvalidAccessException when called on
@@ -178,6 +213,7 @@ private:
 	SessionImpl(const SessionImpl&);
 	SessionImpl& operator = (const SessionImpl&);
 
+	std::string _dbmsName;
 	std::string _connectionString;
 	std::size_t _loginTimeout;
 };
@@ -186,6 +222,19 @@ private:
 //
 // inlines
 //
+
+inline void SessionImpl::setDBMSName(const std::string& name)
+{
+	_dbmsName = name;
+}
+
+
+inline const std::string& SessionImpl::dbmsName() const
+{
+	return _dbmsName;
+}
+
+
 inline const std::string& SessionImpl::connectionString() const
 {
 	return _connectionString;
@@ -214,6 +263,18 @@ inline std::string SessionImpl::uri(const std::string& connector,
 inline std::string SessionImpl::uri() const
 {
 	return uri(connectorName(), connectionString());
+}
+
+
+inline bool SessionImpl::isAutocommit() const
+{
+	return hasFeature("autoCommit") && getFeature("autoCommit");
+}
+
+
+inline bool SessionImpl::shouldParse() const
+{
+	return hasFeature("sqlParse") && getFeature("sqlParse");
 }
 
 

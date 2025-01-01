@@ -1,8 +1,6 @@
 //
 // FileStreamFactory.cpp
 //
-// $Id: //poco/1.4/Foundation/src/FileStreamFactory.cpp#1 $
-//
 // Library: Foundation
 // Package: URI
 // Module:  FileStreamFactory
@@ -52,13 +50,13 @@ std::istream* FileStreamFactory::open(const Path& path)
 {
 	File file(path);
 	if (!file.exists()) throw FileNotFoundException(path.toString());
-	
+
 	FileInputStream* istr = new FileInputStream(path.toString(), std::ios::binary);
 	if (!istr->good())
 	{
 		delete istr;
 		throw OpenFileException(path.toString());
-	}	
+	}
 	return istr;
 }
 

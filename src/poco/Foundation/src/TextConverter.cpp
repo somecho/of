@@ -1,8 +1,6 @@
 //
 // TextConverter.cpp
 //
-// $Id: //poco/1.4/Foundation/src/TextConverter.cpp#1 $
-//
 // Library: Foundation
 // Package: Text
 // Module:  TextConverter
@@ -73,7 +71,7 @@ int TextConverter::convert(const void* source, int length, std::string& destinat
 	const unsigned char* it  = (const unsigned char*) source;
 	const unsigned char* end = (const unsigned char*) source + length;
 	unsigned char buffer[TextEncoding::MAX_SEQUENCE_LENGTH];
-	
+
 	while (it < end)
 	{
 		int n = _inEncoding.queryConvert(it, 1);

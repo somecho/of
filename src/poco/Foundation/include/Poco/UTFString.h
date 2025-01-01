@@ -1,8 +1,6 @@
 //
 // UTFString.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/UTFString.h#2 $
-//
 // Library: Foundation
 // Package: Text
 // Module:  UTFString
@@ -30,29 +28,29 @@ namespace Poco {
 
 struct UTF16CharTraits
 {
-	typedef std::fpos<mbstate_t> u16streampos;
-	typedef UInt16               char_type;
-	typedef int                  int_type;
-	typedef std::streamoff       off_type;
-	typedef u16streampos         pos_type;
-	typedef mbstate_t            state_type;
+	typedef std::fpos<std::mbstate_t> u16streampos;
+	typedef UInt16                    char_type;
+	typedef int                       int_type;
+	typedef std::streamoff            off_type;
+	typedef u16streampos              pos_type;
+	typedef std::mbstate_t            state_type;
 
 	static void assign(char_type& c1, const char_type& c2)
 	{
 		c1 = c2;
 	}
-	
+
 	static bool eq(char_type c1, char_type c2)
 	{
 		return c1 == c2;
 	}
-	
+
 	static bool lt(char_type c1, char_type c2)
 	{
 		return c1 < c2;
 	}
 
-	static int compare(const char_type* s1, const char_type* s2, size_t n)
+	static int compare(const char_type* s1, const char_type* s2, std::size_t n)
 	{
 		for (; n; --n, ++s1, ++s2)
 		{
@@ -64,15 +62,15 @@ struct UTF16CharTraits
 		return 0;
 	}
 
-	static size_t length(const char_type* s)
+	static std::size_t length(const char_type* s)
 	{
-		size_t len = 0;
+		std::size_t len = 0;
 		for (; !eq(*s, char_type(0)); ++s)
 			++len;
 		return len;
 	}
 
-	static const char_type* find(const char_type* s, size_t n, const char_type& a)
+	static const char_type* find(const char_type* s, std::size_t n, const char_type& a)
 	{
 		for (; n; --n)
 		{
@@ -83,7 +81,7 @@ struct UTF16CharTraits
 		return 0;
 	}
 
-	static char_type* move(char_type* s1, const char_type* s2, size_t n)
+	static char_type* move(char_type* s1, const char_type* s2, std::size_t n)
 	{
 		char_type* r = s1;
 		if (s1 < s2)
@@ -101,7 +99,7 @@ struct UTF16CharTraits
 		return r;
 	}
 
-	static char_type* copy(char_type* s1, const char_type* s2, size_t n)
+	static char_type* copy(char_type* s1, const char_type* s2, std::size_t n)
 	{
 		poco_assert(s2 < s1 || s2 >= s1 + n);
 		char_type* r = s1;
@@ -110,7 +108,7 @@ struct UTF16CharTraits
 		return r;
 	}
 
-	static char_type* assign(char_type* s, size_t n, char_type a)
+	static char_type* assign(char_type* s, std::size_t n, char_type a)
 	{
 		char_type* r = s;
 		for (; n; --n, ++s)
@@ -122,22 +120,22 @@ struct UTF16CharTraits
 	{
 		return eq_int_type(c, eof()) ? ~eof() : c;
 	}
-	
+
 	static char_type to_char_type(int_type c)
 	{
 		return char_type(c);
 	}
-	
+
 	static int_type to_int_type(char_type c)
 	{
 		return int_type(c);
 	}
-	
+
 	static bool eq_int_type(int_type c1, int_type c2)
 	{
 		return c1 == c2;
 	}
-	
+
 	static int_type eof()
 	{
 		return int_type(0xDFFF);
@@ -147,29 +145,29 @@ struct UTF16CharTraits
 
 struct UTF32CharTraits
 {
-	typedef std::fpos<mbstate_t> u32streampos;
-	typedef UInt32               char_type;
-	typedef int                  int_type;
-	typedef std::streamoff       off_type;
-	typedef u32streampos         pos_type;
-	typedef mbstate_t            state_type;
+	typedef std::fpos<std::mbstate_t> u32streampos;
+	typedef UInt32                    char_type;
+	typedef int                       int_type;
+	typedef std::streamoff            off_type;
+	typedef u32streampos              pos_type;
+	typedef std::mbstate_t            state_type;
 
 	static void assign(char_type& c1, const char_type& c2)
 	{
 		c1 = c2;
 	}
-	
+
 	static bool eq(char_type c1, char_type c2)
 	{
 		return c1 == c2;
 	}
-	
+
 	static bool lt(char_type c1, char_type c2)
 	{
 		return c1 < c2;
 	}
 
-	static int compare(const char_type* s1, const char_type* s2, size_t n)
+	static int compare(const char_type* s1, const char_type* s2, std::size_t n)
 	{
 		for (; n; --n, ++s1, ++s2)
 		{
@@ -181,15 +179,15 @@ struct UTF32CharTraits
 		return 0;
 	}
 
-	static size_t length(const char_type* s)
+	static std::size_t length(const char_type* s)
 	{
-		size_t len = 0;
+		std::size_t len = 0;
 		for (; !eq(*s, char_type(0)); ++s)
 			++len;
 		return len;
 	}
 
-	static const char_type* find(const char_type* s, size_t n, const char_type& a)
+	static const char_type* find(const char_type* s, std::size_t n, const char_type& a)
 	{
 		for (; n; --n)
 		{
@@ -200,7 +198,7 @@ struct UTF32CharTraits
 		return 0;
 	}
 
-	static char_type* move(char_type* s1, const char_type* s2, size_t n)
+	static char_type* move(char_type* s1, const char_type* s2, std::size_t n)
 	{
 		char_type* r = s1;
 		if (s1 < s2)
@@ -218,7 +216,7 @@ struct UTF32CharTraits
 		return r;
 	}
 
-	static char_type* copy(char_type* s1, const char_type* s2, size_t n)
+	static char_type* copy(char_type* s1, const char_type* s2, std::size_t n)
 	{
 		poco_assert(s2 < s1 || s2 >= s1 + n);
 		char_type* r = s1;
@@ -227,7 +225,7 @@ struct UTF32CharTraits
 		return r;
 	}
 
-	static char_type* assign(char_type* s, size_t n, char_type a)
+	static char_type* assign(char_type* s, std::size_t n, char_type a)
 	{
 		char_type* r = s;
 		for (; n; --n, ++s)
@@ -239,22 +237,22 @@ struct UTF32CharTraits
 	{
 		return eq_int_type(c, eof()) ? ~eof() : c;
 	}
-	
+
 	static char_type to_char_type(int_type c)
 	{
 		return char_type(c);
 	}
-	
+
 	static int_type to_int_type(char_type c)
 	{
 		return int_type(c);
 	}
-	
+
 	static bool eq_int_type(int_type c1, int_type c2)
 	{
 		return c1 == c2;
 	}
-	
+
 	static int_type eof()
 	{
 		return int_type(0xDFFF);
@@ -273,6 +271,8 @@ struct UTF32CharTraits
 		typedef std::basic_string<UTF16Char, UTF16CharTraits> UTF16String;
 		typedef UInt32                                        UTF32Char;
 		typedef std::basic_string<UTF32Char, UTF32CharTraits> UTF32String;
+		#define POCO_USE_STRING16
+		#define POCO_USE_STRING32
 	#else // POCO_NO_WSTRING
 		#if defined(POCO_OS_FAMILY_WINDOWS)
 			typedef wchar_t                                       UTF16Char;
@@ -285,23 +285,35 @@ struct UTF32CharTraits
 				typedef std::wstring                                  UTF16String;
 				typedef UInt32                                        UTF32Char;
 				typedef std::basic_string<UTF32Char, UTF32CharTraits> UTF32String;
+				#define POCO_USE_STRING32
 			#elif (__SIZEOF_WCHAR_T__ == 4)
 				typedef Poco::UInt16                                  UTF16Char;
 				typedef std::basic_string<UTF16Char, UTF16CharTraits> UTF16String;
 				typedef wchar_t                                       UTF32Char;
 				typedef std::wstring                                  UTF32String;
+				#define POCO_USE_STRING16
 			#endif
 		#else // default to 32-bit wchar_t
 			typedef Poco::UInt16                                  UTF16Char;
 			typedef std::basic_string<UTF16Char, UTF16CharTraits> UTF16String;
 			typedef wchar_t                                       UTF32Char;
 			typedef std::wstring                                  UTF32String;
+			#define POCO_USE_STRING16
 		#endif //POCO_OS_FAMILY_WINDOWS
 	#endif //POCO_NO_WSTRING
 //#endif // POCO_ENABLE_CPP11
 
 
 } // namespace Poco
+
+
+#if defined(POCO_USE_STRING16)
+extern template class Foundation_API std::basic_string<Poco::UTF16Char, Poco::UTF16CharTraits>;
+#endif
+
+#if defined(POCO_USE_STRING32)
+extern template class Foundation_API std::basic_string<Poco::UTF32Char, Poco::UTF32CharTraits>;
+#endif
 
 
 #endif // Foundation_UTFString_INCLUDED

@@ -1,8 +1,6 @@
 //
 // RowFormatter.h
 //
-// $Id: //poco/Main/Data/include/Poco/Data/SimpleRowFormatter.h#1 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  SimpleRowFormatter
@@ -32,6 +30,9 @@ class Data_API SimpleRowFormatter: public RowFormatter
 	/// A simple row formatting class.
 {
 public:
+	//using NameVec = RowFormatter::NameVec;
+	//using NameVecPtr = RowFormatter::NameVecPtr;
+	//using ValueVec = RowFormatter::ValueVec;
 
 	static const int DEFAULT_COLUMN_WIDTH = 16;
 	static const int DEFAULT_SPACING = 1;
@@ -48,7 +49,7 @@ public:
 	~SimpleRowFormatter();
 		/// Destroys the SimpleRowFormatter.
 
-	void swap(SimpleRowFormatter& other);
+	void swap(SimpleRowFormatter& other) noexcept;
 		/// Swaps the row formatter with another one.
 
 	std::string& formatNames(const NameVecPtr pNames, std::string& formattedNames);
@@ -65,7 +66,7 @@ public:
 
 	std::streamsize getColumnWidth() const;
 		/// Returns the column width.
-		
+
 	std::streamsize getSpacing() const;
 		/// Returns the spacing.
 
@@ -106,16 +107,19 @@ inline std::streamsize SimpleRowFormatter::getSpacing() const
 } } // namespace Poco::Data
 
 
+#ifndef POCO_DOC
 namespace std
 {
 	template<>
-	inline void swap<Poco::Data::SimpleRowFormatter>(Poco::Data::SimpleRowFormatter& s1, 
+	inline void swap<Poco::Data::SimpleRowFormatter>(Poco::Data::SimpleRowFormatter& s1,
 		Poco::Data::SimpleRowFormatter& s2)
-		/// Full template specialization of std:::swap for SimpleRowFormatter
+		noexcept(std::is_nothrow_swappable_v<Poco::Data::SimpleRowFormatter>)
+		/// Full template specalization of std:::swap for SimpleRowFormatter
 	{
 		s1.swap(s2);
 	}
 }
+#endif
 
 
 #endif // Data_SimpleRowFormatter_INCLUDED

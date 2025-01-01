@@ -1,8 +1,6 @@
 //
 // dir.cpp
 //
-// $Id: //poco/1.4/Foundation/samples/dir/src/dir.cpp#1 $
-//
 // This sample demonstrates the DirectoryIterator, File and Path classes.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -35,7 +33,7 @@ int main(int argc, char** argv)
 		dir = argv[1];
 	else
 		dir = Path::current();
-		
+
 	try
 	{
 		DirectoryIterator it(dir);
@@ -59,6 +57,6 @@ int main(int argc, char** argv)
 		std::cerr << exc.displayText() << std::endl;
 		return 1;
 	}
-		
+
 	return 0;
 }

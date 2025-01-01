@@ -1,8 +1,6 @@
 #
 # Makefile
 #
-# $Id: //poco/1.4/CppUnit/Makefile#1 $
-#
 # Makefile for Poco CppUnit
 #
 
@@ -13,6 +11,5 @@ objects = CppUnitException TestDecorator TestResult TestSuite \
 
 target         = CppUnit
 target_version = 1
-target_libs    =
 
 include $(POCO_BASE)/build/rules/lib

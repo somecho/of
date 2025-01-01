@@ -1,8 +1,6 @@
 //
 // SharedLibrary_UNIX.cpp
 //
-// $Id: //poco/1.4/Foundation/src/SharedLibrary_UNIX.cpp#3 $
-//
 // Library: Foundation
 // Package: SharedLibrary
 // Module:  SharedLibrary
@@ -76,7 +74,8 @@ void SharedLibraryImpl::unloadImpl()
 
 bool SharedLibraryImpl::isLoadedImpl() const
 {
-	return _handle != 0; 
+	FastMutex::ScopedLock lock(_mutex);
+	return _handle != 0;
 }
 
 
@@ -102,30 +101,36 @@ const std::string& SharedLibraryImpl::getPathImpl() const
 std::string SharedLibraryImpl::suffixImpl()
 {
 #if defined(__APPLE__)
-	#if defined(_DEBUG)
+	#if defined(_DEBUG) && !defined(POCO_NO_SHARED_LIBRARY_DEBUG_SUFFIX)
 		return "d.dylib";
 	#else
 		return ".dylib";
 	#endif
 #elif defined(hpux) || defined(_hpux)
-	#if defined(_DEBUG)
+	#if defined(_DEBUG) && !defined(POCO_NO_SHARED_LIBRARY_DEBUG_SUFFIX)
 		return "d.sl";
 	#else
 		return ".sl";
 	#endif
 #elif defined(__CYGWIN__)
-	#if defined(_DEBUG)
+	#if defined(_DEBUG) && !defined(POCO_NO_SHARED_LIBRARY_DEBUG_SUFFIX)
 		return "d.dll";
 	#else
 		return ".dll";
 	#endif
 #else
-	#if defined(_DEBUG)
+	#if defined(_DEBUG) && !defined(POCO_NO_SHARED_LIBRARY_DEBUG_SUFFIX)
 		return "d.so";
 	#else
 		return ".so";
 	#endif
 #endif
+}
+
+
+bool SharedLibraryImpl::setSearchPathImpl(const std::string&)
+{
+	return false;
 }
 
 

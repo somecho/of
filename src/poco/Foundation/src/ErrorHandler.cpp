@@ -1,8 +1,6 @@
 //
 // ErrorHandler.cpp
 //
-// $Id: //poco/1.4/Foundation/src/ErrorHandler.cpp#1 $
-//
 // Library: Foundation
 // Package: Threading
 // Module:  ErrorHandler
@@ -15,7 +13,6 @@
 
 
 #include "Poco/ErrorHandler.h"
-#include "Poco/SingletonHolder.h"
 
 
 namespace Poco {
@@ -40,7 +37,7 @@ void ErrorHandler::exception(const Exception& exc)
 	poco_debugger_msg(exc.what());
 }
 
-	
+
 void ErrorHandler::exception(const std::exception& exc)
 {
 	poco_debugger_msg(exc.what());
@@ -65,7 +62,7 @@ void ErrorHandler::handle(const Exception& exc)
 	}
 }
 
-	
+
 void ErrorHandler::handle(const std::exception& exc)
 {
 	FastMutex::ScopedLock lock(_mutex);
@@ -105,11 +102,8 @@ ErrorHandler* ErrorHandler::set(ErrorHandler* pHandler)
 
 ErrorHandler* ErrorHandler::defaultHandler()
 {
-	// NOTE: Since this is called to initialize the static _pHandler
-	// variable, sh has to be a local static, otherwise we run
-	// into static initialization order issues.
-	static SingletonHolder<ErrorHandler> sh;
-	return sh.get();
+	static ErrorHandler eh;
+	return &eh;
 }
 
 

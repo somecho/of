@@ -1,13 +1,11 @@
 #
 # Makefile
 #
-# $Id$
-#
 # Makefile for Poco JSON Samples
 #
 
 .PHONY: projects
-clean all: projects
+clean distclean all: projects
 projects:
 	$(MAKE) -C Benchmark $(MAKECMDGOALS)
 

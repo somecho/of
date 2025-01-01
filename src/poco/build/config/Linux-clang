@@ -1,6 +1,4 @@
 #
-# $Id$
-#
 # Linux
 #
 # Make settings for Linux/clang
@@ -11,6 +9,10 @@
 # General Settings
 #
 LINKMODE ?= SHARED
+
+ARCHFLAGS          ?= -arch $(POCO_HOST_OSARCH)
+SANITIZEFLAGS      ?=
+OSFLAGS            ?=
 
 #
 # Define Tools
@@ -23,7 +25,7 @@ RANLIB  = ${CROSS_COMPILE}ranlib
 SHLIB   = $(CXX) -shared -Wl,-soname,$(notdir $@) -o $@
 SHLIBLN = $(POCO_BASE)/build/script/shlibln
 STRIP   = ${CROSS_COMPILE}strip
-DEP     = $(POCO_BASE)/build/script/makedepend.gcc 
+DEP     = $(POCO_BASE)/build/script/makedepend.gcc
 SHELL   = sh
 RM      = rm -rf
 CP      = cp
@@ -38,13 +40,13 @@ SHAREDLIBLINKEXT = .so
 #
 # Compiler and Linker Flags
 #
-CFLAGS          = 
-CFLAGS32        =
-CFLAGS64        =
-CXXFLAGS        = -Wall -Wno-sign-compare
-CXXFLAGS32      =
-CXXFLAGS64      =
-LINKFLAGS       =
+CFLAGS          = $(ARCHFLAGS) $(OSFLAGS) $(SANITIZEFLAGS) -std=c11
+CFLAGS32        = $(ARCHFLAGS) $(OSFLAGS) $(SANITIZEFLAGS)
+CFLAGS64        = $(ARCHFLAGS) $(OSFLAGS) $(SANITIZEFLAGS)
+CXXFLAGS        = $(ARCHFLAGS) $(OSFLAGS) $(SANITIZEFLAGS) -std=c++17 -Wall -Wno-sign-compare
+CXXFLAGS32      = $(ARCHFLAGS) $(OSFLAGS) $(SANITIZEFLAGS)
+CXXFLAGS64      = $(ARCHFLAGS) $(OSFLAGS) $(SANITIZEFLAGS)
+LINKFLAGS       = $(ARCHFLAGS) $(OSFLAGS) $(SANITIZEFLAGS)
 LINKFLAGS32     =
 LINKFLAGS64     =
 STATICOPT_CC    =

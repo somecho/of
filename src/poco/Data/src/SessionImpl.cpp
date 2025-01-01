@@ -1,8 +1,6 @@
 //
 // SessionImpl.cpp
 //
-// $Id: //poco/Main/Data/src/SessionImpl.cpp#3 $
-//
 // Library: Data
 // Package: DataCore
 // Module:  SessionImpl
@@ -22,9 +20,10 @@ namespace Poco {
 namespace Data {
 
 
-SessionImpl::SessionImpl(const std::string& connectionString, std::size_t timeout): 
+SessionImpl::SessionImpl(const std::string& connectionString, std::size_t loginTimeout):
+	_dbmsName("unknown"s),
 	_connectionString(connectionString),
-	_loginTimeout(timeout)
+	_loginTimeout(loginTimeout)
 {
 }
 
@@ -48,6 +47,12 @@ void SessionImpl::setConnectionString(const std::string& connectionString)
 			" Close the session first.");
 
 	_connectionString = connectionString;
+}
+
+
+bool SessionImpl::isGood() const
+{
+	return isConnected();
 }
 
 

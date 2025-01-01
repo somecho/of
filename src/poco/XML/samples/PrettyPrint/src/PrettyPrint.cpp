@@ -1,8 +1,6 @@
 //
 // PrettyPrint.cpp
 //
-// $Id: //poco/1.4/XML/samples/PrettyPrint/src/PrettyPrint.cpp#1 $
-//
 // This sample demonstrates the SAXParser, WhitespaceFilter,
 // InputSource and XMLWriter classes.
 //
@@ -35,7 +33,7 @@ int main(int argc, char** argv)
 
 	SAXParser parser;
 	WhitespaceFilter filter(&parser);
-	
+
 	XMLWriter writer(std::cout, XMLWriter::CANONICAL | XMLWriter::PRETTY_PRINT);
 	writer.setNewLine(XMLWriter::NEWLINE_LF);
 

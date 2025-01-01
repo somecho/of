@@ -1,11 +1,18 @@
 //
 // TestResult.cpp
 //
-// $Id: //poco/1.4/CppUnit/src/TestResult.cpp#1 $
-//
+
+
+#if defined(__clang__) || defined (__GNUC__)
+	#define HAVE_CXXABI_H
+#endif
 
 
 #include "CppUnit/TestResult.h"
+#ifdef HAVE_CXXABI_H
+#include <cxxabi.h>
+#include <cstdlib>
+#endif
 
 
 namespace CppUnit {
@@ -23,6 +30,28 @@ TestResult::~TestResult()
 		delete *it;
 
 	delete _syncObject;
+}
+
+
+std::string TestResult::demangle(const char* typeName)
+{
+	std::string result;
+#ifdef HAVE_CXXABI_H
+	int status;
+	char* demangled = abi::__cxa_demangle(typeName, nullptr, nullptr, &status);
+	if (demangled)
+	{
+		result = demangled;
+		std::free(demangled);
+	}
+	else
+	{
+		result = typeName;
+	}
+#else
+	result = typeName;
+#endif
+	return result;
 }
 
 

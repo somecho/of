@@ -1,8 +1,6 @@
 //
 // MD4Engine.h
 //
-// $Id: //poco/1.4/Foundation/include/Poco/MD4Engine.h#1 $
-//
 // Library: Foundation
 // Package: Crypt
 // Module:  MD4Engine
@@ -63,7 +61,7 @@ public:
 
 	MD4Engine();
 	~MD4Engine();
-		
+
 	std::size_t digestLength() const;
 	void reset();
 	const DigestEngine::Digest& digest();

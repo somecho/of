@@ -1,8 +1,6 @@
 //
 // Cipher.cpp
 //
-// $Id: //poco/1.4/Crypto/src/Cipher.cpp#2 $
-//
 // Library: Crypto
 // Package: Cipher
 // Module:  Cipher
@@ -41,30 +39,32 @@ Cipher::~Cipher()
 }
 
 
-std::string Cipher::encryptString(const std::string& str, Encoding encoding)
+std::string Cipher::encryptString(const std::string& str, Encoding encoding, bool padding)
 {
 	std::istringstream source(str);
 	std::ostringstream sink;
 
-	encrypt(source, sink, encoding);
+	encrypt(source, sink, encoding, padding);
 
 	return sink.str();
 }
 
 
-std::string Cipher::decryptString(const std::string& str, Encoding encoding)
+std::string Cipher::decryptString(const std::string& str, Encoding encoding, bool padding)
 {
 	std::istringstream source(str);
 	std::ostringstream sink;
 
-	decrypt(source, sink, encoding);
+	decrypt(source, sink, encoding, padding);
 	return sink.str();
 }
 
 
-void Cipher::encrypt(std::istream& source, std::ostream& sink, Encoding encoding)
+void Cipher::encrypt(std::istream& source, std::ostream& sink, Encoding encoding, bool padding)
 {
-	CryptoInputStream encryptor(source, createEncryptor());
+	CryptoTransform::Ptr p = createEncryptor();
+	if (!padding) p->setPadding(0);
+	CryptoInputStream encryptor(source, p);
 
 	switch (encoding)
 	{
@@ -104,9 +104,11 @@ void Cipher::encrypt(std::istream& source, std::ostream& sink, Encoding encoding
 }
 
 
-void Cipher::decrypt(std::istream& source, std::ostream& sink, Encoding encoding)
+void Cipher::decrypt(std::istream& source, std::ostream& sink, Encoding encoding, bool padding)
 {
-	CryptoOutputStream decryptor(sink, createDecryptor());
+	CryptoTransform::Ptr p = createDecryptor();
+	if (!padding) p->setPadding(0);
+	CryptoOutputStream decryptor(sink, p);
 
 	switch (encoding)
 	{

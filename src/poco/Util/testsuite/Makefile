@@ -1,8 +1,6 @@
 #
 # Makefile
 #
-# $Id: //poco/1.4/Util/testsuite/Makefile#1 $
-#
 # Makefile for Poco Util testsuite
 #
 
@@ -11,7 +9,7 @@ include $(POCO_BASE)/build/rules/global
 objects = AbstractConfigurationTest ConfigurationTestSuite \
 	ConfigurationMapperTest ConfigurationViewTest Driver  \
 	HelpFormatterTest IniFileConfigurationTest LayeredConfigurationTest \
-	LoggingConfiguratorTest MapConfigurationTest \
+	LocalConfigurationViewTest LoggingConfiguratorTest MapConfigurationTest \
 	OptionProcessorTest OptionSetTest OptionTest \
 	OptionsTestSuite PropertyFileConfigurationTest \
 	SystemConfigurationTest UtilTestSuite XMLConfigurationTest \

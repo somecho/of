@@ -1,9 +1,7 @@
 //
 // Parameter.cpp
 //
-// $Id: //poco/Main/Data/ODBC/src/Parameter.cpp#5 $
-//
-// Library: ODBC
+// Library: Data/ODBC
 // Package: ODBC
 // Module:  Parameter
 //
@@ -25,14 +23,14 @@ namespace Data {
 namespace ODBC {
 
 
-Parameter::Parameter(const StatementHandle& rStmt, std::size_t colNum) : 
-	_rStmt(rStmt), 
+Parameter::Parameter(const StatementHandle& rStmt, std::size_t colNum) :
+	_rStmt(rStmt),
 	_number(colNum)
 {
 	init();
 }
 
-	
+
 Parameter::~Parameter()
 {
 }
@@ -40,14 +38,14 @@ Parameter::~Parameter()
 
 void Parameter::init()
 {
-	if (Utility::isError(SQLDescribeParam(_rStmt, 
-		(SQLUSMALLINT) _number + 1, 
+	if (Utility::isError(SQLDescribeParam(_rStmt,
+		(SQLUSMALLINT) _number + 1,
 		&_dataType,
 		&_columnSize,
 		&_decimalDigits,
 		&_isNullable)))
 	{
-		throw StatementException(_rStmt);
+		throw StatementException(_rStmt, "ODBC::Parameter::init():SQLDescribeParam()");
 	}
 }
 

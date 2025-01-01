@@ -1,8 +1,6 @@
 //
 // FIFOEventTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/FIFOEventTest.h#1 $
-//
 // Definition of the FIFOEventTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -15,6 +13,7 @@
 #ifndef FIFOEventTest_INCLUDED
 #define FIFOEventTest_INCLUDED
 
+#if defined(POCO_TEST_DEPRECATED)
 
 #include "Poco/Foundation.h"
 #include "CppUnit/TestCase.h"
@@ -47,6 +46,7 @@ public:
 	void testReturnParams();
 	void testOverwriteDelegate();
 	void testAsyncNotify();
+	void testAsyncNotifyBenchmark();
 
 	void setUp();
 	void tearDown();
@@ -62,11 +62,13 @@ protected:
 	void onConstComplex(const void* pSender, const Poco::EventArgs*& i);
 	void onConst2Complex(const void* pSender, const Poco::EventArgs * const & i);
 	void onAsync(const void* pSender, int& i);
+	void onAsyncBench(const void* pSender, int& i);
 
 	int getCount() const;
 private:
-	int		_count;
+	std::atomic<Poco::Int64> _count;
 };
 
+#endif
 
 #endif // FIFOEventTest_INCLUDED

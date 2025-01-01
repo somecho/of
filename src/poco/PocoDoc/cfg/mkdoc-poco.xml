@@ -10,9 +10,6 @@
 			</include>
 			<exclude>
 				*_*.h,
-				expat*.h,
-				zconf.h,
-				zlib.h,
 			</exclude>
 		</files>
 		<pages>
@@ -31,11 +28,19 @@
 			<exec>g++</exec>
 			<options>
 				${Includes},
+				-I${PocoBase}/Data/src,
+				-I/usr/local/ssl/include,
 				-I/usr/local/mysql/include,
+				-I/usr/include/mysql,
+				-I/usr/include/postgresql,
 				-D_DEBUG,
 				-E,
 				-C,
-				-DPOCO_NO_GCC_API_ATTRIBUTE
+				-DPOCO_NO_WINDOWS_H,
+				-DPOCO_NO_GCC_API_ATTRIBUTE,
+				-DPOCO_DOC,
+				-DPOCO_SILENCE_DEPRECATED,
+				-xc++
 			</options>
 			<path></path>
 			<usePipe>true</usePipe>
@@ -44,7 +49,8 @@
 		<charset>utf-8</charset>
 		<software>POCO C++ Libraries</software>
 		<company>Applied Informatics Software Engineering GmbH and Contributors</company>
-		<companyURI>http://pocoproject.org/</companyURI>
+		<companyURI>https://pocoproject.org/
+</companyURI>
 	</PocoDoc>
 	<Translations>
 		<EN>
@@ -100,5 +106,5 @@
 				<pattern>%s: [%p] %t</pattern>
 			</c1>
 		</channels>
-	</logging>	
+	</logging>
 </AppConfig>

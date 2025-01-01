@@ -1,8 +1,6 @@
 //
 // URIStreamFactory.cpp
 //
-// $Id: //poco/1.4/Foundation/src/URIStreamFactory.cpp#1 $
-//
 // Library: Foundation
 // Package: URI
 // Module:  URIStreamFactory
@@ -51,7 +49,7 @@ URIRedirection& URIRedirection::operator = (const URIRedirection& redir)
 }
 
 
-void URIRedirection::swap(URIRedirection& redir)
+void URIRedirection::swap(URIRedirection& redir) noexcept
 {
 	std::swap(_uri, redir._uri);
 }

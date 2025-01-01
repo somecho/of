@@ -1,6 +1,18 @@
 #include "ofQuaternion.h"
 #include "ofMatrix4x4.h"
 #include "ofMath.h"
+#include "ofMathConstants.h"
+
+#define GLM_FORCE_CTOR_INIT
+#include "glm/gtc/quaternion.hpp"
+
+//----------------------------------------
+ofQuaternion::ofQuaternion(const glm::quat & q):_v(q.x, q.y, q.z, q.w){}
+
+//----------------------------------------
+ofQuaternion::operator glm::quat() const{
+	return glm::quat(_v.w, glm::vec3(_v.x, _v.y, _v.z));
+}
 
 void ofQuaternion::set(const ofMatrix4x4& matrix) {
 	*this = matrix.getRotate();
@@ -16,6 +28,7 @@ void ofQuaternion::get(ofMatrix4x4& matrix) const {
 void ofQuaternion::makeRotate( float angle, float x, float y, float z ) {
 	angle = ofDegToRad(angle);
 	
+	// FIXME: why not using std::numeric_limits<float>::epsilon() ?
 	const float epsilon = 0.0000001f;
 
 	float length = sqrtf( x * x + y * y + z * z );
@@ -180,10 +193,10 @@ void ofQuaternion::makeRotate_original( const ofVec3f& from, const ofVec3f& to )
 			ofVec3f axis(fromd.getCrossed(tmp));
 			axis.normalize();
 
-			_v.x = axis[0]; // sin of half angle of PI is 1.0.
-			_v.y = axis[1]; // sin of half angle of PI is 1.0.
-			_v.z = axis[2]; // sin of half angle of PI is 1.0.
-			_v.w = 0; // cos of half angle of PI is zero.
+			_v.x = axis[0]; // sine of half angle of PI is 1.0.
+			_v.y = axis[1]; // sine of half angle of PI is 1.0.
+			_v.z = axis[2]; // sine of half angle of PI is 1.0.
+			_v.w = 0; // cosine of half angle of PI is zero.
 
 		} else {
 			// This is the usual situation - take a cross-product of vec1 and vec2
@@ -228,6 +241,8 @@ void ofQuaternion::getRotate( float& angle, float& x, float& y, float& z ) const
 /// See also
 /// http://www.gamasutra.com/features/programming/19980703/quaternions_01.htm
 void ofQuaternion::slerp( float t, const ofQuaternion& from, const ofQuaternion& to ) {
+	
+	// FIXME: std::numeric_limits<double>::epsilon()
 	const double epsilon = 0.00001;
 	double omega, cosomega, sinomega, scale_from, scale_to ;
 
@@ -270,12 +285,12 @@ ofVec3f ofQuaternion::getEuler() const {
 	float attitude;
 	float bank;
 	if (test > 0.499) { // singularity at north pole
-		heading = 2 * atan2(x(), w());
-		attitude = PI/2;
+		heading = 2.0f * atan2(x(), w());
+		attitude = glm::half_pi<float>();
 		bank = 0;
 	} else if (test < -0.499) { // singularity at south pole
-		heading = -2 * atan2(x(), w());
-		attitude = - PI/2;
+		heading = -2.0f * atan2(x(), w());
+		attitude = - glm::half_pi<float>();
 		bank = 0;
 	} else {
 		float sqx = x() * x();

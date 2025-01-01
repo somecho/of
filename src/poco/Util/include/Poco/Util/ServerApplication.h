@@ -1,8 +1,6 @@
 //
 // ServerApplication.h
 //
-// $Id: //poco/1.4/Util/include/Poco/Util/ServerApplication.h#3 $
-//
 // Library: Util
 // Package: Application
 // Module:  ServerApplication
@@ -26,6 +24,7 @@
 #if defined(POCO_OS_FAMILY_WINDOWS)
 #include "Poco/NamedEvent.h"
 #endif
+#include <functional>
 
 
 namespace Poco {
@@ -62,8 +61,7 @@ class Util_API ServerApplication: public Application
 	///   }
 	///
 	/// The POCO_SERVER_MAIN macro can be used to implement main(argc, argv).
-	/// If POCO has been built with POCO_WIN32_UTF8, POCO_SERVER_MAIN supports
-	/// Unicode command line arguments.
+	/// POCO_SERVER_MAIN supports Unicode command line arguments.
 	///
 	/// On Windows platforms, an application built on top of the
 	/// ServerApplication class can be run both from the command line
@@ -84,7 +82,7 @@ class Util_API ServerApplication: public Application
 	///
 	/// An application can determine whether it is running as a service by checking
 	/// for the "application.runAsService" configuration property.
-	/// 
+	///
 	///     if (config().getBool("application.runAsService", false))
 	///     {
 	///         // do service specific things
@@ -106,7 +104,7 @@ class Util_API ServerApplication: public Application
 	/// command line option. A daemon, when launched, immediately
 	/// forks off a background process that does the actual work. After launching
 	/// the background process, the foreground process exits.
-	/// 
+	///
 	/// After the initialization is complete, but before entering the main() method,
 	/// the current working directory for the daemon process is changed to the root
 	/// directory ("/"), as it is common practice for daemon processes. Therefore, be
@@ -122,17 +120,29 @@ class Util_API ServerApplication: public Application
 	///     }
 	///
 	/// When running as a daemon, specifying the --pidfile option (e.g.,
-	/// --pidfile=/var/run/sample.pid) may be useful to record the process ID of 
-	/// the daemon in a file. The PID file will be removed when the daemon process 
+	/// --pidfile=/var/run/sample.pid) may be useful to record the process ID of
+	/// the daemon in a file. The PID file will be removed when the daemon process
 	/// terminates (but not, if it crashes).
+	/// 
+	/// An application can register a callback to be called at termination time.
+	/// An example of the termination callback registration at some point
+	/// during the ServerApplication initialization time:
+	///
+	///     auto tCB = [](const std::string& message)
+	///     {
+	///         std::cout << message << std::endl;
+	///     };
+	///     ServerApplication::registerTerminateCallback(tCB, "custom termination message"s);
 {
 public:
+	using TerminateCallback = std::function<void(const std::string&)>;
+
 	ServerApplication();
 		/// Creates the ServerApplication.
 
 	~ServerApplication();
 		/// Destroys the ServerApplication.
-		
+
 	bool isInteractive() const;
 		/// Returns true if the application runs from the command line.
 		/// Returns false if the application runs as a Unix daemon
@@ -141,12 +151,12 @@ public:
 	int run(int argc, char** argv);
 		/// Runs the application by performing additional initializations
 		/// and calling the main() method.
-		
+
 	int run(const std::vector<std::string>& args);
 		/// Runs the application by performing additional initializations
 		/// and calling the main() method.
 
-#if defined(POCO_WIN32_UTF8) && !defined(POCO_NO_WSTRING)
+#if defined(_WIN32)
 	int run(int argc, wchar_t** argv);
 		/// Runs the application by performing additional initializations
 		/// and calling the main() method.
@@ -157,40 +167,34 @@ public:
 
 	static void terminate();
 		/// Sends a friendly termination request to the application.
-		/// If the application's main thread is waiting in 
+		/// If the application's main thread is waiting in
 		/// waitForTerminationRequest(), this method will return
 		/// and the application can shut down.
-		
+
+	static void registerTerminateCallback(TerminateCallback tCB,
+		const std::string& message = _terminateMessage);
+		/// Registers a termination callback.
+		/// Used to register a function to be executed when the system
+		/// shutdown starts.
+
 protected:
 	int run();
 	void waitForTerminationRequest();
-#if !defined(_WIN32_WCE)
 	void defineOptions(OptionSet& options);
-#endif
-
-#if defined(POCO_OS_FAMILY_WINDOWS) && !defined(_WIN32_WCE)
-	static HDEVNOTIFY registerServiceDeviceNotification(LPVOID filter, DWORD flags);
-		/// Registers the ServerApplication to receive SERVICE_CONTROL_DEVICEEVENT
-		/// events via handleDeviceEvent().
-
-	virtual DWORD handleDeviceEvent(DWORD event_type, LPVOID event_data);
-		/// Handles the SERVICE_CONTROL_DEVICEEVENT event. The default
-		/// implementation does nothing and returns ERROR_CALL_NOT_IMPLEMENTED.
-#endif
 
 private:
+	virtual void handlePidFile(const std::string& name, const std::string& value);
 #if defined(POCO_VXWORKS)
 	static Poco::Event _terminate;
 #elif defined(POCO_OS_FAMILY_UNIX)
 	void handleDaemon(const std::string& name, const std::string& value);
-	void handlePidFile(const std::string& name, const std::string& value);
+	void handleUMask(const std::string& name, const std::string& value);
 	bool isDaemon(int argc, char** argv);
 	void beDaemon();
-#if defined(POCO_ANDROID) || defined(__NACL__)
+#if POCO_OS == POCO_OS_ANDROID
 	static Poco::Event _terminate;
 #endif
 #elif defined(POCO_OS_FAMILY_WINDOWS)
-#if !defined(_WIN32_WCE)
 	enum Action
 	{
 		SRV_RUN,
@@ -198,12 +202,8 @@ private:
 		SRV_UNREGISTER
 	};
 	static BOOL __stdcall ConsoleCtrlHandler(DWORD ctrlType);
-	static DWORD __stdcall ServiceControlHandler(DWORD control, DWORD event_type, LPVOID event_data, LPVOID context);
-#if defined(POCO_WIN32_UTF8) && !defined(POCO_NO_WSTRING)
+	static void __stdcall ServiceControlHandler(DWORD control);
 	static void __stdcall ServiceMain(DWORD argc, LPWSTR* argv);
-#else
-	static void __stdcall ServiceMain(DWORD argc, LPTSTR* argv);
-#endif
 
 	bool hasConsole();
 	bool isService();
@@ -214,19 +214,23 @@ private:
 	void handleUnregisterService(const std::string& name, const std::string& value);
 	void handleDisplayName(const std::string& name, const std::string& value);
 	void handleDescription(const std::string& name, const std::string& value);
-	void handleStartup(const std::string& name, const std::string& value);	
-	
+	void handleStartup(const std::string& name, const std::string& value);
+
 	Action      _action;
 	std::string _displayName;
 	std::string _description;
 	std::string _startup;
 
 	static Poco::Event           _terminated;
-	static SERVICE_STATUS        _serviceStatus; 
-	static SERVICE_STATUS_HANDLE _serviceStatusHandle; 
-#endif // _WIN32_WCE
+	static SERVICE_STATUS        _serviceStatus;
+	static SERVICE_STATUS_HANDLE _serviceStatusHandle;
 	static Poco::NamedEvent      _terminate;
 #endif
+
+	static void terminateCallback();
+	inline static std::atomic<bool> _terminationGuard = false;
+	inline static TerminateCallback _terminateCallback = nullptr;
+	inline static std::string       _terminateMessage = "System terminating now!";
 };
 
 
@@ -236,7 +240,7 @@ private:
 //
 // Macro to implement main()
 //
-#if defined(_WIN32) && defined(POCO_WIN32_UTF8)
+#if defined(_WIN32)
 	#define POCO_SERVER_MAIN(App) \
 	int wmain(int argc, wchar_t** argv)	\
 	{									\

@@ -1,8 +1,6 @@
 //
 // grep.cpp
 //
-// $Id: //poco/1.4/Foundation/samples/grep/src/grep.cpp#1 $
-//
 // This sample demonstrates the RegularExpression class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
@@ -26,7 +24,7 @@ int main(int argc, char** argv)
 		std::cout << "usage: " << argv[0] << ": [-i] [-x] pattern" << std::endl;
 		return 1;
 	}
-	
+
 	std::string pattern;
 	int options = 0;
 	for (int i = 1; i < argc; ++i)
@@ -39,9 +37,9 @@ int main(int argc, char** argv)
 		else
 			pattern = arg;
 	}
-	
+
 	RegularExpression re(pattern, options);
-	
+
 	int c = std::cin.get();
 	while (c != -1)
 	{
@@ -58,6 +56,6 @@ int main(int argc, char** argv)
 
 		if (c != -1) c = std::cin.get();
 	}
-	
+
 	return 0;
 }

@@ -1,8 +1,6 @@
 //
 // MulticastSocket.cpp
 //
-// $Id: //poco/1.4/Net/src/MulticastSocket.cpp#1 $
-//
 // Library: Net
 // Package: Sockets
 // Module:  MulticastSocket
@@ -26,10 +24,10 @@
 
 #if defined(hpux) && defined(_XOPEN_SOURCE_EXTENDED) && defined(POCO_HPUX_IP_MREQ_HACK)
 // netinet/in.h does not define struct ip_mreq if
-// _XOPEN_SOURCE_EXTENDED is #define'd in HP-UX 11.x 
+// _XOPEN_SOURCE_EXTENDED is #define'd in HP-UX 11.x
 // versions prior to 11.30. Compile with -DPOCO_HPUX_IP_MREQ_HACK
 // if you experience problems.
-struct ip_mreq 
+struct ip_mreq
 {
 	struct in_addr imr_multiaddr;
 	struct in_addr imr_interface;
@@ -53,8 +51,12 @@ MulticastSocket::MulticastSocket()
 }
 
 
-MulticastSocket::MulticastSocket(IPAddress::Family family): DatagramSocket(family)
+MulticastSocket::MulticastSocket(SocketAddress::Family family): DatagramSocket(family)
 {
+#if defined(POCO_HAS_UNIX_SOCKET)
+	if (family == SocketAddress::UNIX_LOCAL)
+		throw Poco::InvalidArgumentException("Cannot create a MulticastSocket with UNIX_LOCAL socket");
+#endif
 }
 
 
@@ -82,21 +84,20 @@ MulticastSocket& MulticastSocket::operator = (const Socket& socket)
 
 void MulticastSocket::setInterface(const NetworkInterface& interfc)
 {
-	if (address().family() == IPAddress::IPv4)
+	if (address().family() == SocketAddress::IPv4)
 	{
 		impl()->setOption(IPPROTO_IP, IP_MULTICAST_IF, interfc.firstAddress(IPAddress::IPv4));
 	}
 #if defined(POCO_HAVE_IPv6)
-	else if (address().family() == IPAddress::IPv6)
+	else if (address().family() == SocketAddress::IPv6)
 	{
 		impl()->setOption(IPPROTO_IPV6, IPV6_MULTICAST_IF, interfc.index());
 	}
 #endif
-	else
-		throw UnsupportedFamilyException("Unknown or unsupported socket family.");
+	else throw UnsupportedFamilyException("Unknown or unsupported socket family.");
 }
 
-	
+
 NetworkInterface MulticastSocket::getInterface() const
 {
 	try
@@ -117,7 +118,7 @@ NetworkInterface MulticastSocket::getInterface() const
 	}
 }
 
-	
+
 void MulticastSocket::setLoopback(bool flag)
 {
 	if (address().af() == AF_INET)
@@ -134,7 +135,7 @@ void MulticastSocket::setLoopback(bool flag)
 	}
 }
 
-	
+
 bool MulticastSocket::getLoopback() const
 {
 	bool flag = false;
@@ -155,7 +156,7 @@ bool MulticastSocket::getLoopback() const
 	return flag;
 }
 
-	
+
 void MulticastSocket::setTimeToLive(unsigned value)
 {
 	if (address().af() == AF_INET)
@@ -171,7 +172,7 @@ void MulticastSocket::setTimeToLive(unsigned value)
 	}
 }
 
-	
+
 unsigned MulticastSocket::getTimeToLive() const
 {
 	unsigned ttl(0);
@@ -190,13 +191,13 @@ unsigned MulticastSocket::getTimeToLive() const
 	return ttl;
 }
 
-	
+
 void MulticastSocket::joinGroup(const IPAddress& groupAddress)
 {
 	joinGroup(groupAddress, findFirstInterface(groupAddress));
 }
 
-	
+
 void MulticastSocket::joinGroup(const IPAddress& groupAddress, const NetworkInterface& interfc)
 {
 	if (groupAddress.af() == AF_INET)
@@ -223,28 +224,28 @@ NetworkInterface MulticastSocket::findFirstInterface(const IPAddress& groupAddre
 	NetworkInterface::Map m = NetworkInterface::map();
 	if (groupAddress.family() == IPAddress::IPv4)
 	{
-		for (NetworkInterface::Map::const_iterator it = m.begin(); it != m.end(); ++it)
+		for (const auto& p: m)
 		{
-			if (it->second.supportsIPv4() &&
-				it->second.firstAddress(IPAddress::IPv4).isUnicast() &&
-				!it->second.isLoopback() &&
-				!it->second.isPointToPoint())
+			if (p.second.supportsIPv4() &&
+				p.second.firstAddress(IPAddress::IPv4).isUnicast() &&
+				!p.second.isLoopback() &&
+				!p.second.isPointToPoint())
 			{
-				return it->second;
+				return p.second;
 			}
 		}
 	}
 #ifdef POCO_HAVE_IPv6
 	else if (groupAddress.family() == IPAddress::IPv6)
 	{
-		for (NetworkInterface::Map::const_iterator it = m.begin(); it != m.end(); ++it)
+		for (const auto& p: m)
 		{
-			if (it->second.supportsIPv6() &&
-				it->second.firstAddress(IPAddress::IPv6).isUnicast() &&
-				!it->second.isLoopback() &&
-				!it->second.isPointToPoint())
+			if (p.second.supportsIPv6() &&
+				p.second.firstAddress(IPAddress::IPv6).isUnicast() &&
+				!p.second.isLoopback() &&
+				!p.second.isPointToPoint())
 			{
-				return it->second;
+				return p.second;
 			}
 		}
 	}
@@ -253,14 +254,13 @@ NetworkInterface MulticastSocket::findFirstInterface(const IPAddress& groupAddre
 	throw NotFoundException("No multicast-eligible network interface found.");
 }
 
-	
+
 void MulticastSocket::leaveGroup(const IPAddress& groupAddress)
 {
-	NetworkInterface intf;
-	leaveGroup(groupAddress, intf);
+	leaveGroup(groupAddress, findFirstInterface(groupAddress));
 }
 
-	
+
 void MulticastSocket::leaveGroup(const IPAddress& groupAddress, const NetworkInterface& interfc)
 {
 	if (groupAddress.af() == AF_INET)

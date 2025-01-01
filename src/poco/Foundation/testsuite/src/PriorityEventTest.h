@@ -1,8 +1,6 @@
 //
 // PriorityEventTest.h
 //
-// $Id: //poco/1.4/Foundation/testsuite/src/PriorityEventTest.h#1 $
-//
 // Definition of the PriorityEventTest class.
 //
 // Copyright (c) 2006, Applied Informatics Software Engineering GmbH.
@@ -73,7 +71,7 @@ protected:
 
 	int getCount() const;
 private:
-	int		_count;
+	std::atomic<int> _count;
 };
 
 

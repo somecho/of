@@ -1,8 +1,6 @@
 //
 // Document.h
 //
-// $Id$
-//
 // Library: MongoDB
 // Package: MongoDB
 // Module:  Document
@@ -25,16 +23,19 @@
 #include "Poco/MongoDB/MongoDB.h"
 #include "Poco/MongoDB/Element.h"
 #include <algorithm>
+#include <cstdlib>
 
 
 namespace Poco {
 namespace MongoDB {
 
+class Array;
 
-class ElementFindByName
+class MongoDB_API ElementFindByName
 {
 public:
-	ElementFindByName(const std::string& name) : _name(name)
+	ElementFindByName(const std::string& name):
+		_name(name)
 	{
 	}
 
@@ -49,26 +50,28 @@ private:
 
 
 class MongoDB_API Document
-	/// Represents a BSON document
+	/// Represents a MongoDB (BSON) document.
 {
 public:
-	typedef SharedPtr<Document> Ptr;
-	typedef std::vector<Document::Ptr> Vector;
+	using Ptr = SharedPtr<Document>;
+	using Vector = std::vector<Document::Ptr>;
 
 	Document();
-		/// Constructor
+		/// Creates an empty Document.
 
 	virtual ~Document();
-		/// Destructor
+		/// Destroys the Document.
 
 	Document& addElement(Element::Ptr element);
 		/// Add an element to the document.
+		///
 		/// The active document is returned to allow chaining of the add methods.
 
 	template<typename T>
 	Document& add(const std::string& name, T value)
 		/// Creates an element with the given name and value and
-		// adds it to the document.
+		/// adds it to the document.
+		///
 		/// The active document is returned to allow chaining of the add methods.
 	{
 		return addElement(new ConcreteElement<T>(name, value));
@@ -76,7 +79,8 @@ public:
 
 	Document& add(const std::string& name, const char* value)
 		/// Creates an element with the given name and value and
-		// adds it to the document.
+		/// adds it to the document.
+		///
 		/// The active document is returned to allow chaining of the add methods.
 	{
 		return addElement(new ConcreteElement<std::string>(name, std::string(value)));
@@ -87,6 +91,10 @@ public:
 		/// Unlike the other add methods, this method returns
 		/// a reference to the new document.
 
+	Array& addNewArray(const std::string& name);
+		/// Create a new array and add it to this document.
+		/// Method returns a reference to the new array.
+
 	void clear();
 		/// Removes all elements from the document.
 
@@ -94,29 +102,29 @@ public:
 		/// Puts all element names into std::vector.
 
 	bool empty() const;
-		/// Returns true when the document doesn't contain any documents.
+		/// Returns true if the document doesn't contain any documents.
 
-	bool exists(const std::string& name);
-		/// Returns true when the document has an element with the given name
+	bool exists(const std::string& name) const;
+		/// Returns true if the document has an element with the given name.
 
 	template<typename T>
-	T get(const std::string& name) const
+	const T& get(const std::string& name) const
 		/// Returns the element with the given name and tries to convert
 		/// it to the template type. When the element is not found, a
 		/// NotFoundException will be thrown. When the element can't be
 		/// converted a BadCastException will be thrown.
 	{
 		Element::Ptr element = get(name);
-		if ( element.isNull() )
+		if (element.isNull())
 		{
 			throw NotFoundException(name);
 		}
 		else
 		{
-			if ( ElementTraits<T>::TypeId == element->type() )
+			if (ElementTraits<T>::TypeId == element->type())
 			{
-				ConcreteElement<T>* concrete = dynamic_cast<ConcreteElement<T>* >(element.get());
-				if ( concrete != NULL )
+				auto* concrete = dynamic_cast<ConcreteElement<T>* >(element.get());
+				if (concrete != 0)
 				{
 					return concrete->value();
 				}
@@ -126,21 +134,21 @@ public:
 	}
 
 	template<typename T>
-	T get(const std::string& name, const T& def) const
+	const T& get(const std::string& name, const T& def) const
 		/// Returns the element with the given name and tries to convert
 		/// it to the template type. When the element is not found, or
 		/// has the wrong type, the def argument will be returned.
 	{
 		Element::Ptr element = get(name);
-		if ( element.isNull() )
+		if (element.isNull())
 		{
 			return def;
 		}
 
-		if ( ElementTraits<T>::TypeId == element->type() )
+		if (ElementTraits<T>::TypeId == element->type())
 		{
-			ConcreteElement<T>* concrete = dynamic_cast<ConcreteElement<T>* >(element.get());
-			if ( concrete != NULL )
+			auto* concrete = dynamic_cast<ConcreteElement<T>* >(element.get());
+			if (concrete != 0)
 			{
 				return concrete->value();
 			}
@@ -153,12 +161,21 @@ public:
 		/// Returns the element with the given name.
 		/// An empty element will be returned when the element is not found.
 
+	Int64 getInteger(const std::string& name) const;
+		/// Returns an integer. Useful when MongoDB returns Int32, Int64
+		/// or double for a number (count for example). This method will always
+		/// return an Int64. When the element is not found, a
+		/// Poco::NotFoundException will be thrown.
+
+	bool remove(const std::string& name);
+		/// Removes an element from the document.
+
 	template<typename T>
 	bool isType(const std::string& name) const
-		/// Returns true when the type of the element equals the TypeId of ElementTrait
+		/// Returns true when the type of the element equals the TypeId of ElementTrait.
 	{
 		Element::Ptr element = get(name);
-		if ( element.isNull() )
+		if (element.isNull())
 		{
 			return false;
 		}
@@ -169,7 +186,7 @@ public:
 	void read(BinaryReader& reader);
 		/// Reads a document from the reader
 
-	size_t size() const;
+	std::size_t size() const;
 		/// Returns the number of elements in the document.
 
 	virtual std::string toString(int indent = 0) const;
@@ -183,6 +200,9 @@ protected:
 };
 
 
+//
+// inlines
+//
 inline Document& Document::addElement(Element::Ptr element)
 {
 	_elements.push_back(element);
@@ -212,20 +232,31 @@ inline bool Document::empty() const
 
 inline void Document::elementNames(std::vector<std::string>& keys) const
 {
-	for(ElementSet::const_iterator it = _elements.begin(); it != _elements.end(); ++it)
+	for (const auto & _element : _elements)
 	{
-		keys.push_back((*it)->name());
+		keys.push_back(_element->name());
 	}
 }
 
 
-inline bool Document::exists(const std::string& name)
+inline bool Document::exists(const std::string& name) const
 {
 	return std::find_if(_elements.begin(), _elements.end(), ElementFindByName(name)) != _elements.end();
 }
 
 
-inline size_t Document::size() const
+inline bool Document::remove(const std::string& name)
+{
+	auto it = std::find_if(_elements.begin(), _elements.end(), ElementFindByName(name));
+	if (it == _elements.end())
+		return false;
+
+	_elements.erase(it);
+	return true;
+}
+
+
+inline std::size_t Document::size() const
 {
 	return _elements.size();
 }
@@ -258,7 +289,8 @@ inline void BSONWriter::write<Document::Ptr>(Document::Ptr& from)
 	from->write(_writer);
 }
 
+
 } } // namespace Poco::MongoDB
 
 
-#endif //  MongoDB_Document_INCLUDED
+#endif // MongoDB_Document_INCLUDED
