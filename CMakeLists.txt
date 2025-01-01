@@ -1098,7 +1098,6 @@ elseif(CMAKE_SYSTEM MATCHES Windows)
 )
 endif()
 
-include_directories(${OPENFRAMEWORKS_INCLUDE_DIRS})
 
 if(CMAKE_C_COMPILER_ID STREQUAL Clang)
   set(O_C_FLAG -O0)
@@ -1202,6 +1201,8 @@ add_library(
     ${RTAUDIO_SOURCES}
     ${GLEW_SOURCES}
 )
+
+target_include_directories(openFrameworks PUBLIC ${OPENFRAMEWORKS_INCLUDE_DIRS})
 
 target_compile_definitions(
     openFrameworks PRIVATE
