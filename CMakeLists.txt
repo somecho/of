@@ -1329,6 +1329,7 @@ if(NOT OF_STATIC)
 
   target_link_libraries(
       openFrameworks
+      PUBLIC
       ${OPENFRAMEWORKS_LIBRARIES}
   )
 
